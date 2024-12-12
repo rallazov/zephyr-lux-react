@@ -1,0 +1,249 @@
+/* Navbar base styles */
+.navbar {
+    background-color: #000000;
+    color: #ffffff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 2rem;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 1000;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Navbar scrolled state */
+.navbar.scrolled {
+    background-color: #ffffff;
+    position: fixed;
+    height: 80px;
+    padding: 0.5rem 1rem;
+    /* Smaller padding when scrolled */
+    transform: scale(1);
+}
+
+.navbar.scrolled .nav-links a,
+.navbar.scrolled .nav-icons a {
+    color: #000000;
+}
+
+/* Navbar hover state */
+.navbar:hover {
+    background-color: #ffffff;
+}
+
+.navbar:hover .nav-links a,
+.navbar:hover .nav-icons a {
+    color:#000000;
+}
+
+.navbar:hover .nav-links a:hover,
+.navbar:hover .nav-icons a:hover {
+    color: #8B0000;
+}
+
+/* Navbar Links */
+.nav-links {
+    list-style: none;
+    display: flex;
+    gap: 0.5rem;
+    margin: 10px;
+    margin-right: 250px;
+}
+
+.nav-links a {
+    color: #ffffff;
+    font-size: 1rem;
+    transition: color 0.3s ease;
+}
+
+.nav-links li {
+    margin-right: 1.0rem;
+}
+
+.nav-icons {
+    display: flex;
+    gap: 1.0rem;
+    justify-content: center;
+    align-items: center;
+    margin-right: 6rem;
+}
+
+.nav-icons a {
+    color: #ffffff;
+    font-size: 1.2rem;
+    padding: 0.5rem;
+    margin-left: 1.5rem;
+    transition: color 0.3s ease;
+}
+
+.hamburger {
+    display: none;
+    font-size: 2rem;
+    cursor: pointer;
+    z-index: 1001;
+    color: #ffffff;
+    transition: color 0.3s ease;
+}
+
+/* Show hamburger only on smaller screens */
+@media (max-width: 768px) {
+    .logo img {
+        width: 150px;
+        height: auto;
+        margin: 0 auto;
+    }
+
+    /* Ensure that the mobile view aligns properly */
+    .navbar {
+        padding: 0 1rem;
+        justify-content: space-between;
+    }
+
+    /* Position nav-icons properly */
+    .nav-icons {
+        font-size: 1.5rem;
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .navbar:hover .nav-icons a,
+    .navbar:hover .nav-links a {
+        color: #ffffff;
+    }
+
+    .hamburger {
+        display: block;
+        cursor: pointer;
+        font-size: 2rem;
+        color: #ffffff;
+    }
+
+    .navbar.active {
+        justify-content: space-evenly;
+
+    }
+
+    /* Ensure the links open under the navbar */
+    .nav-links {
+        display: none;
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+        position: absolute;
+        top: 100%;
+        /* Dropdown under the navbar */
+        left: 0;
+        right: 0;
+        padding: 1rem;
+        background-color: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(2px);
+        z-index: 1000;
+        /* Ensure it's above other elements */
+        -webkit-backdrop-filter: blur(2px);
+        /* For Safari */
+        border-radius: 10px;
+        transition: background-color 0.3s ease, backdrop-filter 0.3s ease;
+    }
+
+    .nav-links.open {
+        display: flex;
+        color: #ffffff;
+
+    }
+
+    .navbar.scrolled .nav-links a {
+        color: #ffffff;
+        font-size: 1.2rem;
+    }
+
+    .nav-links.open a,
+    .navbar.scrolled .nav-links a {
+
+        color: #ffffff;
+    }
+
+
+
+    .nav-links a:hover {
+        color: #8B0000;
+        /* Red hover color */
+    }
+
+    .navbar.scrolled,
+    .hamburger:hover .fas {
+        color: #8B0000;
+    }
+
+    .navbar.scrolled .hamburger,
+    .navbar:hover .hamburger {
+        color: #000000;
+    }
+
+
+    .navbar.scrolled .logo img {
+        height: 80px;
+        /* Shrink logo size when scrolled */
+    }
+
+    /* Adjust the mobile view for discount message */
+    .discount-message {
+        text-align: center;
+        margin: 1rem 0;
+    }
+
+    .discount-message h2 {
+        font-size: 2rem;
+    }
+
+    .discount-item {
+        margin-bottom: 1rem;
+        font-size: 1.5rem;
+    }
+
+    .cta-buttons a {
+        font-size: 1.2rem;
+        padding: 0.8rem 1.5rem;
+    }
+
+    .footer-column {
+        margin-bottom: 1.5rem;
+    }
+}
+
+/* For tablets */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .navbar {
+        padding: 1rem 2rem;
+    }
+
+    .hamburger {
+        display: none;
+    }
+
+    .nav-links {
+        gap: 1rem;
+    }
+
+    .nav-icons {
+        font-size: 1.5rem;
+    }
+}
+
+/* For larger screens */
+@media (min-width: 1025px) {
+    .navbar {
+        padding: 1rem 3rem;
+    }
+
+    .nav-links {
+        gap: 1.5rem;
+    }
+
+    .nav-icons {
+        font-size: 2rem;
+    }
+}

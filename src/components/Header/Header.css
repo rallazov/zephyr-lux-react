@@ -1,0 +1,41 @@
+/* Default header styles (black background and white links/icons) */
+.header {
+    background-color: #000000; /* Default black header background */
+    transition: background-color 0.3s ease, color 0.3s ease;
+    color: #ffffff; /* White links and icons by default */
+}
+
+.nav-links a,
+.nav-icons a {
+    color: #ffffff; /* White text/icons by default */
+}
+
+
+/* Hover effect */
+.nav-links a:hover,
+.nav-icons a:hover {
+    color: #8B0000; /* Red when you hover over individual items */
+}
+
+.header.scrolled {
+    background-color: #ffffff;
+}
+
+
+
+/* Ensure Logo is properly styled */
+.logo img {
+    width: 350px;
+    height: auto;
+    display: block;
+}
+
+.logo {
+    padding: 0;
+    margin: 0;
+    display: flex;
+    align-items: center;
+}
+
+
+
