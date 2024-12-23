@@ -32,7 +32,7 @@ const Navbar: React.FC = () => {
   return (
     <nav className={`navbar ${isScrolled ? 'scrolled' : ''} ${isMenuOpen ? 'active' : ''}`}>
       <div className="logo">
-        <img src="/src/assets/logos/transparent_logo.png" alt="Zephyr Lux Logo" />
+        <img src="/assets/logos/transparent_logo.png" alt="Zephyr Lux Logo" />
       </div>
       <span className="hamburger" onClick={toggleMenu}>
         <i className="fas fa-bars"></i>

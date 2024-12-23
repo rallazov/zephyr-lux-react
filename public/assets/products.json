@@ -1,0 +1,27 @@
+[
+    {
+      "id": 1,
+      "name": "Zephyr Lux Viscose Fiber Men's Boxer Briefs - Comfort Stretch- made from Bamboo- (2 Packs)",
+      "brand": "Zephyr Lux",
+      "priceRange": {
+        "min": 18.50,
+        "max": 22.50
+      },
+      "rating": 5.0,
+      "reviewsCount": 3,
+      "sizes": ["S", "M", "L", "XL"],
+      "colors": ["Navy Blue", "Black"],
+      "fabricType": "95% Viscose, 5% Spandex",
+      "careInstructions": "Hand Wash or Machine Wash",
+      "origin": "Imported",
+      "image": "3 Listing copy.jpeg", 
+      "features": [
+        "Sustainably made with bamboo fabric",
+        "Comfort stretch for all-day wear",
+        "Breathable and lightweight material"
+      ],
+      "category": "Men's Underwear",
+      "inStock":true
+    }
+  ]
+  
