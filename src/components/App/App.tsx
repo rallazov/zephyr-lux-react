@@ -1,5 +1,6 @@
 import React from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import { CartProvider } from "../../context/CartContext.js";
 import DiscountMessage from '../DiscountMessages/DiscountMessage.js';
 import Footer from '../Footer/Footer.js';
 import GridSection from '../GridSection/GridSection.js';
@@ -45,6 +46,7 @@ const App: React.FC = () => {
   ];
 
   return (
+  <CartProvider>
     <Router>
       <div className="App">
         <Header />
@@ -122,10 +124,12 @@ const App: React.FC = () => {
               </>
             }
           />
+
         </Routes>
         <Footer />
       </div>
     </Router>
+  </CartProvider>
   );
 };
 

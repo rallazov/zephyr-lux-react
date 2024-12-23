@@ -12,7 +12,31 @@
     z-index: 1000;
     transition: background-color 0.3s ease, color 0.3s ease;
 }
-
+.cart-container {
+    position: relative;
+  }
+  
+  .cart-container .cart-count {
+    position: absolute;
+    top: -8px; /* Moves the number above the icon */
+    right: -5px; /* Adjust to horizontally align with the icon */
+    color: #ffffff; /* White color for contrast */
+    font-size: 0.75rem; /* Smaller font size */
+    font-weight: bold; /* Bold numbers for visibility */
+    background: none; /* Remove the circular background */
+    padding: 0; /* No padding since there's no background */
+    transition: color 0.3s ease;
+  }
+  
+  .cart-container .cart-count:hover {
+    color: #000;
+    cursor: default; /* No pointer cursor on the count itself */
+  }
+  
+  .navbar.scrolled .cart-container .cart-count {
+    color: #000; /* Change to black when navbar is scrolled */
+}
+  
 /* Navbar scrolled state */
 .navbar.scrolled {
     background-color: #ffffff;
@@ -22,6 +46,7 @@
     /* Smaller padding when scrolled */
     transform: scale(1);
 }
+
 
 .navbar.scrolled .nav-links a,
 .navbar.scrolled .nav-icons a {
@@ -41,6 +66,11 @@
 .navbar:hover .nav-links a:hover,
 .navbar:hover .nav-icons a:hover {
     color: #8B0000;
+}
+
+/* Navbar hovered: Navbar turns white, count is black */
+.navbar:hover .cart-container .cart-count {
+    color: #000000; /* Black for visibility on hover */
 }
 
 /* Navbar Links */

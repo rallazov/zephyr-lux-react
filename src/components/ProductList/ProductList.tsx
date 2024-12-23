@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-
+import { useCart } from "../../context/CartContext.js";
+import "./ProductList.css";
 interface Product{
     id: number;
   name: string;
@@ -11,8 +12,11 @@ interface Product{
   image: string;
   inStock: boolean;
 }
-const ProductList = () => {
-  const [products, setProducts] = useState([]);
+
+const ProductList: React.FC = () => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const { addToCart } = useCart();
+
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -28,11 +32,11 @@ const ProductList = () => {
   }, []);
 
   return (
-    <div>
+    <div className="product-list">
       <h1>Product List</h1>
       <div style={{ display: 'grid', gap: '20px', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
         {products.map((product) => (
-          <div key={product.id} style={{ border: '1px solid #ddd', padding: '10px', borderRadius: '5px' }}>
+          <div key={product.id} className="product-item">
             <img src={product.image} alt={product.name} style={{ width: '100%', height: 'auto' }} />
             <h3>{product.name}</h3>
             <p>{product.fabricType}</p>
@@ -41,13 +45,10 @@ const ProductList = () => {
             </p>
             <button
               disabled={!product.inStock}
-              style={{
-                padding: '10px',
-                backgroundColor: '#28a745',
-                color: 'white',
-                border: 'none',
-                cursor: 'pointer',
-              }}
+              className="product-item-button"
+              onClick={() =>
+              addToCart({ id: product.id, name: product.name, quantity: 1 })
+              }
             >
               {product.inStock ? 'Add to Cart' : 'Out of Stock'}
             </button>
