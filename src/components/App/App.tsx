@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import { CartProvider } from "../../context/CartContext.js";
+import CartPage from '../Cart/CartPage.js';
 import DiscountMessage from '../DiscountMessages/DiscountMessage.js';
 import Footer from '../Footer/Footer.js';
 import GridSection from '../GridSection/GridSection.js';
@@ -50,6 +51,7 @@ const App: React.FC = () => {
     <Router>
       <div className="App">
         <Header />
+        
         <Routes>
           {/* Home Page */}
           <Route
@@ -58,7 +60,7 @@ const App: React.FC = () => {
                <Navigate to="/products"/>
             }
           />
-          <Route path='/products' element={
+            <Route path='/products' element={
             <>
             <ProductList/>
             </>
@@ -78,7 +80,8 @@ const App: React.FC = () => {
               </>
             }
           />
-
+            {/* Cart Page */}
+            <Route path="/cart" element={<CartPage />} />
           {/* Men Page */}
           <Route
             path="/men"
@@ -100,7 +103,7 @@ const App: React.FC = () => {
             element={
               <>
                 <Hero
-                  image="/src/assets/img/kids_placeholder.jpeg"
+                  image="/assets/img/kids_placeholder.jpeg"
                   title="Fun & Functional"
                   description="Comfort for the little ones."
                 />
@@ -116,7 +119,7 @@ const App: React.FC = () => {
               <>
                <DiscountMessage/>
                 <Hero
-                  image="/src/assets/img/sale_placeholder.jpeg"
+                  image="/assets/img/sale_placeholder.jpeg"
                   title="Limited Time Offers"
                   description="Grab the deals before they're gone!"
                 />
