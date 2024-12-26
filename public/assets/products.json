@@ -1,27 +1,146 @@
 [
-    {
-      "id": 1,
-      "name": "Zephyr Lux Viscose Fiber Men's Boxer Briefs - Comfort Stretch- made from Bamboo- (2 Packs)",
-      "brand": "Zephyr Lux",
-      "priceRange": {
-        "min": 18.50,
-        "max": 22.50
-      },
-      "rating": 5.0,
-      "reviewsCount": 3,
-      "sizes": ["S", "M", "L", "XL"],
-      "colors": ["Navy Blue", "Black"],
-      "fabricType": "95% Viscose, 5% Spandex",
-      "careInstructions": "Hand Wash or Machine Wash",
-      "origin": "Imported",
-      "image": "3 Listing copy.jpeg", 
-      "features": [
-        "Sustainably made with bamboo fabric",
-        "Comfort stretch for all-day wear",
-        "Breathable and lightweight material"
-      ],
-      "category": "Men's Underwear",
-      "inStock":true
-    }
-  ]
-  
+  {
+    "id": 1,
+    "name": "Zephyr Lux Viscose Fiber Men's Boxer Briefs - Comfort Stretch- made from Bamboo- (2 Packs)",
+    "brand": "Zephyr Lux",
+    "priceRange": {
+      "min": 18.50,
+      "max": 22.50
+    },
+    "rating": 5.0,
+    "reviewsCount": 3,
+    "sizes": ["S", "M", "L", "XL"],
+    "colors": ["Navy Blue", "Black"],
+    "fabricType": "95% Viscose, 5% Spandex",
+    "careInstructions": "Hand Wash or Machine Wash",
+    "origin": "Imported",
+    "image": "3 Listing copy.jpeg", 
+    "features": [
+      "Sustainably made with bamboo fabric",
+      "Comfort stretch for all-day wear",
+      "Breathable and lightweight material"
+    ],
+    "category": "Men's Underwear",
+    "inStock": true
+  },
+  {
+    "id": 2,
+    "name": "Zephyr Lux Women's Seamless Yoga Leggings - Bamboo Comfort Fabric",
+    "brand": "Zephyr Lux",
+    "priceRange": {
+      "min": 25.00,
+      "max": 30.00
+    },
+    "rating": 4.8,
+    "reviewsCount": 8,
+    "sizes": ["XS", "S", "M", "L"],
+    "colors": ["Gray", "Black", "Burgundy"],
+    "fabricType": "90% Bamboo, 10% Elastane",
+    "careInstructions": "Machine Wash Cold",
+    "origin": "Imported",
+    "image": "yoga_leggings.jpeg", 
+    "features": [
+      "Seamless design for maximum comfort",
+      "Breathable and moisture-wicking material",
+      "Perfect for yoga and fitness"
+    ],
+    "category": "Women's Activewear",
+    "inStock": true
+  },
+  {
+    "id": 3,
+    "name": "Zephyr Lux Organic Cotton T-Shirts - Pack of 3",
+    "brand": "Zephyr Lux",
+    "priceRange": {
+      "min": 30.00,
+      "max": 35.00
+    },
+    "rating": 4.5,
+    "reviewsCount": 5,
+    "sizes": ["S", "M", "L", "XL", "XXL"],
+    "colors": ["White", "Gray", "Black"],
+    "fabricType": "100% Organic Cotton",
+    "careInstructions": "Machine Wash Warm",
+    "origin": "Made in USA",
+    "image": "cotton_tshirts.jpeg", 
+    "features": [
+      "Ultra-soft organic cotton",
+      "Pre-shrunk for a perfect fit",
+      "Durable stitching for long-lasting wear"
+    ],
+    "category": "Men's Apparel",
+    "inStock": true
+  },
+  {
+    "id": 4,
+    "name": "Zephyr Lux Baby Onesies - Bamboo Blend (Pack of 2)",
+    "brand": "Zephyr Lux",
+    "priceRange": {
+      "min": 15.00,
+      "max": 18.00
+    },
+    "rating": 5.0,
+    "reviewsCount": 12,
+    "sizes": ["0-3M", "3-6M", "6-9M"],
+    "colors": ["Pastel Blue", "Soft Pink"],
+    "fabricType": "70% Bamboo, 30% Organic Cotton",
+    "careInstructions": "Machine Wash Gentle",
+    "origin": "Imported",
+    "image": "baby_onesies.jpeg", 
+    "features": [
+      "Hypoallergenic bamboo blend fabric",
+      "Stretchable for easy movement",
+      "Adorable pastel colors"
+    ],
+    "category": "Baby Wear",
+    "inStock": true
+  },
+  {
+    "id": 5,
+    "name": "Zephyr Lux Travel Socks - Bamboo Comfort (3 Pairs)",
+    "brand": "Zephyr Lux",
+    "priceRange": {
+      "min": 12.50,
+      "max": 15.00
+    },
+    "rating": 4.7,
+    "reviewsCount": 9,
+    "sizes": ["One Size Fits Most"],
+    "colors": ["Black", "Gray", "Navy"],
+    "fabricType": "85% Bamboo, 15% Spandex",
+    "careInstructions": "Hand Wash Preferred",
+    "origin": "Imported",
+    "image": "travel_socks.jpeg", 
+    "features": [
+      "Ultra-soft bamboo comfort fabric",
+      "Moisture-wicking and odor-resistant",
+      "Perfect for long travel days"
+    ],
+    "category": "Accessories",
+    "inStock": true
+  },
+  {
+    "id": 6,
+    "name": "Zephyr Lux Men's Bamboo Polo Shirt - Performance Fit",
+    "brand": "Zephyr Lux",
+    "priceRange": {
+      "min": 35.00,
+      "max": 40.00
+    },
+    "rating": 4.9,
+    "reviewsCount": 15,
+    "sizes": ["S", "M", "L", "XL"],
+    "colors": ["Navy Blue", "White", "Gray"],
+    "fabricType": "95% Bamboo, 5% Elastane",
+    "careInstructions": "Machine Wash Cold",
+    "origin": "Made in USA",
+    "image": "polo_shirt.jpeg", 
+    "features": [
+      "Performance fit for an active lifestyle",
+      "Breathable bamboo fabric",
+      "Classic polo design"
+    ],
+    "category": "Men's Apparel",
+    "inStock": true
+  }
+]

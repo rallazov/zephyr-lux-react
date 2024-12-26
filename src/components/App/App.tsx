@@ -81,7 +81,12 @@ const App: React.FC = () => {
             }
           />
             {/* Cart Page */}
-            <Route path="/cart" element={<CartPage />} />
+            <Route path="/cart" element={
+              <>
+              <CartPage />
+              </>
+            } 
+              />
           {/* Men Page */}
           <Route
             path="/men"
