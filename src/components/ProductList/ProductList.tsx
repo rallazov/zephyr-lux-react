@@ -47,7 +47,7 @@ const ProductList: React.FC = () => {
               disabled={!product.inStock}
               className="product-item-button"
               onClick={() =>
-              addToCart({ id: product.id, name: product.name, quantity: 1 ,price: 22.80})
+              addToCart({ id: product.id, name: product.name, quantity: 1 ,price: 2.00,image:"/assets/img/Listing2.jpeg"})
               }
             >
               {product.inStock ? 'Add to Cart' : 'Out of Stock'}
