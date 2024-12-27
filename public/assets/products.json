@@ -14,7 +14,7 @@
     "fabricType": "95% Viscose, 5% Spandex",
     "careInstructions": "Hand Wash or Machine Wash",
     "origin": "Imported",
-    "image": "3 Listing copy.jpeg", 
+    "image": "/assets/img/3 Listing copy.jpeg", 
     "features": [
       "Sustainably made with bamboo fabric",
       "Comfort stretch for all-day wear",
@@ -38,7 +38,7 @@
     "fabricType": "90% Bamboo, 10% Elastane",
     "careInstructions": "Machine Wash Cold",
     "origin": "Imported",
-    "image": "yoga_leggings.jpeg", 
+    "image": "/assets/img/Listing.jpeg", 
     "features": [
       "Seamless design for maximum comfort",
       "Breathable and moisture-wicking material",
@@ -62,7 +62,7 @@
     "fabricType": "100% Organic Cotton",
     "careInstructions": "Machine Wash Warm",
     "origin": "Made in USA",
-    "image": "cotton_tshirts.jpeg", 
+    "image": "/assets/img/Listing.jpeg", 
     "features": [
       "Ultra-soft organic cotton",
       "Pre-shrunk for a perfect fit",
@@ -86,7 +86,7 @@
     "fabricType": "70% Bamboo, 30% Organic Cotton",
     "careInstructions": "Machine Wash Gentle",
     "origin": "Imported",
-    "image": "baby_onesies.jpeg", 
+    "image": "/assets/img/Listing.jpeg", 
     "features": [
       "Hypoallergenic bamboo blend fabric",
       "Stretchable for easy movement",
@@ -110,7 +110,7 @@
     "fabricType": "85% Bamboo, 15% Spandex",
     "careInstructions": "Hand Wash Preferred",
     "origin": "Imported",
-    "image": "travel_socks.jpeg", 
+    "image": "/assets/img/Listing.jpeg", 
     "features": [
       "Ultra-soft bamboo comfort fabric",
       "Moisture-wicking and odor-resistant",
@@ -134,11 +134,83 @@
     "fabricType": "95% Bamboo, 5% Elastane",
     "careInstructions": "Machine Wash Cold",
     "origin": "Made in USA",
-    "image": "polo_shirt.jpeg", 
+    "image": "/assets/img/Listing.jpeg", 
     "features": [
       "Performance fit for an active lifestyle",
       "Breathable bamboo fabric",
       "Classic polo design"
+    ],
+    "category": "Men's Apparel",
+    "inStock": true
+  },
+  {
+    "id": 11,
+    "name": "Zephyr Lux Viscose Fiber Men's Boxer Briefs - Comfort Stretch- made from Bamboo- (2 Packs)",
+    "brand": "Zephyr Lux",
+    "priceRange": {
+      "min": 18.50,
+      "max": 22.50
+    },
+    "rating": 5.0,
+    "reviewsCount": 3,
+    "sizes": ["S", "M", "L", "XL"],
+    "colors": ["Navy Blue", "Black"],
+    "fabricType": "95% Viscose, 5% Spandex",
+    "careInstructions": "Hand Wash or Machine Wash",
+    "origin": "Imported",
+    "image": "/assets/img/3 Listing copy.jpeg", 
+    "features": [
+      "Sustainably made with bamboo fabric",
+      "Comfort stretch for all-day wear",
+      "Breathable and lightweight material"
+    ],
+    "category": "Men's Underwear",
+    "inStock": true
+  },
+  {
+    "id": 21,
+    "name": "Zephyr Lux Women's Seamless Yoga Leggings - Bamboo Comfort Fabric",
+    "brand": "Zephyr Lux",
+    "priceRange": {
+      "min": 25.00,
+      "max": 30.00
+    },
+    "rating": 4.8,
+    "reviewsCount": 8,
+    "sizes": ["XS", "S", "M", "L"],
+    "colors": ["Gray", "Black", "Burgundy"],
+    "fabricType": "90% Bamboo, 10% Elastane",
+    "careInstructions": "Machine Wash Cold",
+    "origin": "Imported",
+    "image": "/assets/img/Listing.jpeg", 
+    "features": [
+      "Seamless design for maximum comfort",
+      "Breathable and moisture-wicking material",
+      "Perfect for yoga and fitness"
+    ],
+    "category": "Women's Activewear",
+    "inStock": true
+  },
+  {
+    "id": 31,
+    "name": "Zephyr Lux Organic Cotton T-Shirts - Pack of 3",
+    "brand": "Zephyr Lux",
+    "priceRange": {
+      "min": 30.00,
+      "max": 35.00
+    },
+    "rating": 4.5,
+    "reviewsCount": 5,
+    "sizes": ["S", "M", "L", "XL", "XXL"],
+    "colors": ["White", "Gray", "Black"],
+    "fabricType": "100% Organic Cotton",
+    "careInstructions": "Machine Wash Warm",
+    "origin": "Made in USA",
+    "image": "/assets/img/Listing.jpeg", 
+    "features": [
+      "Ultra-soft organic cotton",
+      "Pre-shrunk for a perfect fit",
+      "Durable stitching for long-lasting wear"
     ],
     "category": "Men's Apparel",
     "inStock": true

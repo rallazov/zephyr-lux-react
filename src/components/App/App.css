@@ -1,3 +1,7 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 /* Ensure the App container takes up the full width and height of the screen */
 .App {
   width: 100vw; /* Take full viewport width */
