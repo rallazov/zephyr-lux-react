@@ -1,3 +1,5 @@
+import { faCheckCircle, faLock, faUndoAlt } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React, { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CartContext } from "../../context/CartContext.js";
@@ -152,22 +154,33 @@ const CartPage: React.FC = () => {
               </div>
 
               {/* Trust Badges */}
-              <div className="mt-6 flex justify-center gap-4">
-                <img
-                  src="/assets/img/secure-payment.png"
-                  alt="Secure Payment"
-                  className="w-16 h-16"
-                />
-                <img
-                  src="/assets/img/free-returns.png"
-                  alt="Free Returns"
-                  className="w-16 h-16"
-                />
-                <img
-                  src="/assets/img/satisfaction-guaranteed.png"
-                  alt="Satisfaction Guaranteed"
-                  className="w-16 h-16"
-                />
+              <div className="mt-6 flex justify-center gap-4">  {/* Parent container */}
+                <div className="flex items-center"> {/* Container for each icon + text */}
+                  <FontAwesomeIcon
+                    icon={faLock}
+                    className="text-gray-500 mr-2 text-lg"  // Icon styles
+                    aria-label="Secure Payment"
+                  />
+                  <span className="text-gray-500">Secure Payment</span> {/* Text style */}
+                </div>
+
+                <div className="flex items-center"> {/* Container for each icon + text */}
+                  <FontAwesomeIcon
+                    icon={faUndoAlt}
+                    className="text-gray-500 mr-2 text-lg" // Icon styles
+                    aria-label="Free Returns"
+                  />
+                  <span className="text-gray-500">Free Returns</span> {/* Text style */}
+                </div>
+
+                <div className="flex items-center"> {/* Container for each icon + text */}
+                  <FontAwesomeIcon
+                    icon={faCheckCircle}
+                    className="text-gray-500 mr-2 text-lg" // Icon styles
+                    aria-label="Satisfaction Guaranteed"
+                  />
+                  <span className="text-gray-500">Satisfaction Guaranteed</span> {/* Text style */}
+                </div>
               </div>
             </div>
           </div>
