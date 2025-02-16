@@ -143,11 +143,12 @@ const CartPage: React.FC = () => {
                   Continue Shopping
                 </button>
                 <button
-                  onClick={() => navigate("/checkout")}
+                  onClick={() => navigate("/checkout", { state: { subtotal: total, items: cartItems } })}
                   className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600"
                 >
                   Proceed to Checkout
                 </button>
+
               </div>
 
               {/* Trust Badges */}

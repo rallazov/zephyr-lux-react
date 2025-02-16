@@ -5,7 +5,7 @@ interface CartItem {
   name: string;
   quantity: number;
   price: number;
-  image:string;
+  image: string;
 }
 
 interface CartContextType {
@@ -13,13 +13,15 @@ interface CartContextType {
   addToCart: (product: CartItem) => void;
   removeFromCart: (id: number) => void;
   cartCount: number;
+  clearCart: () => void; // Added clearCart here
 }
 
 export const CartContext = createContext<CartContextType>({
-    cartItems: [],
-    addToCart: () => {},
-    removeFromCart: () => {},
-    cartCount: 0,
+  cartItems: [],
+  addToCart: () => { },
+  removeFromCart: () => { },
+  cartCount: 0,
+  clearCart: () => { }, // added clearCart here
 });
 
 export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -46,7 +48,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return [...prevCartItems, { ...product, quantity: 1 }];
     });
   };
-  
+
   const removeFromCart = (id: number) => {
     setCartItems((prevCartItems) => {
       return prevCartItems
@@ -56,15 +58,18 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         .filter((item) => item.quantity > 0); // Remove items with quantity 0
     });
   };
-  
 
- const cartCount = useMemo(
+  const clearCart = () => {
+    setCartItems([]);
+  };
+
+  const cartCount = useMemo(
     () => cartItems.reduce((count, item) => count + item.quantity, 0),
     [cartItems]
   );
 
   return (
-    <CartContext.Provider value={{ cartItems, addToCart, removeFromCart, cartCount }}>
+    <CartContext.Provider value={{ cartItems, addToCart, removeFromCart, cartCount, clearCart }}>
       {children}
     </CartContext.Provider>
   );
