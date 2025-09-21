@@ -2,6 +2,7 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: 16px;
+  padding-top: 110px; /* offset fixed navbar height */
 }
 
 .product-item {
