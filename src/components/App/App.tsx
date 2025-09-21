@@ -11,8 +11,8 @@ import GridSection from '../GridSection/GridSection';
 import Header from '../Header/Header';
 import Hero from '../Hero/Hero';
 import OrderConfirmation from '../OrderConfirmation/OrderConfirmation';
-import ProductList from '../ProductList/ProductList';
 import ProductDetail from '../ProductDetail/ProductDetail';
+import ProductList from '../ProductList/ProductList';
 import './App.css';
 
 
