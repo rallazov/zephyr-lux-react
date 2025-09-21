@@ -1,17 +1,18 @@
 // import { Elements } from "@stripe/react-stripe-js";
 import React from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
-import { CartProvider } from "../../context/CartContext.js";
-import CartPage from '../Cart/CartPage.js';
-import CheckoutPage from "../Cart/CheckoutPage.js";
+import { CartProvider } from "../../context/CartContext";
+import CartPage from '../Cart/CartPage';
+import CheckoutPage from "../Cart/CheckoutPage";
 // import StripeProvider from '../Cart/StripeProvider.js';
-import DiscountMessage from '../DiscountMessages/DiscountMessage.js';
-import Footer from '../Footer/Footer.js';
-import GridSection from '../GridSection/GridSection.js';
-import Header from '../Header/Header.js';
-import Hero from '../Hero/Hero.js';
-import OrderConfirmation from '../OrderConfirmation/OrderConfirmation.js';
-import ProductList from '../ProductList/ProductList.js';
+import DiscountMessage from '../DiscountMessages/DiscountMessage';
+import Footer from '../Footer/Footer';
+import GridSection from '../GridSection/GridSection';
+import Header from '../Header/Header';
+import Hero from '../Hero/Hero';
+import OrderConfirmation from '../OrderConfirmation/OrderConfirmation';
+import ProductList from '../ProductList/ProductList';
+import ProductDetail from '../ProductDetail/ProductDetail';
 import './App.css';
 
 
@@ -95,7 +96,7 @@ const App: React.FC = () => {
               element={
                 <>
                   <Hero
-                    image="/assets/img/Lifestyle .jpeg"
+                    image="/assets/img/Lifestyle.jpeg"
                     title="For the Modern Man"
                     description="Comfort meets style."
                   />
@@ -151,6 +152,9 @@ const App: React.FC = () => {
                   <OrderConfirmation />
                 </>
               } />
+
+            {/* Product Detail */}
+            <Route path="/product/:slug" element={<ProductDetail />} />
 
           </Routes>
           {/* </StripeProvider> */}
