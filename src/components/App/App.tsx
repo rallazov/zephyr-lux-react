@@ -15,6 +15,7 @@ import OrderConfirmation from '../OrderConfirmation/OrderConfirmation';
 import ProductDetail from '../ProductDetail/ProductDetail';
 import ProductList from '../ProductList/ProductList';
 import './App.css';
+import Layout from './Layout';
 
 
 const App: React.FC = () => {
@@ -60,6 +61,7 @@ const App: React.FC = () => {
           <Header />
           {/* <StripeProvider> */}
           <Routes>
+            <Route element={<Layout />}>
 
             {/* Home Page */}
             <Route
@@ -164,6 +166,7 @@ const App: React.FC = () => {
 
             {/* Product Detail */}
             <Route path="/product/:slug" element={<ProductDetail />} />
+            </Route>
 
           </Routes>
           {/* </StripeProvider> */}

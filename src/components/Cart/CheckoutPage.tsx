@@ -2,6 +2,7 @@ import { PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
 import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CartContext } from "../../context/CartContext";
+import { checkoutSchema } from "../../lib/validation";
 import { IS_MOCK_PAYMENT } from "../../utils/config";
 
 interface PaymentIntentResult {
@@ -97,6 +98,14 @@ const CheckoutPage = () => {
         setPaymentError(null);
 
         console.log("[handleSubmit] Checking IS_MOCK_PAYMENT:", IS_MOCK_PAYMENT);
+        const parsed = checkoutSchema.safeParse(formData);
+        if (!parsed.success) {
+            const fieldErrors: any = {};
+            parsed.error.issues.forEach((i) => { fieldErrors[i.path[0] as string] = i.message; });
+            setErrors({ ...errors, ...fieldErrors });
+            setProcessing(false);
+            return;
+        }
         if (IS_MOCK_PAYMENT) {
             console.log("Using mockStripe for confirmPayment.");
             try {
