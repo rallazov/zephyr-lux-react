@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "../../.."
+		},
+		{
+			"path": "../../../../FromMAC/subscription-management-api"
+		}
+	],
+	"settings": {}
+}

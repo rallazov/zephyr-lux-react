@@ -4,12 +4,13 @@ import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-d
 import { CartProvider } from "../../context/CartContext.js";
 import CartPage from '../Cart/CartPage.js';
 import CheckoutPage from "../Cart/CheckoutPage.js";
-import StripeProvider from '../Cart/StripeProvider.js';
+// import StripeProvider from '../Cart/StripeProvider.js';
 import DiscountMessage from '../DiscountMessages/DiscountMessage.js';
 import Footer from '../Footer/Footer.js';
 import GridSection from '../GridSection/GridSection.js';
 import Header from '../Header/Header.js';
 import Hero from '../Hero/Hero.js';
+import OrderConfirmation from '../OrderConfirmation/OrderConfirmation.js';
 import ProductList from '../ProductList/ProductList.js';
 import './App.css';
 
@@ -51,100 +52,108 @@ const App: React.FC = () => {
       <Router>
         <div className="App">
           <Header />
-          <StripeProvider>
-            <Routes>
+          {/* <StripeProvider> */}
+          <Routes>
 
-              {/* Home Page */}
-              <Route
-                path="/"
-                element={
-                  <Navigate to="/products" />
-                }
-              />
-              <Route path='/products' element={
+            {/* Home Page */}
+            <Route
+              path="/"
+              element={
+                <Navigate to="/products" />
+              }
+            />
+            <Route path='/products' element={
+              <>
+                <ProductList />
+              </>
+            }
+            />
+            {/* Women Page */}
+            <Route
+              path="/women"
+              element={
                 <>
-                  <ProductList />
+                  <Hero
+                    image="/assets/img/women_placeholder.jpeg"
+                    title="Empower Your Style"
+                    description="Elegant, timeless, and coming soon."
+                  />
+                  <GridSection items={womenItems} />
                 </>
               }
-              />
-              {/* Women Page */}
-              <Route
-                path="/women"
-                element={
-                  <>
-                    <Hero
-                      image="/assets/img/women_placeholder.jpeg"
-                      title="Empower Your Style"
-                      description="Elegant, timeless, and coming soon."
-                    />
-                    <GridSection items={womenItems} />
-                  </>
-                }
-              />
-              {/* Cart Page */}
-              <Route path="/cart" element={
+            />
+            {/* Cart Page */}
+            <Route path="/cart" element={
+              <>
+                <CartPage />
+              </>
+            }
+            />
+            {/* Men Page */}
+            <Route
+              path="/men"
+              element={
                 <>
-                  <CartPage />
+                  <Hero
+                    image="/assets/img/Lifestyle .jpeg"
+                    title="For the Modern Man"
+                    description="Comfort meets style."
+                  />
+                  <GridSection items={menItems} />
                 </>
               }
-              />
-              {/* Men Page */}
-              <Route
-                path="/men"
-                element={
-                  <>
-                    <Hero
-                      image="/assets/img/Lifestyle .jpeg"
-                      title="For the Modern Man"
-                      description="Comfort meets style."
-                    />
-                    <GridSection items={menItems} />
-                  </>
-                }
-              />
+            />
 
-              {/* Kids Page */}
-              <Route
-                path="/kids"
-                element={
-                  <>
-                    <Hero
-                      image="/assets/img/kids_placeholder.jpeg"
-                      title="Fun & Functional"
-                      description="Comfort for the little ones."
-                    />
-                    <GridSection items={kidsItems} />
-                  </>
-                }
-              />
+            {/* Kids Page */}
+            <Route
+              path="/kids"
+              element={
+                <>
+                  <Hero
+                    image="/assets/img/kids_placeholder.jpeg"
+                    title="Fun & Functional"
+                    description="Comfort for the little ones."
+                  />
+                  <GridSection items={kidsItems} />
+                </>
+              }
+            />
 
-              {/* Sale Page */}
-              <Route
-                path="/sale"
-                element={
-                  <>
-                    <DiscountMessage />
-                    <Hero
-                      image="/assets/img/sale_placeholder.jpeg"
-                      title="Limited Time Offers"
-                      description="Grab the deals before they're gone!"
-                    />
-                    <GridSection items={saleItems} />
-                  </>
-                }
-              />
+            {/* Sale Page */}
+            <Route
+              path="/sale"
+              element={
+                <>
+                  <DiscountMessage />
+                  <Hero
+                    image="/assets/img/sale_placeholder.jpeg"
+                    title="Limited Time Offers"
+                    description="Grab the deals before they're gone!"
+                  />
+                  <GridSection items={saleItems} />
+                </>
+              }
+            />
 
-              <Route
-                path="/checkout"
-                element={
-                  <>
-                    <CheckoutPage />
-                  </>
+            <Route
+              path="/checkout"
+              element={
+                <>
+                  <CheckoutPage />
+                </>
 
-                } />
+              } />
 
-            </Routes>
-          </StripeProvider>
+            <Route
+              path="/order-confirmation"
+              element={
+                <>
+                  <OrderConfirmation />
+                </>
+              } />
+
+          </Routes>
+          {/* </StripeProvider> */}
           <Footer />
         </div>
       </Router>
