@@ -1,8 +1,9 @@
-import { PaymentElement, useStripe } from '@stripe/react-stripe-js';
+import { PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CartContext } from "../../context/CartContext.js";
-import { IS_MOCK_PAYMENT } from "../../utils/config.js";
+import { CartContext } from "../../context/CartContext";
+import { checkoutSchema } from "../../lib/validation";
+import { IS_MOCK_PAYMENT } from "../../utils/config";
 
 interface PaymentIntentResult {
     paymentIntent?: {
@@ -16,10 +17,8 @@ const CheckoutPage = () => {
     const { cartItems, clearCart } = useContext(CartContext);
     const navigate = useNavigate();
 
-    // We optionally import useElements or create elements manually.
-    // But for this snippet, let's be consistent with manual creation if not in mock.
-
     const stripe = useStripe();
+    const elements = useElements();
 
     const [formData, setFormData] = useState({
         name: "",
@@ -90,13 +89,8 @@ const CheckoutPage = () => {
 
     // We'll create 'realElements' if not mocking.
     console.log("IS_MOCK_PAYMENT:", IS_MOCK_PAYMENT);
-    const clientSecret = ""; // Provide real from your backend.
+    const clientSecret = ""; // TODO: fetch from backend
     console.log("Stripe object:", stripe);
-    const realElements = !IS_MOCK_PAYMENT && stripe
-        ? stripe.elements({ clientSecret })
-        : null;
-
-    console.log("realElements:", realElements);
     console.log("cartItems:", cartItems);
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
@@ -104,6 +98,14 @@ const CheckoutPage = () => {
         setPaymentError(null);
 
         console.log("[handleSubmit] Checking IS_MOCK_PAYMENT:", IS_MOCK_PAYMENT);
+        const parsed = checkoutSchema.safeParse(formData);
+        if (!parsed.success) {
+            const fieldErrors: any = {};
+            parsed.error.issues.forEach((i) => { fieldErrors[i.path[0] as string] = i.message; });
+            setErrors({ ...errors, ...fieldErrors });
+            setProcessing(false);
+            return;
+        }
         if (IS_MOCK_PAYMENT) {
             console.log("Using mockStripe for confirmPayment.");
             try {
@@ -118,8 +120,8 @@ const CheckoutPage = () => {
         }
 
         // Real Flow
-        console.log("[handleSubmit] realElements:", realElements);
-        if (!stripe || !realElements) {
+        console.log("[handleSubmit] elements:", elements);
+        if (!stripe || !elements) {
             setPaymentError("Stripe is not initialized or missing clientSecret.");
             setProcessing(false);
             return;
@@ -127,7 +129,7 @@ const CheckoutPage = () => {
 
         try {
             const realResult = await stripe.confirmPayment({
-                elements: realElements,
+                elements,
                 confirmParams: {
                     return_url: `${window.location.origin}/order-confirmation`,
                 },

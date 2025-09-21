@@ -1,0 +1,15 @@
+[
+  {
+    "id": 1,
+    "slug": "bamboo-tee",
+    "name": "Bamboo Viscose Tee",
+    "price": 28.0,
+    "priceRange": { "min": 28.0, "max": 32.0 },
+    "fabricType": "Bamboo Viscose",
+    "image": "/assets/img/Listing2.jpeg",
+    "inStock": true,
+    "colors": ["black","white"],
+    "sizes": ["S","M","L","XL"]
+  }
+]
+

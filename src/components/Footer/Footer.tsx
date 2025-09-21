@@ -3,7 +3,7 @@
 import { faFacebookF, faInstagram, faTwitter, faYoutube } from '@fortawesome/free-brands-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React from 'react';
-import SubscriptionForm from '../SubscriptionForm/SubscriptionForm.js';
+import SubscriptionForm from '../SubscriptionForm/SubscriptionForm';
 import './Footer.css';
 
 const Footer: React.FC = () => {

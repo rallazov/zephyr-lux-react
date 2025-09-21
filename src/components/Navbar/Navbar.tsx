@@ -2,7 +2,7 @@ import { faSearch, faShoppingCart, faUser } from '@fortawesome/free-solid-svg-ic
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useCart } from '../../context/CartContext.js';
+import { useCart } from '../../context/CartContext';
 import './Navbar.css';
 
 const Navbar: React.FC = () => {
@@ -36,7 +36,7 @@ const Navbar: React.FC = () => {
       <div className="logo">
         <img src="/assets/logos/transparent_logo.png" alt="Zephyr Lux Logo" />
       </div>
-      <span className="hamburger" onClick={toggleMenu}>
+      <span className="hamburger" onClick={toggleMenu} aria-label="Toggle navigation menu">
         <i className="fas fa-bars"></i>
       </span>
       <ul className={`nav-links ${isMenuOpen ? 'open' : ''}`}>
@@ -48,13 +48,13 @@ const Navbar: React.FC = () => {
         <li><Link to="/sale">Sale</Link></li>
       </ul>
       <div className="nav-icons">
-        <Link to="#">
+        <Link to="#" aria-label="Search">
           <FontAwesomeIcon icon={faSearch} />
         </Link>
-        <Link to="#">
+        <Link to="#" aria-label="Account">
           <FontAwesomeIcon icon={faUser} />
         </Link>
-        <Link to="/cart">
+        <Link to="/cart" aria-label="Cart">
           <div className="cart-container">
             <FontAwesomeIcon icon={faShoppingCart} />
             {cartCount > 0 && (
