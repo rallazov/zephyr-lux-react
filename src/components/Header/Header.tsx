@@ -1,5 +1,5 @@
 
-import Navbar from '../Navbar/Navbar.js'; // Adjust the path accordingly
+import Navbar from '../Navbar/Navbar'; // Adjust the path accordingly
 import './Header.css';
 
 

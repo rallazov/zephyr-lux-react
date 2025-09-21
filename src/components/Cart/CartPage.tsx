@@ -2,7 +2,7 @@ import { faCheckCircle, faLock, faUndoAlt } from "@fortawesome/free-solid-svg-ic
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React, { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CartContext } from "../../context/CartContext.js";
+import { CartContext } from "../../context/CartContext";
 
 const CartPage: React.FC = () => {
   const { cartItems, addToCart, removeFromCart } = useContext(CartContext);

@@ -5,7 +5,7 @@ import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-d
 import { CartProvider } from "../../context/CartContext";
 import CartPage from '../Cart/CartPage';
 import CheckoutPage from "../Cart/CheckoutPage";
-// import StripeProvider from '../Cart/StripeProvider.js';
+// import StripeProvider from '../Cart/StripeProvider';
 import DiscountMessage from '../DiscountMessages/DiscountMessage';
 import Footer from '../Footer/Footer';
 import GridSection from '../GridSection/GridSection';
