@@ -21,8 +21,18 @@ const ProductList: React.FC = () => {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await fetch('/products.json');
-        const data = await response.json();
+        // Try full catalog under /assets first; fallback to single-sample /products.json
+        let data: Product[] = [] as Product[];
+        try {
+          const resAssets = await fetch('/assets/products.json');
+          if (resAssets.ok) {
+            data = await resAssets.json();
+          }
+        } catch {}
+        if (!data?.length) {
+          const response = await fetch('/products.json');
+          data = await response.json();
+        }
         setProducts(data);
       } catch (error) {
         console.error('Error fetching products: ', error);
