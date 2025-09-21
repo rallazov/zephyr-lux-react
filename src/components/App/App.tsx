@@ -7,9 +7,7 @@ import CartPage from '../Cart/CartPage';
 import CheckoutPage from "../Cart/CheckoutPage";
 // import StripeProvider from '../Cart/StripeProvider';
 import DiscountMessage from '../DiscountMessages/DiscountMessage';
-import Footer from '../Footer/Footer';
 import GridSection from '../GridSection/GridSection';
-import Header from '../Header/Header';
 import Hero from '../Hero/Hero';
 import OrderConfirmation from '../OrderConfirmation/OrderConfirmation';
 import ProductDetail from '../ProductDetail/ProductDetail';
@@ -58,7 +56,6 @@ const App: React.FC = () => {
     <CartProvider>
       <Router>
         <div className="App">
-          <Header />
           {/* <StripeProvider> */}
           <Routes>
             <Route element={<Layout />}>
@@ -170,7 +167,6 @@ const App: React.FC = () => {
 
           </Routes>
           {/* </StripeProvider> */}
-          <Footer />
         </div>
       </Router>
     </CartProvider>
