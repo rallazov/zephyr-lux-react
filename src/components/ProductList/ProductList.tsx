@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
-import { useCart } from "../../context/CartContext.js";
+import { Link } from "react-router-dom";
+import { useCart } from "../../context/CartContext";
 import "./ProductList.css";
 interface Product{
-    id: number;
+  id: number;
+  slug: string;
   name: string;
-  priceRange: {
-    min: number;
-    max: number;
-  };
+  price?: number;
+  priceRange?: { min: number; max: number };
   fabricType: string;
   image: string;
   inStock: boolean;
@@ -21,7 +21,7 @@ const ProductList: React.FC = () => {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await fetch('/assets/products.json');
+        const response = await fetch('/products.json');
         const data = await response.json();
         setProducts(data);
       } catch (error) {
@@ -37,17 +37,24 @@ const ProductList: React.FC = () => {
       <div style={{ display: 'grid', gap: '20px', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
         {products.map((product) => (
           <div key={product.id} className="product-item">
-            <img src={product.image} alt={product.name} style={{ width: '100%', height: 'auto' }} />
-            <h3>{product.name}</h3>
+            <Link to={`/product/${product.slug}`}>
+              <img src={product.image} alt={product.name} style={{ width: '100%', height: 'auto' }} />
+            </Link>
+            <h3>
+              <Link to={`/product/${product.slug}`}>{product.name}</Link>
+            </h3>
             <p>{product.fabricType}</p>
             <p>
-              Price: ${product.priceRange.min} - ${product.priceRange.max}
+              {product.price !== undefined
+                ? <>Price: ${product.price.toFixed(2)}</>
+                : <>Price: ${product.priceRange?.min} - ${product.priceRange?.max}</>
+              }
             </p>
             <button
               disabled={!product.inStock}
               className="product-item-button"
               onClick={() =>
-              addToCart({ id: product.id, name: product.name, quantity: 1 ,price: 2.00,image:"/assets/img/Listing2.jpeg"})
+              addToCart({ id: product.id, name: product.name, quantity: 1 ,price: (product.price ?? product.priceRange?.min ?? 0), image: product.image })
               }
             >
               {product.inStock ? 'Add to Cart' : 'Out of Stock'}
