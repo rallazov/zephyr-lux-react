@@ -201,8 +201,8 @@ const CheckoutPage = () => {
                 </div>
 
                 <form onSubmit={handleSubmit}>
-                    {/* Only show PaymentElement if not mock and we have realElements. */}
-                    {!IS_MOCK_PAYMENT && realElements && <PaymentElement />}
+                    {/* Only show PaymentElement if not mock and we have elements. */}
+                    {!IS_MOCK_PAYMENT && elements && <PaymentElement />}
 
                     {paymentError && <p className="text-red-500 mt-2">{paymentError}</p>}
 

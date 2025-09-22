@@ -1,0 +1,17 @@
+[
+  {
+    "id": 101,
+    "slug": "boxer-briefs",
+    "title": "Zephyr Lux Boxer Briefs",
+    "fabricType": "Bamboo Viscose",
+    "variants": [
+      {"sku":"ZLX-BLK-S","options":{"size":"S","color":"black"},"price":24.0,"inventory":50,"image":"/assets/img/Listing2.jpeg"},
+      {"sku":"ZLX-BLK-M","options":{"size":"M","color":"black"},"price":24.0,"inventory":50,"image":"/assets/img/Listing2.jpeg"},
+      {"sku":"ZLX-BLK-L","options":{"size":"L","color":"black"},"price":24.0,"inventory":50,"image":"/assets/img/Listing2.jpeg"},
+      {"sku":"ZLX-BLK-XL","options":{"size":"XL","color":"black"},"price":24.0,"inventory":50,"image":"/assets/img/Listing2.jpeg"},
+      {"sku":"ZLX-BLU-M","options":{"size":"M","color":"blue"},"price":24.0,"inventory":40,"image":"/assets/img/Listing2.jpeg"}
+    ]
+  }
+]
+
+
