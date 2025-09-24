@@ -1,5 +1,4 @@
-import { Elements } from "@stripe/react-stripe-js";
-import { loadStripe } from "@stripe/stripe-js";
+ 
 import React from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import { CartProvider } from "../../context/CartContext";
@@ -48,9 +47,7 @@ const App: React.FC = () => {
   ];
 
 
-  const USE_MOCK = (import.meta as any).env?.VITE_USE_MOCK_STRIPE === "true";
-  const pk = (import.meta as any).env?.VITE_STRIPE_PUBLIC_KEY as string | undefined;
-  const stripePromise = pk ? loadStripe(pk) : null;
+  
 
   return (
     <CartProvider>
@@ -140,18 +137,7 @@ const App: React.FC = () => {
               }
             />
 
-            <Route
-              path="/checkout"
-              element={
-                USE_MOCK || !stripePromise ? (
-                  <CheckoutPage />
-                ) : (
-                  <Elements stripe={stripePromise}>
-                    <CheckoutPage />
-                  </Elements>
-                )
-              }
-            />
+            <Route path="/checkout" element={<CheckoutPage />} />
 
             <Route
               path="/order-confirmation"

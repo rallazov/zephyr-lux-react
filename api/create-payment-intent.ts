@@ -18,17 +18,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   try {
-    const { items, currency = "usd", email } = req.body as {
-      items: Array<{ sku: string; qty: number }>;
-      currency?: string; email?: string;
+    const { items, amount: amountCents, currency = "usd", email } = req.body as {
+      items?: Array<{ sku: string; qty: number }>;
+      amount?: number; currency?: string; email?: string;
     };
-    if (!items?.length) return res.status(400).json({ error: "No items" });
+    if (!items?.length && !amountCents) return res.status(400).json({ error: "No items or amount" });
 
-    const amount = computeAmountCents(items);
+    const amount = items?.length ? computeAmountCents(items) : Math.max(1, Math.floor(Number(amountCents || 0)));
     const ts = new Date();
     const orderId = `ZLX-${ts.toISOString().slice(0,10).replace(/-/g,"")}-${Math.floor(Math.random()*10000).toString().padStart(4,"0")}`;
 
-    const metadata = { orderId, itemsJSON: JSON.stringify(items), email: email || "" };
+    const metadata = { orderId, itemsJSON: JSON.stringify(items || []), email: email || "" };
 
     const pi = await stripe.paymentIntents.create({
       amount, currency,
