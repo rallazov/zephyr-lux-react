@@ -1,0 +1,70 @@
+/* Ensure the App container takes up the full width and height of the screen */
+.App {
+  width: 100vw; /* Take full viewport width */
+  min-height: 100vh; /* Ensure it takes the full viewport height */
+  display: flex;
+  flex-direction: column; /* Ensure the content flows in a column */
+  justify-content: space-between; /* Spread content vertically */
+  background-color: #000000; /* Add a background color if needed */
+}
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+/* For smaller screens, such as mobile devices */
+@media (max-width: 768px) {
+  body {
+    font-size: 14px;
+  }
+
+  .container {
+    padding: 1rem;
+  }
+}
+
+/* For medium screens, such as tablets */
+@media (min-width: 769px) and (max-width: 1024px) {
+  body {
+    font-size: 16px;
+  }
+
+  .container {
+    padding: 2rem;
+  }
+}
+
+/* For larger screens, such as desktops */
+@media (min-width: 1025px) {
+  body {
+    font-size: 18px;
+  }
+
+  .container {
+    padding: 3rem;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
