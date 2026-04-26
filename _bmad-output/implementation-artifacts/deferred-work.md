@@ -17,3 +17,7 @@
 - **Product detail uses first variant for hero/price** (`src/components/ProductDetail/ProductDetail.tsx`): Acceptable for E1; defer richer variant selection and pricing display until Epic 2+ product UX.
 
 - **Line-item `qty` validation in `computeAmountCents` and webhook** (`api/_lib/catalog.ts` / `api/stripe-webhook.ts`): Coercion to at least 1 and metadata trust predate the catalog adapter change; add strict positive-integer `qty` checks when order/checkout hardening is in scope.
+
+## Deferred from: code review of 1-4-document-environment-variables.md (2026-04-26)
+
+- **Legacy `.js` siblings** (`CheckoutPage.js`, `config.js`, `SubscriptionForm.js`): Still present alongside TypeScript sources; documentation now points to `.ts/.tsx` as primary. Remove or keep in sync when the brownfield TS migration is finished.

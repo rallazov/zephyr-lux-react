@@ -1,6 +1,6 @@
 # Story 1.4: Document environment variables (local, preview, production)
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -23,23 +23,31 @@ so that **NFR-MAINT-004** is satisfied, preview vs production expectations match
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Inventory (AC: 1–3, 5)**  
-  - [ ] Grep / confirm all `process.env.*` and `import.meta.env` usages in `api/**`, `src/**` (re-scan before finalizing; dual `.js`/`.ts` pairs may still exist).  
-  - [ ] Cross-check [api/_lib/env.ts](api/_lib/env.ts) vs any API route importing env.
+- [x] **Task 1 — Inventory (AC: 1–3, 5)**  
+  - [x] Grep / confirm all `process.env.*` and `import.meta.env` usages in `api/**`, `src/**` (re-scan before finalizing; dual `.js`/`.ts` pairs may still exist).  
+  - [x] Cross-check [api/_lib/env.ts](api/_lib/env.ts) vs any API route importing env.
 
-- [ ] **Task 2 — Author `.env.example` (AC: 1–5, 7)**  
-  - [ ] Add committed `.env.example` with grouped sections: Server (Vercel), Client (Vite), Future/Reserved.  
-  - [ ] Use placeholder values only (`sk_test_...`, `whsec_...`, etc.).
+- [x] **Task 2 — Author `.env.example` (AC: 1–5, 7)**  
+  - [x] Add committed `.env.example` with grouped sections: Server (Vercel), Client (Vite), Future/Reserved.  
+  - [x] Use placeholder values only (`sk_test_...`, `whsec_...`, etc.).
 
-- [ ] **Task 3 — Environment matrix + README alignment (AC: 4, 6)**  
-  - [ ] Add local / preview / production guidance (Stripe mode, webhook URL, `FRONTEND_URL`).  
-  - [ ] Update [README.md](README.md) with a short “Configuration” pointer and reconcile [README-payments.md](README-payments.md).
+- [x] **Task 3 — Environment matrix + README alignment (AC: 4, 6)**  
+  - [x] Add local / preview / production guidance (Stripe mode, webhook URL, `FRONTEND_URL`).  
+  - [x] Update [README.md](README.md) with a short “Configuration” pointer and reconcile [README-payments.md](README-payments.md).
 
-- [ ] **Task 4 — Optional typing (AC: 8)**  
-  - [ ] Update [src/vite-env.d.ts](src/vite-env.d.ts) for `VITE_*` keys if quick.
+- [x] **Task 4 — Optional typing (AC: 8)**  
+  - [x] Update [src/vite-env.d.ts](src/vite-env.d.ts) for `VITE_*` keys if quick.
 
-- [ ] **Task 5 — Verify (AC: 8)**  
-  - [ ] `npm run build`.
+- [x] **Task 5 — Verify (AC: 8)**  
+  - [x] `npm run build`.
+
+### Review Findings
+
+- [x] [Review][Patch] **Local `dev:full` vs `VITE_API_URL` onboarding** [README.md:Configuration, .env.example:VITE_API_URL] — README points contributors to `npm run dev:full` (Vite + `vercel dev`), but `SubscriptionForm.tsx` still defaults `VITE_API_URL` to `http://localhost:5000` when unset. Document that `VITE_API_URL` must be set to the **actual** origin shown by `vercel dev` (or explain when the code default is still valid) so local subscription/newsletter calls do not silently hit the wrong host. Touches **AC4**, **NFR-MAINT-004**, and the story’s open question on `localhost:5000` staleness. **Applied:** README subsection + `.env.example` comment and example port.
+
+- [x] [Review][Patch] **Reserved “email provider” naming example (AC7)** [.env.example:Reserved] — AC7 calls for anticipated variables including email provider keys **if renamed**. The reserved block lists Supabase placeholders and a generic sentence but no concrete commented example for a future/renamed transactional email key (e.g. a neutral `TRANSACTIONAL_EMAIL_API_KEY` or cross-reference rule). Add one line so Epic 2+ has a named placeholder pattern. **Applied:** `TRANSACTIONAL_EMAIL_API_KEY` placeholder comment in `.env.example`.
+
+- [x] [Review][Defer] **Legacy `.js` siblings still ship beside `.ts/.tsx`** [CheckoutPage.js, config.js, SubscriptionForm.js] — deferred, pre-existing; `.env.example` references these as legacy duplicates. Removing or syncing them is out of scope for this documentation story.
 
 ## Dev Notes
 
@@ -115,20 +123,37 @@ so that **NFR-MAINT-004** is satisfied, preview vs production expectations match
 
 ## Story completion status
 
-- **Status:** `ready-for-dev`  
-- **Note:** Ultimate context engine analysis completed — comprehensive developer guide created.
+- **Status:** `done`  
+- **Note:** `.env.example` + README cross-links; `vite-env.d.ts` and minimal client fixes; code review follow-up docs for `VITE_API_URL` + reserved email key placeholder.
 
 ## Dev Agent Record
 
 ### Agent Model Used
 
-_(Populate during dev-story)_
+Composer (Cursor agent)
 
 ### Debug Log References
 
+- `resolve_customization.py` not run: environment lacks Python 3.11+ (`tomllib`); workflow block read from `customize.toml` directly.
+- Grep: server env only via `api/_lib/env.ts` → `ENV`; client: `VITE_STRIPE_PUBLIC_KEY`, `VITE_USE_MOCK_STRIPE`, `VITE_API_URL`, `VITE_CATALOG_BACKEND` (`src/catalog/adapter.ts`—documented in `.env.example` as post–story-1-3 addition).
+
 ### Completion Notes List
 
+- Added root `.env.example` as the single canonical list: server vars with defaults from `api/_lib/env.ts`, `VERCEL_BLOB_READ_WRITE_TOKEN` → `ENV.VERCEL_BLOB_RW_TOKEN` note, client `VITE_*` with file paths, security boundary (no secrets in `VITE_*`), reserved Supabase names for future epics.
+- README: project intro, Configuration section, deployment matrix (local / Vercel Preview / Production) with Stripe test vs live and `FRONTEND_URL` / webhooks; link to `README-payments.md`.
+- README-payments: removed duplicate env block; points to `.env.example` and README; kept CLI workflow (`vercel dev`, `stripe listen`).
+- `src/vite-env.d.ts`: `ImportMetaEnv` for all `VITE_*` keys in use; `config.ts` and `CheckoutPage.tsx` use `import.meta.env` without `as any` for consistency with AC8.
+- `npm run build` passes. `npm run lint` still reports pre-existing issues in other files; not in scope for this story.
+
 ### File List
+
+- `.env.example` (new)
+- `README.md`
+- `README-payments.md`
+- `src/vite-env.d.ts`
+- `src/utils/config.ts`
+- `src/components/Cart/CheckoutPage.tsx`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
 
 ## Questions (non-blocking)
 
@@ -138,6 +163,8 @@ _(Populate during dev-story)_
 ## Change Log
 
 - 2026-04-26 — Story created (bmad-create-story). Target: PRD E1-S4; first `backlog` story in [sprint-status.yaml](_bmad-output/implementation-artifacts/sprint-status.yaml) at time of run.
+- 2026-04-26 — Implemented: `.env.example`, README + README-payments alignment, Vite `ImportMetaEnv`, optional `CheckoutPage`/`config` env typing; sprint status `review`.
+- 2026-04-26 — Code review: applied README + `.env.example` patches (`VITE_API_URL` vs `vercel dev`, reserved `TRANSACTIONAL_EMAIL_API_KEY`); story `done`.
 
 ---
 

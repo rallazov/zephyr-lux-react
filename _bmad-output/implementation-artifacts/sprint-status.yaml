@@ -25,7 +25,7 @@
 #   - Dev moves story to 'review', then runs code-review
 
 generated: 2026-04-26T00:00:00Z
-last_updated: 2026-04-26T21:00:00Z
+last_updated: 2026-04-26T23:59:00Z
 project: zephyr-lux-react
 project_key: zlx
 tracking_system: file-system
@@ -36,7 +36,7 @@ development_status:
   1-1-fix-runtime-imports: done
   1-2-define-shared-commerce-domain-types: done
   1-3-catalog-adapter-static-and-supabase: done
-  1-4-document-environment-variables: ready-for-dev
+  1-4-document-environment-variables: done
   1-5-smoke-test-or-script-clean-build-routes: ready-for-dev
   epic-1-retrospective: optional
 

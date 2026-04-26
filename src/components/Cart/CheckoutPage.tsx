@@ -96,7 +96,9 @@ const CheckoutPage = () => {
     const navigate = useNavigate();
 
     const [clientSecret, setClientSecret] = useState<string | null>(null);
-    const stripePromise = (import.meta as any).env?.VITE_STRIPE_PUBLIC_KEY ? loadStripe((import.meta as any).env.VITE_STRIPE_PUBLIC_KEY) : null;
+    const stripePromise = import.meta.env.VITE_STRIPE_PUBLIC_KEY
+        ? loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY)
+        : null;
 
     const [formData, setFormData] = useState({
         name: "",
