@@ -1,13 +1,31 @@
 # Sprint status — zephyr-lux-react
-# Generated: manual bootstrap (sprint-planning was not run earlier; use /bmad-sprint-planning to regenerate from epics when the epic list is fully filled in)
-
+# Source: PRD §14 (zephyr-lux-commerce-prd.md) — epics.md still has {{epics_list}} placeholder; re-run after epics.md is fully expanded
+#
 # STATUS DEFINITIONS (BMad)
-# Epic: backlog | in-progress | done
-# Story: backlog | ready-for-dev | in-progress | review | done
-# Retrospective: optional | done
+# ========================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+# WORKFLOW NOTES:
+#   - Epic transitions to 'in-progress' when first story is created
+#   - Stories can be worked in parallel if team capacity allows
+#   - Dev moves story to 'review', then runs code-review
 
-generated: 2026-04-25T00:00:00Z
-last_updated: 2026-04-25T12:00:00Z
+generated: 2026-04-26T00:00:00Z
+last_updated: 2026-04-26T12:00:00Z
 project: zephyr-lux-react
 project_key: zlx
 tracking_system: file-system
@@ -16,4 +34,71 @@ story_location: "{project-root}/_bmad-output/implementation-artifacts"
 development_status:
   epic-1: in-progress
   1-1-fix-runtime-imports: done
+  1-2-define-shared-commerce-domain-types: done
+  1-3-catalog-adapter-static-and-supabase: ready-for-dev
+  1-4-document-environment-variables: ready-for-dev
+  1-5-smoke-test-or-script-clean-build-routes: ready-for-dev
   epic-1-retrospective: optional
+
+  epic-2: backlog
+  2-1-canonical-product-variant-seed-data: backlog
+  2-2-product-list-reads-canonical-catalog: backlog
+  2-3-product-detail-by-slug-canonical: backlog
+  2-4-variant-selector-size-color-price-stock: backlog
+  2-5-supabase-tables-catalog-inventory: backlog
+  2-6-admin-create-edit-product-variants: backlog
+  epic-2-retrospective: optional
+
+  epic-3: backlog
+  3-1-cart-sku-variant-identity: backlog
+  3-2-cart-validate-stock-variants: backlog
+  3-3-checkout-line-items-sku-quantity: backlog
+  3-4-server-subtotal-from-catalog: backlog
+  3-5-stripe-checkout-or-payment-intent: backlog
+  3-6-checkout-confirmation-cancel-failure-ui: backlog
+  epic-3-retrospective: optional
+
+  epic-4: backlog
+  4-1-order-and-order-item-tables: backlog
+  4-2-payment-events-idempotent-webhook: backlog
+  4-3-payment-success-order-paid: backlog
+  4-4-inventory-decrement-once: backlog
+  4-5-owner-order-notification: backlog
+  4-6-customer-confirmation-email: backlog
+  4-7-log-notification-status: backlog
+  epic-4-retrospective: optional
+
+  epic-5: backlog
+  5-1-supabase-admin-auth: backlog
+  5-2-admin-order-list: backlog
+  5-3-admin-order-detail: backlog
+  5-4-order-fulfillment-status-transitions: backlog
+  5-5-carrier-tracking-fields: backlog
+  5-6-customer-shipment-notification: backlog
+  5-7-internal-notes-order-timeline: backlog
+  epic-5-retrospective: optional
+
+  epic-6: backlog
+  6-1-real-homepage-category-routes: backlog
+  6-2-policy-pages-footer-links: backlog
+  6-3-product-page-gallery-variant-ux: backlog
+  6-4-mobile-cart-checkout-admin-layouts: backlog
+  6-5-metadata-product-structured-data: backlog
+  6-6-basic-analytics-events: backlog
+  epic-6-retrospective: optional
+
+  epic-7: backlog
+  7-1-order-lookup-form: backlog
+  7-2-secure-lookup-link: backlog
+  7-3-customer-order-status-page: backlog
+  7-4-show-tracking-when-shipped: backlog
+  epic-7-retrospective: optional
+
+  epic-8: backlog
+  8-1-subscription-capable-products: backlog
+  8-2-stripe-subscription-checkout: backlog
+  8-3-subscription-lifecycle-webhooks: backlog
+  8-4-admin-pwa-shell: backlog
+  8-5-camera-upload-shipment-photos: backlog
+  8-6-owner-push-notification-prototype: backlog
+  epic-8-retrospective: optional

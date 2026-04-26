@@ -1,6 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 
+// TODO (E1-S3): align with canonical `Product` / `ProductVariant` from `domain/commerce`
+// (this module uses dollar `price`, numeric `id`, and `options` shape; canonical uses `price_cents`, UUIDs, status enums).
+
 type Variant = { sku: string; options: { size: string; color: string }; price: number; inventory: number; image: string };
 export type Product = { id: number; slug: string; title: string; fabricType: string; variants: Variant[] };
 
