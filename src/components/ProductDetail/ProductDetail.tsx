@@ -184,6 +184,8 @@ const ProductDetail: React.FC = () => {
       price,
       image: img,
       sku: selectedVariant.sku,
+      variant_id: selectedVariant.id,
+      product_slug: product.slug,
     });
   };
 

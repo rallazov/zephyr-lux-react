@@ -1,8 +1,12 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { beforeEach, describe, expect, it } from "vitest";
 import { CartProvider } from "../../context/CartContext";
 import ProductDetail from "./ProductDetail";
+
+beforeEach(() => {
+  localStorage.clear();
+});
 
 function renderPdp() {
   return render(
@@ -24,10 +28,13 @@ describe("ProductDetail variant selection", () => {
     const sizeSelect = screen.getByTestId("pdp-select-size");
     fireEvent.change(sizeSelect, { target: { value: "L" } });
 
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("pdp-select-color")).not.toBeDisabled();
+      },
+      { timeout: 5000 }
+    );
     const colorSelect = screen.getByTestId("pdp-select-color");
-    await waitFor(() => {
-      expect(colorSelect).not.toBeDisabled();
-    });
     fireEvent.change(colorSelect, { target: { value: "black" } });
 
     const price = await screen.findByTestId("pdp-selected-price");

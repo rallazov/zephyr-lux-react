@@ -1,32 +1,154 @@
-import React from 'react';
-import { useLocation } from 'react-router-dom'; // If you're passing data
+import React, { useMemo } from "react";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
+import {
+  formatLineSubtotalDollars,
+  queryPartialHeading,
+  queryPartialSubtitle,
+  resolveConfirmationView,
+} from "../../order-confirmation/confirmationViewModel";
+
+const SUPPORT_MAIL = "mailto:support@zephyrlux.com";
 
 const OrderConfirmation: React.FC = () => {
-    const location = useLocation(); // For accessing passed data (optional)
-    const orderId = location.state?.orderId;
-    const total = location.state?.total;
-    const items = location.state?.items;
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
 
+  const view = useMemo(
+    () =>
+      resolveConfirmationView({
+        locationState: location.state,
+        searchParams,
+      }),
+    [location.state, searchParams]
+  );
+
+  if (view.mode === "fallback") {
     return (
-        <div>
-            <h1>Order Confirmed!</h1>
-            {orderId && <p>Order ID: {orderId}</p>} {/* Conditionally render */}
-            {total && <p>Total: ${total.toFixed(2)}</p>}
-            {items && (
-                <div>
-                    <h2>Items</h2>
-                    <ul>
-                        {items.map((item: { id: React.Key | null | undefined; name: string | number | boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | null | undefined; quantity: string | number | boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | null | undefined; price: number; }) => (
-                            <li key={item.id}>
-                                {item.name} x {item.quantity} - ${item.price.toFixed(2)}
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            )}
-            {/* ... other confirmation details */}
-        </div>
+      <div className="min-h-screen bg-black text-white px-4 py-16 max-w-2xl mx-auto">
+        <h1 className="text-2xl font-bold mb-4">
+          We couldn’t load your order details on this page
+        </h1>
+        <p className="text-gray-300 mb-4">
+          If you just paid, your payment may still be processing. Please check
+          your email for a receipt or confirmation, or return to your bag to
+          try again.
+        </p>
+        <ul className="list-disc pl-5 text-gray-300 space-y-2 mb-8">
+          <li>Check your email for a confirmation or receipt from Stripe or Zephyr Lux.</li>
+          <li>
+            <Link to="/cart" className="text-amber-300 underline">
+              Return to your bag
+            </Link>{" "}
+            — your items are still saved if you did not complete checkout.
+          </li>
+          <li>
+            <a className="text-amber-300 underline" href={SUPPORT_MAIL}>
+              Email support
+            </a>{" "}
+            if you need help.
+          </li>
+        </ul>
+        <p className="text-sm text-gray-500" role="status">
+          A full order number will appear after your payment is recorded in our
+          system (not shown on this page yet).
+        </p>
+      </div>
     );
+  }
+
+  if (view.mode === "queryPartial") {
+    const sub = queryPartialSubtitle(view.stripeQuery.redirectStatus);
+    const head = queryPartialHeading(view.stripeQuery.redirectStatus);
+    return (
+      <div className="min-h-screen bg-black text-white px-4 py-16 max-w-2xl mx-auto">
+        <h1 className="text-2xl font-bold mb-2">{head}</h1>
+        {view.paymentRef && (
+          <p className="text-gray-200 mb-4">
+            <span className="text-gray-400">Payment reference: </span>
+            {view.paymentRef}
+          </p>
+        )}
+        {view.stripeQuery.redirectStatus && (
+          <p className="text-sm text-gray-500 mb-4">
+            Status: {view.stripeQuery.redirectStatus}
+          </p>
+        )}
+        <p className="text-gray-300 mb-6">{sub}</p>
+        <p className="text-sm text-gray-500 mb-8" role="status">
+          Your order is confirmed in our system only after we receive a successful
+          payment notification — you’ll get email confirmation when that happens.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Link
+            to="/cart"
+            className="inline-block text-center border border-gray-500 rounded px-4 py-2 hover:bg-gray-800"
+          >
+            Back to bag
+          </Link>
+          <a
+            className="inline-block text-center border border-amber-700 text-amber-200 rounded px-4 py-2"
+            href={SUPPORT_MAIL}
+          >
+            Email support
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  // full
+  return (
+    <div className="min-h-screen bg-black text-white px-4 py-16 max-w-2xl mx-auto">
+      <h1 className="text-2xl font-bold mb-2">Order confirmed</h1>
+      {view.paymentRef && (
+        <p className="text-gray-200 mb-1">
+          <span className="text-gray-400">Payment reference: </span>
+          {view.paymentRef}
+        </p>
+      )}
+      {view.email && (
+        <p className="text-gray-300 mb-4">
+          <span className="text-gray-400">Email: </span>
+          {view.email}
+        </p>
+      )}
+      {view.items && view.items.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold mb-2">Items</h2>
+          <ul className="border border-gray-700 rounded divide-y divide-gray-800">
+            {view.items.map((item) => (
+              <li
+                key={String(item.id ?? item.name)}
+                className="flex justify-between py-2 px-3 text-sm"
+              >
+                <span>
+                  {item.name} × {item.quantity}
+                </span>
+                <span>${formatLineSubtotalDollars(item)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {view.total != null && (
+        <p className="text-lg font-semibold mb-6">
+          Total: ${view.total.toFixed(2)}
+        </p>
+      )}
+      <p className="text-gray-300 mb-4" role="status">
+        You’ll receive a confirmation email when your payment has been fully
+        recorded. If you don’t see it within a few minutes, check spam or contact
+        support.
+      </p>
+      <p className="text-sm text-gray-500 mb-8">
+        We don’t show a store order number on this page until your order is saved
+        in our system (coming in a later update).
+      </p>
+      <Link to="/products" className="text-amber-300 underline">
+        Continue shopping
+      </Link>
+    </div>
+  );
 };
 
 export default OrderConfirmation;

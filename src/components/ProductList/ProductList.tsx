@@ -117,6 +117,8 @@ const ProductList: React.FC = () => {
                         image:
                           singlePurchasable.image_url ?? heroImageUrl,
                         sku: singlePurchasable.sku,
+                        variant_id: singlePurchasable.id,
+                        product_slug: product.slug,
                       })
                     }
                   >

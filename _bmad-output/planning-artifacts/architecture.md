@@ -112,7 +112,7 @@ order leaves the storefront half-migrated and nothing stable.
   in production while tests run the `.ts`. Each pair requires a diff,
   end-to-end parity run against Stripe test mode, and an explicit
   choose-and-delete commit:
-  - `api/create-payment-intent.js` vs. `api/create-payment-intent.ts`
+  - (Resolved E3-S5) Obsolete `api/create-payment-intent.js` was removed; only `api/create-payment-intent.ts` is maintained.
   - `api/stripe-webhook.js` vs. `api/stripe-webhook.ts`
   - `vite.config.js` vs. `vite.config.ts`
   - `src/main.js` vs. `src/main.tsx` (compounded by `src/main.tsx`
@@ -170,6 +170,7 @@ starter-template evaluation):**
   This is simultaneously a UX decision (redirect vs. embedded brand
   continuity) and a technical decision (how much of cart→order lives in
   our code vs. Stripe's).
+- **Q1 — resolution (E3-S5):** The storefront stays on **Stripe PaymentIntents** with the **embedded Payment Element** on `/checkout` (existing brownfield). Merchandise, shipping, tax, and **PI `amount`** all come from **`quoteCartLines` / `quoteForPaymentItems`** in `api/_lib/catalog.ts`, aligned with **POST `/api/cart-quote`**. **Stripe Checkout Session** (hosted, redirect) remains a **future opt-in**; Epic 4 webhooks can switch between `payment_intent.*` and `checkout.session.completed` when we add a session-based path.
 - **Q10 — Guest + order lookup vs. accounts-day-one**. Reshapes the
   Supabase Auth configuration, RLS policy topology, order-confirmation
   email content, nav structure, and whether `customers` is an

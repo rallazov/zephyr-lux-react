@@ -1,5 +1,28 @@
 # Deferred work (from reviews and triage)
 
+## Deferred from: code review of 3-5-stripe-checkout-or-payment-intent.md (2026-04-26)
+
+- **`?checkout=canceled` query banner on `CheckoutPage`:** Renders a “Checkout was canceled” message when `checkout=canceled` is present; the Payment Element path does not set this from Stripe redirects, so the banner is mostly manual URL or future Session `cancel_url`. Defer full polish to **3-6** and any hosted Checkout Session wiring.
+- **Stable `checkoutRef` / Stripe idempotency strategy:** Item overlaps with 3-3 code-review note: random per-request `checkoutRef` and effect-driven PI creation limit retry semantics; address when product defines a single stable idempotency story (e.g. hash of line items + email, or client-held nonce) across the Epic 3 checkout stack.
+
+## Deferred from: code review of 3-3-checkout-line-items-sku-quantity.md (2026-04-26)
+
+- **Deterministic PaymentIntent idempotency** (`api/create-payment-intent.ts`): Random `checkoutRef` creates a new PI whenever the client bootstrap effect re-runs; consider deriving Stripe idempotency from `line_digest` + normalized email when product wants stricter retry / duplicate-submit behavior.
+
+## Deferred from: code review of 3-6-checkout-confirmation-cancel-failure-ui.md (2026-04-26)
+
+- **Server `cancel_url` / hosted Checkout Session:** Client banners for `?checkout=canceled` are implemented; wiring `cancel_url` in the Stripe server flow is tracked with story 3-5 per the shared URL contract.
+- **Smoke test extended timeout** (`src/routes.smoke.test.tsx`): 15s wait for `/checkout` — consider lowering once checkout loading is more deterministic in tests, to reduce CI flake.
+
+## Deferred from: code review of 3-4-server-subtotal-from-catalog.md (2026-04-26)
+
+- **Unused checkout navigation state** (`src/components/Cart/CartPage.tsx`): `navigate("/checkout", { state: { subtotal, items } })` is unused by `CheckoutPage`; remove when next editing cart navigation to avoid implying a client subtotal contract.
+- **Legacy catalog helpers** (`api/_lib/catalog.ts`): `computeAmountCents` (merchandise subtotal only + qty coercion) and `quoteForPaymentItems` (silent qty normalization) remain for backward compatibility / tests; production PI pricing uses `totalChargeCentsFromCatalogLines` + Zod. Consolidate or document when order/checkout hardening is in scope.
+
+## Deferred from: code review of 3-1-cart-sku-variant-identity.md (2026-04-26)
+
+- **Multi-variant same-SKU `findVariant` fallback** (`src/cart/reconcile.ts`): If two variants share a SKU and the cart line’s `variant_id` is wrong or missing, the first match wins. Defer until catalog invariants (unique SKU per product) or stricter resolution are specified.
+
 ## Deferred from: code review of story 2-5-supabase-tables-catalog-inventory.md (2026-04-26)
 
 - **Zod at catalog boundary** (`src/catalog/supabase-map.ts`): Malformed API shapes throw `ZodError`; add friendlier error mapping when storefront error UX is standardized.
@@ -41,3 +64,7 @@
 - **Route smoke asserts on marketing copy strings** (`src/routes.smoke.test.tsx`): Acceptable for story 1.5 (layout `data-testid` + route-level copy); consider more stable selectors later if marketing churn breaks CI often.
 
 - **README omits local `npm run smoke`** (`README.md`): CI covers AC6; add a short “Smoke / CI parity” blurb when README is next edited for onboarding.
+
+## Deferred from: code review of 3-2-cart-validate-stock-variants.md (2026-04-26)
+
+- **`storefrontCartLinesEqual` uses `JSON.stringify`**: Deep equality for cart line arrays may be sensitive to key order; revisit if spurious re-renders or missed hydration updates are observed.
