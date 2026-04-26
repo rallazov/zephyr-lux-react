@@ -1,0 +1,8 @@
+import { jsx as _jsx, Fragment as _Fragment, jsxs as _jsxs } from "react/jsx-runtime";
+import { Link } from "react-router-dom";
+const DEFAULT_IMAGE = "/assets/img/Lifestyle.jpeg";
+const DEFAULT_TITLE = (_jsxs(_Fragment, { children: ["Premium Comfort.", _jsx("br", {}), _jsx("span", { className: "text-indigo-400", children: "Bold Style." })] }));
+const DEFAULT_DESCRIPTION = "Experience unparalleled comfort with our premium collection of men's boxer briefs. Crafted for the modern man who demands quality.";
+export default function Hero({ image = DEFAULT_IMAGE, title = DEFAULT_TITLE, description = DEFAULT_DESCRIPTION, }) {
+    return (_jsxs("section", { className: "relative h-80 w-full overflow-hidden", children: [_jsxs("div", { className: "absolute inset-0", children: [_jsx("img", { src: image, alt: "Premium boxer briefs lifestyle", className: "w-full h-full object-cover" }), _jsx("div", { className: "absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/60" })] }), _jsx("div", { className: "relative container mx-auto px-4 md:px-8 h-full flex items-center", children: _jsxs("div", { className: "max-w-3xl text-white", children: [_jsx("h1", { className: "text-3xl md:text-5xl font-bold mb-4", children: title }), _jsx("p", { className: "text-sm md:text-lg text-white/90 mb-6", children: description }), _jsxs("div", { className: "flex flex-wrap gap-3", children: [_jsx(Link, { to: "/products", children: _jsx("button", { className: "bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md", children: "Shop Now" }) }), _jsx(Link, { to: "/products", children: _jsx("button", { className: "bg-white/10 border border-white/20 text-white px-6 py-2 rounded-md", children: "View Collection" }) })] })] }) })] }));
+}
