@@ -1,16 +1,10 @@
 # Payments Setup (Stripe + Vercel Serverless)
 
-## Env
+## Environment variables
 
-Create `.env.local` with:
+The **canonical list** of variable names, scopes (client vs server), and defaults is in [`.env.example`](.env.example) at the repository root. Copy the values you need into **`.env.local`** (gitignored) for the Vite app and set the same server-side names in the environment used by `vercel dev` / Vercel (Preview vs Production). Do not duplicate long env documentation here; keep it in one place in `.env.example` + the main [README](README.md) configuration table.
 
-```
-FRONTEND_URL=http://localhost:5173
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-VERCEL_BLOB_READ_WRITE_TOKEN=...
-LOG_LEVEL=info
-```
+**Quick local minimum (server / `vercel dev`):** `FRONTEND_URL`, `STRIPE_SECRET_KEY` (test), `STRIPE_WEBHOOK_SECRET` (from `stripe listen` or Dashboard). Client: set `VITE_STRIPE_PUBLIC_KEY` to your **`pk_test_...`** in `.env.local` if you are exercising real Stripe Elements (see `.env.example`).
 
 ## Local dev
 

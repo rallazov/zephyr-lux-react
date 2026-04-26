@@ -38,7 +38,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const items = JSON.parse(pi.metadata?.itemsJSON || "[]") as { sku: string; qty: number }[];
         const lineItems = items.map(({ sku, qty }) => {
           const hit = findVariantBySku(sku);
-          const unitPrice = hit?.variant.price ?? 0;
+          const unitPrice = hit ? hit.variant.price_cents / 100 : 0;
           return { sku, qty, unitPrice };
         });
         const order = {

@@ -1,29 +1,51 @@
 import fs from "node:fs";
 import path from "node:path";
+import { parseStaticCatalogData } from "../../src/catalog/parse";
+import type { Product, ProductVariant } from "../../src/domain/commerce";
 
-// TODO (E1-S3): align with canonical `Product` / `ProductVariant` from `domain/commerce`
-// (this module uses dollar `price`, numeric `id`, and `options` shape; canonical uses `price_cents`, UUIDs, status enums).
+let _cache: { products: Product[]; bySku: Map<string, { product: Product; variant: ProductVariant }> } | null = null;
 
-type Variant = { sku: string; options: { size: string; color: string }; price: number; inventory: number; image: string };
-export type Product = { id: number; slug: string; title: string; fabricType: string; variants: Variant[] };
-
-let _cache: Product[] | null = null;
-
-export function loadCatalog(): Product[] {
+function loadFromDisk() {
   if (_cache) return _cache;
   const p = path.join(process.cwd(), "data", "products.json");
-  const json = fs.readFileSync(p, "utf-8");
-  _cache = JSON.parse(json);
-  return _cache!;
+  let json: unknown;
+  try {
+    json = JSON.parse(fs.readFileSync(p, "utf-8")) as unknown;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new Error(`Catalog file read/JSON parse failed (${p}): ${msg}`);
+  }
+  let products: Product[];
+  try {
+    ({ products } = parseStaticCatalogData(json));
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new Error(`Catalog validation failed (${p}): ${msg}`);
+  }
+  const bySku = new Map<string, { product: Product; variant: ProductVariant }>();
+  for (const product of products) {
+    for (const variant of product.variants) {
+      if (bySku.has(variant.sku)) {
+        console.warn(
+          `[catalog] duplicate SKU "${variant.sku}": keeping first mapping; ignored duplicate in product slug "${product.slug}"`,
+        );
+        continue;
+      }
+      bySku.set(variant.sku, { product, variant });
+    }
+  }
+  _cache = { products, bySku };
+  return _cache;
+}
+
+export type { Product, ProductVariant };
+
+export function loadCatalog(): Product[] {
+  return loadFromDisk().products;
 }
 
 export function findVariantBySku(sku: string) {
-  const catalog = loadCatalog();
-  for (const product of catalog) {
-    const v = product.variants.find((v) => v.sku === sku);
-    if (v) return { product, variant: v };
-  }
-  return null;
+  return loadFromDisk().bySku.get(sku) ?? null;
 }
 
 export function computeAmountCents(items: Array<{ sku: string; qty: number }>) {
@@ -31,9 +53,8 @@ export function computeAmountCents(items: Array<{ sku: string; qty: number }>) {
   for (const it of items) {
     const hit = findVariantBySku(it.sku);
     if (!hit) throw new Error(`Unknown SKU: ${it.sku}`);
-    total += Math.round(hit.variant.price * 100) * Math.max(1, it.qty | 0);
+    const q = Math.max(1, it.qty | 0);
+    total += hit.variant.price_cents * q;
   }
   return total;
 }
-
-
