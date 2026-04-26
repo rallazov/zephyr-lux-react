@@ -4,7 +4,7 @@ import Header from "../Header/Header";
 
 const Layout: React.FC = () => {
   return (
-    <div className="App">
+    <div className="App" data-testid="storefront-layout">
       <Header />
       <Outlet />
       <Footer />

@@ -1,6 +1,11 @@
- 
-import React from 'react';
-import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import React from "react";
+import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router-dom";
+import { AuthProvider } from "../../auth/AuthContext";
+import AdminLayout from "../../admin/AdminLayout";
+import AdminLogin from "../../admin/AdminLogin";
+import AdminProductForm from "../../admin/AdminProductForm";
+import AdminProductList from "../../admin/AdminProductList";
+import RequireAdmin from "../../admin/RequireAdmin";
 import { CartProvider } from "../../context/CartContext";
 import CartPage from '../Cart/CartPage';
 import CheckoutPage from "../Cart/CheckoutPage";
@@ -15,9 +20,11 @@ import './App.css';
 import Layout from './Layout';
 
 
-const App: React.FC = () => {
-  // ... (your existing code)
-
+/**
+ * All app routes. Wrap with `BrowserRouter` / `MemoryRouter` at the app or test boundary.
+ * Admin uses its own layout (no storefront chrome); see Epics E2-S6, UX-DR2.
+ */
+export function AppRoutes() {
   const womenItems = [
     { imgSrc: "/assets/img/Lifestyle.jpeg", description: "Women Product 1" },
     { imgSrc: "assets/img/Lifestyle.jpeg", description: "Women Product 2" },
@@ -47,14 +54,19 @@ const App: React.FC = () => {
   ];
 
 
-  
-
   return (
-    <CartProvider>
-      <Router>
         <div className="App">
           {/* <StripeProvider> */}
           <Routes>
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<Navigate to="products" replace />} />
+              <Route element={<RequireAdmin />}>
+                <Route path="products" element={<AdminProductList />} />
+                <Route path="products/new" element={<AdminProductForm />} />
+                <Route path="products/:id" element={<AdminProductForm />} />
+              </Route>
+            </Route>
             <Route element={<Layout />}>
 
             {/* Home Page */}
@@ -154,6 +166,16 @@ const App: React.FC = () => {
           </Routes>
           {/* </StripeProvider> */}
         </div>
+  );
+}
+
+const App: React.FC = () => {
+  return (
+    <CartProvider>
+      <Router>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
       </Router>
     </CartProvider>
   );

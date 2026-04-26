@@ -1,61 +1,85 @@
-import React, { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { sameCartLine, normalizeLineSku } from "../cart/lineKey";
 
-interface CartItem {
+export interface CartItem {
   id: number;
   name: string;
   quantity: number;
   price: number;
   image: string;
+  /** Variant SKU; legacy rows may omit (merged as ""). */
+  sku?: string;
 }
 
 interface CartContextType {
   cartItems: CartItem[];
   addToCart: (product: CartItem) => void;
-  removeFromCart: (id: number) => void;
+  /**
+   * Decrement or remove a line. Pass `sku` to target a specific variant; omit or ""
+   * for legacy lines without a SKU.
+   */
+  removeFromCart: (id: number, sku?: string) => void;
   cartCount: number;
-  clearCart: () => void; // Added clearCart here
+  clearCart: () => void;
 }
 
 export const CartContext = createContext<CartContextType>({
   cartItems: [],
-  addToCart: () => { },
-  removeFromCart: () => { },
+  addToCart: () => {},
+  removeFromCart: () => {},
   cartCount: 0,
-  clearCart: () => { }, // added clearCart here
+  clearCart: () => {},
 });
 
-export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const CartProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
   const [cartItems, setCartItems] = useState<CartItem[]>(() => {
     const savedCart = localStorage.getItem("cartItems");
     return savedCart ? JSON.parse(savedCart) : [];
   });
 
-  // Save cart items to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem("cartItems", JSON.stringify(cartItems));
   }, [cartItems]);
 
   const addToCart = (product: CartItem) => {
     setCartItems((prevCartItems) => {
-      const existingItem = prevCartItems.find((item) => item.id === product.id);
+      const existingItem = prevCartItems.find((item) =>
+        sameCartLine(item, product)
+      );
       if (existingItem) {
         return prevCartItems.map((item) =>
-          item.id === product.id
+          sameCartLine(item, product)
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
       }
-      return [...prevCartItems, { ...product, quantity: 1 }];
+      return [
+        ...prevCartItems,
+        { ...product, quantity: 1, sku: normalizeLineSku(product.sku) || undefined },
+      ];
     });
   };
 
-  const removeFromCart = (id: number) => {
+  const removeFromCart = (id: number, sku?: string) => {
+    const n = normalizeLineSku(sku);
     setCartItems((prevCartItems) => {
       return prevCartItems
-        .map((item) =>
-          item.id === id ? { ...item, quantity: item.quantity - 1 } : item
-        )
-        .filter((item) => item.quantity > 0); // Remove items with quantity 0
+        .map((item) => {
+          if (item.id === id && normalizeLineSku(item.sku) === n) {
+            return { ...item, quantity: item.quantity - 1 };
+          }
+          return item;
+        })
+        .filter((item) => item.quantity > 0);
     });
   };
 
@@ -69,7 +93,9 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   );
 
   return (
-    <CartContext.Provider value={{ cartItems, addToCart, removeFromCart, cartCount, clearCart }}>
+    <CartContext.Provider
+      value={{ cartItems, addToCart, removeFromCart, cartCount, clearCart }}
+    >
       {children}
     </CartContext.Provider>
   );

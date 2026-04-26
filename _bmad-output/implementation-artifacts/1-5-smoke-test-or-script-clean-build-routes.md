@@ -1,6 +1,6 @@
 # Story 1.5: Smoke test or script — clean build and route availability
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -22,24 +22,26 @@ so that **NFR-DEP-001** holds (deploy from clean Git), **Epic 1 acceptance** sta
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Pick mechanism (AC: 5, 7)**  
-  - [ ] Add **Vitest** (+ jsdom, `@testing-library/react`) aligned with Vite, **or** justify a lighter alternative in Dev Agent Record (must still satisfy AC 2–3).  
-  - [ ] Ensure `npm run build` stays the single source of truth for production compile (AC 2).
+- [x] **Task 1 — Pick mechanism (AC: 5, 7)**  
+  - [x] Add **Vitest** (+ jsdom, `@testing-library/react`) aligned with Vite, **or** justify a lighter alternative in Dev Agent Record (must still satisfy AC 2–3).  
+  - [x] Ensure `npm run build` stays the single source of truth for production compile (AC 2).
 
-- [ ] **Task 2 — Router testability (AC: 3, 5)**  
-  - [ ] If [App.tsx](src/components/App/App.tsx) wraps everything in `BrowserRouter`, refactor minimally: e.g. export inner routes as `AppRoutes` and compose `BrowserRouter` + `AppRoutes` in `App`, so tests use `MemoryRouter` + `AppRoutes`.  
-  - [ ] For `/product/:slug`, use a slug that resolves with the **current** catalog adapter / static data (follow [1-3-catalog-adapter-static-and-supabase.md](1-3-catalog-adapter-static-and-supabase.md) if implemented).
+- [x] **Task 2 — Router testability (AC: 3, 5)**  
+  - [x] If [App.tsx](src/components/App/App.tsx) wraps everything in `BrowserRouter`, refactor minimally: e.g. export inner routes as `AppRoutes` and compose `BrowserRouter` + `AppRoutes` in `App`, so tests use `MemoryRouter` + `AppRoutes`.  
+  - [x] For `/product/:slug`, use a slug that resolves with the **current** catalog adapter / static data (follow [1-3-catalog-adapter-static-and-supabase.md](1-3-catalog-adapter-static-and-supabase.md) if implemented).
 
-- [ ] **Task 3 — Smoke script entry (AC: 1, 2, 6)**  
-  - [ ] Add `npm run smoke` (or `npm run test:smoke`) that runs **build + route tests** (or `npm test` if tests include build — prefer explicit ordering: build first, then tests).  
+- [x] **Task 3 — Smoke script entry (AC: 1, 2, 6)**  
+  - [x] Add `npm run smoke` (or `npm run test:smoke`) that runs **build + route tests** (or `npm test` if tests include build — prefer explicit ordering: build first, then tests).  
   - [ ] Optionally add `npm run lint` to the same pipeline if fast and stable.
 
-- [ ] **Task 4 — CI or README (AC: 6)**  
-  - [ ] Add `.github/workflows/ci.yml` (or similar) running on Node LTS: `npm ci`, `npm run smoke`.  
-  - [ ] If skipping CI file, update [README.md](README.md) with copy-paste commands.
+- [x] **Task 4 — CI or README (AC: 6)**  
+  - [x] Add `.github/workflows/ci.yml` (or similar) running on Node LTS: `npm ci`, `npm run smoke`.  
+  - [x] If skipping CI file, update [README.md](README.md) with copy-paste commands.
 
-- [ ] **Task 5 — Verify clean tree (AC: 1)**  
-  - [ ] From clean clone: `npm ci && npm run smoke` exits 0.
+- [x] **Task 5 — Verify clean tree (AC: 1)**  
+  - [x] From clean clone: `npm ci && npm run smoke` exits 0.
+  - [x] **AC4 (UX-DR1):** Routes such as `/policies/*`, `/contact`, etc. are **not** in [App.tsx](src/components/App/App.tsx) yet; smoke covers **only** paths that exist today. Planned under Epic 6 (e.g. [epics.md](_bmad-output/planning-artifacts/epics.md) story `6-2-policy-pages-footer-links`).
+
 
 ## Dev Notes
 
@@ -121,20 +123,46 @@ so that **NFR-DEP-001** holds (deploy from clean Git), **Epic 1 acceptance** sta
 
 ## Story completion status
 
-- **Status:** `ready-for-dev`  
-- **Note:** Ultimate context engine analysis completed — comprehensive developer guide created.
+- **Status:** `done`  
+- **Note:** Code review complete; CI triggers include `dev/zephyr`; sprint `last_updated` corrected.
 
 ## Dev Agent Record
 
 ### Agent Model Used
 
-_(Populate during dev-story)_
+Composer (Cursor agent)
 
 ### Debug Log References
 
+- Vitest/jsdom: polyfilled `localStorage` in `src/test/setup.ts` for `CartContext`.
+- RTL: `afterEach(cleanup)` to avoid duplicate `data-testid` matches across `it.each`.
+- Stale `ProductDetail.js` / `ProductList.js` shadowed `.tsx` (Vite resolves `.js` before `.tsx`); removed so catalog adapter + bundled JSON are used (aligns with NFR-MAINT-001).
+- `readCatalogEnv()`: force `static` catalog when `import.meta.env.MODE === "test"` so local `.env` with `VITE_CATALOG_BACKEND=supabase` does not break smoke.
+
 ### Completion Notes List
 
+- Added Vitest 2 + jsdom + `@testing-library/react` / `@testing-library/jest-dom`; `npm run test` runs `vitest run`; `npm run smoke` runs `npm run build` then `vitest run`.
+- Exported `AppRoutes` from `App.tsx`; route smoke tests use `MemoryRouter` + `CartProvider` + landmarks (`data-testid="storefront-layout"`, route-specific copy).
+- Product detail smoke uses slug **`boxer-briefs`** from [data/products.json](data/products.json) (bundled static catalog).
+- CI: [.github/workflows/ci.yml](.github/workflows/ci.yml) on push/PR to `main`/`master`: `npm ci`, `npm run smoke` (Node 22). No secrets required for client build/tests.
+- Optional **lint in smoke** not enabled: `npm run lint` still fails on pre-existing issues elsewhere; smoke stays green per story recommendation.
+
 ### File List
+
+- package.json
+- package-lock.json
+- vite.config.ts
+- .github/workflows/ci.yml
+- src/components/App/App.tsx
+- src/components/App/Layout.tsx
+- src/catalog/adapter.ts
+- src/test/setup.ts
+- src/routes.smoke.test.tsx
+- src/catalog/adapter-smoke.test.ts
+- _bmad-output/implementation-artifacts/sprint-status.yaml
+- _bmad-output/implementation-artifacts/1-5-smoke-test-or-script-clean-build-routes.md
+- src/components/ProductDetail/ProductDetail.js (deleted)
+- src/components/ProductList/ProductList.js (deleted)
 
 ## Questions (non-blocking)
 
@@ -144,6 +172,17 @@ _(Populate during dev-story)_
 ## Change Log
 
 - 2026-04-26 — Story created (bmad-create-story). Target: PRD E1-S5; first `backlog` story in [sprint-status.yaml](_bmad-output/implementation-artifacts/sprint-status.yaml) at time of run.
+- 2026-04-26 — Dev-story complete: Vitest + RTL route smoke, `AppRoutes` extract, GitHub Actions CI, removed stale `.js` shadows for Product list/detail; story status → `review`.
+
+### Review Findings
+
+- [x] [Review][Decision] **CI workflow branch filters vs `dev/zephyr` integration** — Resolved (2026-04-26): option 2 — [.github/workflows/ci.yml](.github/workflows/ci.yml) now also runs on `push` / `pull_request` for `dev/zephyr`.
+
+- [x] [Review][Patch] **Sprint tracker `last_updated` went backwards** — Fixed: [sprint-status.yaml](_bmad-output/implementation-artifacts/sprint-status.yaml) `last_updated` set to `2026-04-26T19:04:28Z` (forward from the erroneous `12:30` edit; synced at review closeout).
+
+- [x] [Review][Defer] **Route smoke asserts on marketing copy strings** — [src/routes.smoke.test.tsx](src/routes.smoke.test.tsx) — deferred, pre-existing: matches story guidance (landmark + copy); copy-only changes can fail CI without a functional bug.
+
+- [x] [Review][Defer] **README omits local smoke command** — [README.md](README.md) — deferred, pre-existing: CI satisfies AC6 preferred path; optional doc gap for `npm run smoke` on a clean clone.
 
 ---
 

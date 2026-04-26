@@ -5,6 +5,8 @@ interface ImportMetaEnv {
   readonly VITE_USE_MOCK_STRIPE?: string;
   readonly VITE_API_URL?: string;
   readonly VITE_CATALOG_BACKEND?: string;
+  readonly VITE_SUPABASE_URL?: string;
+  readonly VITE_SUPABASE_ANON_KEY?: string;
 }
 
 interface ImportMeta {
