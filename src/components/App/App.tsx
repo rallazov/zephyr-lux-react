@@ -12,7 +12,7 @@ import OrderConfirmation from '../OrderConfirmation/OrderConfirmation';
 import ProductDetail from '../ProductDetail/ProductDetail';
 import ProductList from '../ProductList/ProductList';
 import './App.css';
-import Layout from './Layout';
+import Layout from './Layout.tsx';
 
 
 const App: React.FC = () => {
