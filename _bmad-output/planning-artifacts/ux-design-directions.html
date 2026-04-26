@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Zephyr Lux — UX design directions (exploration)</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: #faf8f5; color: #1a1a1a; line-height: 1.5; }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+    h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+    .lede { color: #4a4a4a; margin-bottom: 2rem; max-width: 70ch; }
+    .grid { display: grid; gap: 1.5rem; }
+    @media (min-width: 900px) { .grid { grid-template-columns: 1fr 1fr; } }
+    .card { background: #fff; border: 1px solid #e8e4df; border-radius: 8px; overflow: hidden; }
+    .card h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: #6b6560; margin: 0; padding: 0.75rem 1rem; background: #f3f0eb; border-bottom: 1px solid #e8e4df; }
+    .mock { padding: 1rem; }
+    .btn { display: inline-block; padding: 0.6rem 1.2rem; border-radius: 4px; font-size: 0.9rem; font-weight: 500; text-align: center; cursor: default; }
+    .ev { /* editorial warm */ }
+    .ev .title { font-family: Georgia, "Times New Roman", serif; font-size: 1.35rem; font-weight: 500; margin: 0 0 0.5rem; }
+    .ev .img { background: linear-gradient(135deg, #e5dfd6 0%, #d4cdc2 100%); height: 140px; border-radius: 4px; margin-bottom: 0.75rem; }
+    .ev .body { font-size: 0.9rem; color: #3d3a36; }
+    .ev .btn { background: #2c2a27; color: #faf8f5; width: 100%; }
+
+    .mg .title { font-family: var(--f, system-ui), sans-serif; font-size: 1.1rem; font-weight: 600; }
+    .mg .img { background: #ddd; height: 100px; border-radius: 4px; }
+    .mg .row { display: flex; gap: 0.5rem; margin-top: 0.5rem; font-size: 0.75rem; }
+    .sw { width: 24px; height: 24px; border-radius: 50%; border: 1px solid #ccc; }
+    .mg .btn { background: #1e6b4a; color: #fff; width: 100%; }
+
+    .mn { /* minimal */ }
+    .mn .title { font-size: 1.05rem; font-weight: 500; letter-spacing: -0.02em; }
+    .mn .img { background: #efefef; height: 180px; border-radius: 2px; }
+    .mn .body { font-size: 0.8rem; color: #666; }
+    .mn .btn { background: #111; color: #fff; width: 100%; border-radius: 2px; }
+
+    .ad { /* admin row */ }
+    .ad .mock { padding: 0; }
+    .ad table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    .ad th, .ad td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid #e8e4df; }
+    .ad th { background: #f3f0eb; color: #5c564f; font-weight: 500; }
+    .ad .badge { display: inline-block; background: #fff4e0; color: #8a5a00; padding: 0.15rem 0.45rem; border-radius: 3px; font-size: 0.7rem; }
+    a { color: #1e5a4a; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Design direction exploration — Zephyr Lux</h1>
+    <p class="lede">
+      Four compact samples (not production UI). Use them to compare <strong>editorial weight</strong>, <strong>decision density</strong>, and <strong>admin triage</strong> feel.
+      Open this file in a browser. In the workshop, we pick or combine, then record the choice in <code>ux-design-specification.md</code> (Design direction decision).
+    </p>
+    <div class="grid">
+      <div class="card ev">
+        <h2>Direction A — Editorial product-first (warm)</h2>
+        <div class="mock">
+          <div class="img" aria-hidden="true"></div>
+          <div class="title">Linen relaxed tee</div>
+          <div class="body">$48 · Soft, breathable linen blend. <br/>Ships in 2–3 business days. Free returns 30 days.</div>
+          <p style="margin: 0.75rem 0 0;"><span class="btn">Add to cart</span></p>
+        </div>
+      </div>
+      <div class="card mg">
+        <h2>Direction B — Merchandise grid (compact decision)</h2>
+        <div class="mock">
+          <div class="img" aria-hidden="true"></div>
+          <div class="title">Linen relaxed tee</div>
+          <div class="row"><span>Size</span> <span class="sw" style="background:#fff;border-color:#999"></span> <span class="sw" style="background:#e8e0d8"></span></div>
+          <div class="row"><span>Color</span> <span style="line-height:24px">Natural · Fog</span></div>
+          <p style="margin: 0.5rem 0 0;"><span class="btn">Add to cart — $48</span></p>
+        </div>
+      </div>
+      <div class="card mn">
+        <h2>Direction C — Minimal / Swiss calm</h2>
+        <div class="mock">
+          <div class="img" aria-hidden="true"></div>
+          <div class="title">Linen relaxed tee</div>
+          <div class="body">Select options below. Total updates when complete.</div>
+          <p style="margin: 0.75rem 0 0;"><span class="btn">Add to cart</span></p>
+        </div>
+      </div>
+      <div class="card ad">
+        <h2>Direction D — Admin triage (dense, neutral)</h2>
+        <div class="mock">
+          <table>
+            <thead><tr><th>Order</th><th>Date</th><th>Status</th><th>Total</th></tr></thead>
+            <tbody>
+              <tr><td>ZLX-20260425-0001</td><td>Apr 25</td><td><span class="badge">Unfulfilled</span></td><td>$96.00</td></tr>
+              <tr><td>ZLX-20260424-0012</td><td>Apr 24</td><td>Shipped</td><td>$48.00</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <p style="margin-top:2rem; font-size:0.9rem; color:#666;">
+      Suggested read for this brownfield: <strong>Direction A or B</strong> for storefront (image-led + warm vs compact variant block), and <strong>Direction D</strong> for admin density.
+      Direction C is an alternative if the brand leans more stark/urban than warm editorial.
+    </p>
+  </div>
+</body>
+</html>
