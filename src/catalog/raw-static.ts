@@ -1,31 +1,56 @@
 import { z } from "zod";
+import { productSchema, productVariantSchema } from "../domain/commerce";
+import { productStatusSchema } from "../domain/commerce/enums";
 
 /**
- * Zod input shape for the authoritative file `data/products.json`
- * (variant-level rows; dollars at leaf).
+ * Zod input shape for the authoritative file `data/products.json`.
+ * Domain-aligned: snake_case, integer `price_cents`, explicit enums.
+ *
+ * - `id` is the **legacy numeric storefront / cart** key (Epic 3 still keys cart lines by this number).
+ * - Each row is validated with `productSchema` on the body (without `id`) in `parse.ts` and via superRefine here.
  */
-export const staticRawVariantSchema = z.object({
-  sku: z.string().min(1),
-  options: z
-    .object({
-      size: z.string().optional(),
-      color: z.string().optional(),
-    })
-    .optional(),
-  price: z.number().nonnegative(),
-  inventory: z.number().int(),
-  image: z.string().optional(),
-});
+export const staticSeedProductRowSchema = z
+  .object({
+    id: z.number().int().positive(),
+    slug: z.string().min(1),
+    title: z.string().min(1),
+    subtitle: z.string().optional(),
+    description: z.string().optional(),
+    brand: z.string().optional(),
+    category: z.string().optional(),
+    fabric_type: z.string().optional(),
+    care_instructions: z.string().optional(),
+    origin: z.string().optional(),
+    status: productStatusSchema,
+    variants: z.array(productVariantSchema),
+  })
+  .superRefine((row, ctx) => {
+    const { id: _unused, ...body } = row;
+    void _unused;
+    const parsed = productSchema.safeParse(body);
+    if (parsed.success) return;
+    for (const issue of parsed.error.issues) {
+      ctx.addIssue({ ...issue, path: issue.path.length ? (issue.path as (string | number)[]) : [] });
+    }
+  });
 
-export const staticRawProductSchema = z.object({
-  id: z.number().int(),
-  slug: z.string().min(1),
-  title: z.string().min(1),
-  fabricType: z.string().optional(),
-  variants: z.array(staticRawVariantSchema).min(1),
-});
+export const staticSeedCatalogSchema = z
+  .array(staticSeedProductRowSchema)
+  .superRefine((rows, ctx) => {
+    const skus = new Set<string>();
+    for (const row of rows) {
+      for (const v of row.variants) {
+        if (skus.has(v.sku)) {
+          ctx.addIssue({
+            code: "custom",
+            message: `Duplicate SKU in static catalog: ${v.sku}`,
+            path: [],
+          });
+          return;
+        }
+        skus.add(v.sku);
+      }
+    }
+  });
 
-export const staticRawCatalogSchema = z.array(staticRawProductSchema);
-
-export type StaticRawProduct = z.infer<typeof staticRawProductSchema>;
-export type StaticRawVariant = z.infer<typeof staticRawVariantSchema>;
+export type StaticSeedProductRow = z.infer<typeof staticSeedProductRowSchema>;

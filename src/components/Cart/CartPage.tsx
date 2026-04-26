@@ -2,6 +2,7 @@ import { faCheckCircle, faLock, faUndoAlt } from "@fortawesome/free-solid-svg-ic
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React, { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { normalizeLineSku } from "../../cart/lineKey";
 import { CartContext } from "../../context/CartContext";
 
 const CartPage: React.FC = () => {
@@ -68,7 +69,10 @@ const CartPage: React.FC = () => {
                 </thead>
                 <tbody className="bg-black">
                   {cartItems.map((item) => (
-                    <tr key={item.id} className="border-b border-gray-700 hover:bg-gray-800">
+                    <tr
+                      key={`${item.id}::${normalizeLineSku(item.sku)}`}
+                      className="border-b border-gray-700 hover:bg-gray-800"
+                    >
                       <td className="py-4 px-6 flex flex-col sm:flex-row gap-4 items-center"> {/* Key changes here */}
                         <img
                           src={item.image || "/assets/img/Listing.jpeg"}
@@ -87,7 +91,7 @@ const CartPage: React.FC = () => {
                         <div className="flex flex-col items-center justify-center md:flex-row md:gap-2">
                           <span className="font-semibold text-white md:hidden mb-1">Quantity</span>
                           <button
-                            onClick={() => removeFromCart(item.id)}
+                            onClick={() => removeFromCart(item.id, item.sku)}
                             className="bg-gray-700 text-white px-2 py-1 rounded hover:bg-gray-500"
                           >
                             -
@@ -107,7 +111,7 @@ const CartPage: React.FC = () => {
                       <td className="py-4 px-6 text-center">
                         <button
                           onClick={() => {
-                            removeFromCart(item.id);
+                            removeFromCart(item.id, item.sku);
                           }}
                           className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
                         >

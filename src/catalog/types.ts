@@ -9,6 +9,8 @@ export type CatalogListItem = {
   maxPriceCents: number;
   heroImageUrl: string;
   inStock: boolean;
+  /** Variants with `active` status and `inventory_quantity > 0` (list ATC rule). */
+  purchasableVariantCount: number;
 };
 
 export type CatalogProductDetail = {

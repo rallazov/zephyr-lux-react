@@ -1,42 +1,50 @@
 import { type Product, productSchema } from "../domain/commerce";
 import { type CatalogListItem, type CatalogProductDetail } from "./types";
-import { staticRawCatalogSchema, type StaticRawProduct } from "./raw-static";
+import { staticSeedCatalogSchema, type StaticSeedProductRow } from "./raw-static";
 
-function rawProductToProduct(raw: StaticRawProduct): Product {
-  const variants = raw.variants.map((v) => {
-    const priceCents = Math.round(v.price * 100);
-    const status =
-      v.inventory > 0
-        ? ("active" as const)
-        : ("inactive" as const);
-    return {
-      sku: v.sku,
-      size: v.options?.size,
-      color: v.options?.color,
-      price_cents: priceCents,
-      currency: "USD" as const,
-      inventory_quantity: Math.max(0, v.inventory),
-      status,
-      image_url: v.image,
-    };
-  });
-  return productSchema.parse({
-    slug: raw.slug,
-    title: raw.title,
-    status: "active" as const,
-    fabric_type: raw.fabricType,
-    variants,
-  });
+/** Deep-replace `null` with `undefined` so Zod optionals match typical JSON. */
+function jsonNullsToUndefined(x: unknown): unknown {
+  if (x === null) return undefined;
+  if (Array.isArray(x)) return x.map(jsonNullsToUndefined);
+  if (x !== null && typeof x === "object") {
+    return Object.fromEntries(
+      Object.entries(x as Record<string, unknown>).map(([k, v]) => [
+        k,
+        jsonNullsToUndefined(v),
+      ])
+    );
+  }
+  return x;
 }
 
-function toListItem(
+function seedRowToProduct(row: StaticSeedProductRow): Product {
+  const { id: _storefrontId, ...body } = row;
+  void _storefrontId;
+  return productSchema.parse(body);
+}
+
+function isPurchasableVariant(v: Product["variants"][number]): boolean {
+  return v.status === "active" && v.inventory_quantity > 0;
+}
+
+function purchasableVariantCount(product: Product): number {
+  return product.variants.filter(isPurchasableVariant).length;
+}
+
+/** Storefront list + PDP only surface products with this status (FR-SF-001, story 2-3). */
+export function isStorefrontBrowsableProduct(product: Product): boolean {
+  return product.status === "active";
+}
+
+/** Shared list-row derivation for static + Supabase catalog adapters. */
+export function catalogListItemFromProduct(
   product: Product,
   storefrontProductId: number
 ): CatalogListItem {
   const prices = product.variants.map((v) => v.price_cents);
   const min = Math.min(...prices);
   const max = Math.max(...prices);
-  const inStock = product.variants.some((v) => v.inventory_quantity > 0);
+  const inStock = product.variants.some(isPurchasableVariant);
   const hero = product.variants[0]?.image_url ?? "";
   return {
     product,
@@ -45,23 +53,31 @@ function toListItem(
     maxPriceCents: max,
     heroImageUrl: hero,
     inStock,
+    purchasableVariantCount: purchasableVariantCount(product),
   };
 }
 
 /**
  * Parse + validate the authoritative static catalog and build indexes.
  * Use at JSON boundaries: bundled import (SPA) or `JSON.parse` + this (Node).
+ *
+ * Only **`active`** products are included in `products`, `listItems`, and `bySlug`
+ * so list and detail routes agree and non-browsable slugs behave as not found.
  */
 export function parseStaticCatalogData(input: unknown) {
-  const rawArr = staticRawCatalogSchema.parse(input);
+  const preprocessed = jsonNullsToUndefined(input);
+  const rawArr = staticSeedCatalogSchema.parse(preprocessed);
   const products: Product[] = [];
   const listItems: CatalogListItem[] = [];
   const bySlug = new Map<string, CatalogProductDetail>();
 
   for (const raw of rawArr) {
-    const product = rawProductToProduct(raw);
+    const product = seedRowToProduct(raw);
+    if (!isStorefrontBrowsableProduct(product)) {
+      continue;
+    }
     products.push(product);
-    listItems.push(toListItem(product, raw.id));
+    listItems.push(catalogListItemFromProduct(product, raw.id));
     bySlug.set(product.slug, {
       product,
       storefrontProductId: raw.id,
