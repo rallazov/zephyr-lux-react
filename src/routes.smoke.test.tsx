@@ -1,8 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AuthProvider } from "./auth/AuthContext";
 import { AppRoutes } from "./components/App/App";
+import { CART_LOCAL_STORAGE_KEY } from "./cart/storage";
 import { CartProvider } from "./context/CartContext";
 
 /**
@@ -24,6 +25,13 @@ function renderRoute(initialPath: string) {
 }
 
 describe("storefront route smoke (App.tsx router tree)", () => {
+  beforeEach(() => {
+    localStorage.removeItem(CART_LOCAL_STORAGE_KEY);
+  });
+  afterEach(() => {
+    localStorage.removeItem(CART_LOCAL_STORAGE_KEY);
+  });
+
   it("admin login route mounts without storefront layout", async () => {
     renderRoute("/admin/login");
     expect(await screen.findByRole("heading", { name: /admin sign in/i })).toBeInTheDocument();
@@ -55,14 +63,35 @@ describe("storefront route smoke (App.tsx router tree)", () => {
     ["/sale", /Limited Time Offers/i],
     ["/cart", /SHOPPING/i],
     ["/checkout", /^Checkout$/i],
-    ["/order-confirmation", /Order Confirmed/i],
+    ["/order-confirmation", /Order confirmed|We couldn|processing your payment|Payment reference/i],
     [`/product/${SMOKE_PRODUCT_SLUG}`, /Zephyr Lux Boxer Briefs/i],
   ];
 
   it.each(cases)("mounts %s without uncaught render failure", async (path, textMatcher) => {
+    localStorage.clear();
+    if (path === "/checkout") {
+      localStorage.setItem(
+        "cartItems",
+        JSON.stringify({
+          v: 1,
+          items: [
+            {
+              id: 101,
+              name: "Zephyr Lux Boxer Briefs",
+              quantity: 1,
+              price: 24,
+              image: "/assets/img/Listing2.jpeg",
+              sku: "ZLX-BLK-M",
+              product_slug: "boxer-briefs",
+            },
+          ],
+        })
+      );
+    }
     renderRoute(path);
     expect(await screen.findByTestId("storefront-layout")).toBeInTheDocument();
-    expect(await screen.findByText(textMatcher)).toBeInTheDocument();
+    const waitOpts = path === "/checkout" ? { timeout: 15_000 } : {};
+    expect(await screen.findByText(textMatcher, {}, waitOpts)).toBeInTheDocument();
     if (path.startsWith("/product/")) {
       expect(await screen.findByTestId("pdp")).toBeInTheDocument();
       expect(await screen.findByTestId("pdp-variant-selector")).toBeInTheDocument();

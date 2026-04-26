@@ -1,0 +1,1255 @@
+diff --git a/api/_lib/catalog.ts b/api/_lib/catalog.ts
+index 04cf3e8..db3b3bf 100644
+--- a/api/_lib/catalog.ts
++++ b/api/_lib/catalog.ts
+@@ -5,6 +5,12 @@ import type { Product, ProductVariant } from "../../src/domain/commerce";
+ 
+ let _cache: { products: Product[]; bySku: Map<string, { product: Product; variant: ProductVariant }> } | null = null;
+ 
++/** $50 — matches Cart free-shipping bar */
++export const FREE_SHIPPING_THRESHOLD_CENTS = 5_000;
++export const FLAT_SHIPPING_CENTS = 500;
++/** 7% of merchandise subtotal (pre-shipping) — matches prior checkout UI. */
++export const TAX_BPS = 700;
++
+ function loadFromDisk() {
+   if (_cache) return _cache;
+   const p = path.join(process.cwd(), "data", "products.json");
+@@ -40,6 +46,16 @@ function loadFromDisk() {
+ 
+ export type { Product, ProductVariant };
+ 
++export class QuoteError extends Error {
++  constructor(
++    public readonly code: "UNKNOWN_SKU" | "INVALID_LINE",
++    message: string,
++  ) {
++    super(message);
++    this.name = "QuoteError";
++  }
++}
++
+ export function loadCatalog(): Product[] {
+   return loadFromDisk().products;
+ }
+@@ -48,13 +64,111 @@ export function findVariantBySku(sku: string) {
+   return loadFromDisk().bySku.get(sku) ?? null;
+ }
+ 
+-export function computeAmountCents(items: Array<{ sku: string; qty: number }>) {
+-  let total = 0;
++export type CartLineQuote = {
++  sku: string;
++  quantity: number;
++  unit_cents: number;
++  line_cents: number;
++  product_title: string;
++};
++
++export type CartQuote = {
++  currency: "usd";
++  lines: CartLineQuote[];
++  subtotal_cents: number;
++  shipping_cents: number;
++  tax_cents: number;
++  total_cents: number;
++};
++
++/**
++ * Resolves per-line and full-order cents from the server catalog. Tax is 7% of
++ * subtotal; shipping is $0 when subtotal ≥ $50, else a flat $5.99 → use FLAT 500 cents (story: $5.00 in UI).
++ */
++export function quoteCartLines(
++  items: Array<{ sku: string; quantity: number }>,
++): CartQuote {
++  if (!Array.isArray(items) || items.length === 0) {
++    throw new QuoteError("INVALID_LINE", "At least one line item is required");
++  }
++  const lines: CartLineQuote[] = [];
++  for (const row of items) {
++    if (!row.sku || typeof row.sku !== "string") {
++      throw new QuoteError("INVALID_LINE", "Each line must include a non-empty sku");
++    }
++    const q = row.quantity;
++    if (typeof q !== "number" || !Number.isInteger(q) || q < 1) {
++      throw new QuoteError("INVALID_LINE", "quantity must be a positive integer");
++    }
++    const hit = findVariantBySku(row.sku);
++    if (!hit) {
++      throw new QuoteError("UNKNOWN_SKU", `Unknown SKU: ${row.sku}`);
++    }
++    const unit_cents = hit.variant.price_cents;
++    const line_cents = unit_cents * q;
++    lines.push({
++      sku: row.sku,
++      quantity: q,
++      unit_cents,
++      line_cents,
++      product_title: hit.product.title,
++    });
++  }
++  const subtotal_cents = lines.reduce((s, l) => s + l.line_cents, 0);
++  const shipping_cents =
++    subtotal_cents >= FREE_SHIPPING_THRESHOLD_CENTS ? 0 : FLAT_SHIPPING_CENTS;
++  const tax_cents = Math.round((subtotal_cents * TAX_BPS) / 10_000);
++  const total_cents = subtotal_cents + shipping_cents + tax_cents;
++  return {
++    currency: "usd",
++    lines,
++    subtotal_cents,
++    shipping_cents,
++    tax_cents,
++    total_cents,
++  };
++}
++
++type LegacyItem = { sku: string; qty?: number; quantity?: number };
++
++/**
++ * @deprecated For PaymentIntent, prefer `quoteCartLines` and use `total_cents` so tax/shipping match UI.
++ * Merchandise subtotal in cents (legacy `items` with loose qty handling for existing clients).
++ */
++export function computeAmountCents(items: Array<LegacyItem>) {
++  const normalized: Array<{ sku: string; quantity: number }> = [];
++  for (const it of items) {
++    const raw = it.quantity !== undefined ? it.quantity : it.qty;
++    const q = Math.max(1, Math.floor(Math.abs(Number(raw)) || 0) || 1);
++    if (!it.sku) continue;
++    normalized.push({ sku: it.sku, quantity: q });
++  }
++  if (normalized.length === 0) return 0;
++  try {
++    return quoteCartLines(normalized).subtotal_cents;
++  } catch (e) {
++    if (e instanceof QuoteError && e.code === "UNKNOWN_SKU") {
++      throw new Error(e.message);
++    }
++    throw e;
++  }
++}
++
++/**
++ * One canonical order quote for `items` — use `total_cents` for Stripe when charging tax+shipping the same as cart-quote.
++ */
++export function quoteForPaymentItems(items: Array<LegacyItem>): CartQuote {
++  const normalized: Array<{ sku: string; quantity: number }> = [];
+   for (const it of items) {
+-    const hit = findVariantBySku(it.sku);
+-    if (!hit) throw new Error(`Unknown SKU: ${it.sku}`);
+-    const q = Math.max(1, it.qty | 0);
+-    total += hit.variant.price_cents * q;
++    const raw = it.quantity !== undefined ? it.quantity : it.qty;
++    const q = Math.max(1, Math.floor(Math.abs(Number(raw)) || 0) || 1);
++    if (!it.sku) {
++      throw new QuoteError("INVALID_LINE", "Each item must have a sku");
++    }
++    normalized.push({ sku: it.sku, quantity: q });
++  }
++  if (normalized.length === 0) {
++    throw new QuoteError("INVALID_LINE", "No line items to price");
+   }
+-  return total;
++  return quoteCartLines(normalized);
+ }
+diff --git a/api/create-payment-intent.ts b/api/create-payment-intent.ts
+index ec63d69..cd10846 100644
+--- a/api/create-payment-intent.ts
++++ b/api/create-payment-intent.ts
+@@ -1,6 +1,12 @@
++import { createHash, randomBytes } from "node:crypto";
+ import type { VercelRequest, VercelResponse } from "@vercel/node";
+ import Stripe from "stripe";
+-import { computeAmountCents } from "./_lib/catalog";
++import { QuoteError } from "./_lib/catalog";
++import { totalChargeCentsFromCatalogLines } from "./_lib/checkoutQuote";
++import {
++  createPaymentIntentBodySchema,
++  lineItemsToCatalogRows,
++} from "./_lib/createPaymentIntentBody";
+ import { ENV } from "./_lib/env";
+ import { log } from "./_lib/logger";
+ 
+@@ -18,30 +24,75 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
+   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+ 
+   try {
+-    const { items, amount: amountCents, currency = "usd", email } = req.body as {
+-      items?: Array<{ sku: string; qty: number }>;
+-      amount?: number; currency?: string; email?: string;
++    const parsed = createPaymentIntentBodySchema.safeParse(req.body);
++    if (!parsed.success) {
++      log.warn({ issues: parsed.error.issues }, "create-payment-intent: validation failed");
++      return res.status(400).json({ error: "Invalid checkout request" });
++    }
++
++    const data = parsed.data;
++    const hasItems = (data.items?.length ?? 0) > 0;
++
++    let amount: number;
++    try {
++      if (hasItems) {
++        const rows = lineItemsToCatalogRows(data.items!);
++        amount = totalChargeCentsFromCatalogLines(rows);
++      } else {
++        amount = Math.max(1, Math.floor(Number(data.amount)));
++      }
++    } catch (err) {
++      if (err instanceof QuoteError) {
++        log.warn({ err, code: err.code }, "create-payment-intent: quote error");
++        return res.status(400).json({
++          error:
++            "One or more items are no longer available. Please return to your cart and try again.",
++        });
++      }
++      log.warn({ err }, "create-payment-intent: catalog pricing failed");
++      return res.status(400).json({
++        error:
++          "One or more items are no longer available. Please return to your cart and try again.",
++      });
++    }
++
++    const checkoutRef = `cr_${randomBytes(12).toString("hex")}`;
++
++    const email = (data.email ?? "").trim().slice(0, 256);
++    const metadata: Record<string, string> = {
++      checkoutRef,
++      email: email.length ? email : "_",
+     };
+-    if (!items?.length && !amountCents) return res.status(400).json({ error: "No items or amount" });
+ 
+-    const amount = items?.length ? computeAmountCents(items) : Math.max(1, Math.floor(Number(amountCents || 0)));
+-    const ts = new Date();
+-    const orderId = `ZLX-${ts.toISOString().slice(0,10).replace(/-/g,"")}-${Math.floor(Math.random()*10000).toString().padStart(4,"0")}`;
++    if (hasItems && data.items?.length) {
++      const lineKey = data.items
++        .map((l) => ({ sku: l.sku, q: l.quantity }))
++        .sort((a, b) => a.sku.localeCompare(b.sku));
++      const lineDigest = createHash("sha256").update(JSON.stringify(lineKey)).digest("hex").slice(0, 32);
++      metadata.line_digest = lineDigest;
++    } else {
++      metadata.legacy = "1";
++    }
+ 
+-    const metadata = { orderId, itemsJSON: JSON.stringify(items || []), email: email || "" };
++    metadata.stripe_intent_purpose = "checkout_v1";
+ 
+-    const pi = await stripe.paymentIntents.create({
+-      amount, currency,
+-      automatic_payment_methods: { enabled: true },
+-      metadata,
+-    }, { idempotencyKey: `pi_${orderId}` });
++    const pi = await stripe.paymentIntents.create(
++      {
++        amount,
++        currency: data.currency,
++        automatic_payment_methods: { enabled: true },
++        metadata,
++      },
++      { idempotencyKey: `pi_${checkoutRef}` }
++    );
+ 
+-    log.info({ orderId, amount, currency }, "PaymentIntent created");
+-    return res.status(200).json({ clientSecret: pi.client_secret, orderId });
+-  } catch (err: any) {
++    log.info(
++      { checkoutRef, amount, currency: data.currency, paymentIntentId: pi.id },
++      "PaymentIntent created"
++    );
++    return res.status(200).json({ clientSecret: pi.client_secret, checkoutRef });
++  } catch (err: unknown) {
+     log.error({ err }, "create-payment-intent failed");
+-    return res.status(500).json({ error: err.message });
++    return res.status(500).json({ error: "Payment setup failed. Please try again." });
+   }
+ }
+-
+-
+diff --git a/src/components/Cart/CheckoutPage.tsx b/src/components/Cart/CheckoutPage.tsx
+index 98682b0..6564a4c 100644
+--- a/src/components/Cart/CheckoutPage.tsx
++++ b/src/components/Cart/CheckoutPage.tsx
+@@ -1,8 +1,15 @@
+-import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
+-import { loadStripe } from '@stripe/stripe-js';
+-import React, { useContext, useEffect, useState } from 'react';
+-import { useNavigate } from 'react-router-dom';
++import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
++import { loadStripe } from "@stripe/stripe-js";
++import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
++import { Link, useNavigate, useSearchParams } from "react-router-dom";
++import {
++  isCartOkForCheckout,
++  validateStorefrontCartLines,
++} from "../../cart/reconcile";
+ import { CartContext } from "../../context/CartContext";
++import { getDefaultCatalogAdapter } from "../../catalog/factory";
++import type { CatalogListItem } from "../../catalog/types";
++import { useCartQuote } from "../../hooks/useCartQuote";
+ import { checkoutSchema } from "../../lib/validation";
+ import { IS_MOCK_PAYMENT } from "../../utils/config";
+ 
+@@ -15,12 +22,12 @@ interface PaymentIntentResult {
+ }
+ 
+ const InnerCheckoutForm: React.FC<{
+-    clientSecret: string;
+-    total: number;
+-    cartItems: any[];
++    orderTotalDollars: number;
++    cartItems: unknown[];
+     clearCart: () => void;
+     formValid: boolean;
+-}> = ({ clientSecret, total, cartItems, clearCart, formValid }) => {
++    customerEmail: string;
++}> = ({ orderTotalDollars, cartItems, clearCart, formValid, customerEmail }) => {
+     const navigate = useNavigate();
+     const stripe = useStripe();
+     const elements = useElements();
+@@ -33,12 +40,22 @@ const InnerCheckoutForm: React.FC<{
+             return;
+         }
+         if (paymentIntentResult.paymentIntent) {
++            const { id, status } = paymentIntentResult.paymentIntent;
++            if (status && status !== "succeeded") {
++                setPaymentError(
++                    status === "processing"
++                        ? "Payment is still processing. You can check your email for updates or wait and refresh."
++                        : `Payment not completed (status: ${status}). You can try again.`
++                );
++                return;
++            }
+             clearCart();
+             navigate("/order-confirmation", {
+                 state: {
+-                    orderId: paymentIntentResult.paymentIntent.id ?? "unknown",
+-                    total: total ?? 0,
++                    orderId: id ?? "unknown",
++                    total: orderTotalDollars ?? 0,
+                     items: cartItems.length ? cartItems : [],
++                    email: customerEmail || undefined,
+                 },
+             });
+         }
+@@ -70,7 +87,7 @@ const InnerCheckoutForm: React.FC<{
+                 handlePaymentResult(paymentIntentResult);
+                 setProcessing(false);
+             }
+-        } catch (error) {
++        } catch {
+             setPaymentError("An unexpected error occurred during payment.");
+             setProcessing(false);
+         }
+@@ -79,7 +96,11 @@ const InnerCheckoutForm: React.FC<{
+     return (
+         <form onSubmit={onSubmit}>
+             <PaymentElement />
+-            {paymentError && <p className="text-red-500 mt-2">{paymentError}</p>}
++            {paymentError && (
++                <p className="text-red-500 mt-2" role="alert">
++                    {paymentError}
++                </p>
++            )}
+             <button
+                 type="submit"
+                 disabled={!formValid || processing}
+@@ -94,11 +115,38 @@ const InnerCheckoutForm: React.FC<{
+ const CheckoutPage = () => {
+     const { cartItems, clearCart } = useContext(CartContext);
+     const navigate = useNavigate();
++    const [searchParams] = useSearchParams();
++    const checkoutCanceled = searchParams.get("checkout") === "canceled";
++
++    const [catalogList, setCatalogList] = useState<CatalogListItem[] | null>(null);
++    const [catalogError, setCatalogError] = useState(false);
++
++    const {
++        quote,
++        error: cartQuoteError,
++        refetch: refetchCartQuote,
++        drafts: checkoutLines,
++    } = useCartQuote(cartItems);
+ 
+     const [clientSecret, setClientSecret] = useState<string | null>(null);
+-    const stripePromise = import.meta.env.VITE_STRIPE_PUBLIC_KEY
+-        ? loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY)
+-        : null;
++
++    const validations = useMemo(() => {
++        if (!catalogList) return null;
++        return validateStorefrontCartLines(cartItems, catalogList);
++    }, [cartItems, catalogList]);
++
++    const checkoutOk =
++        catalogList != null &&
++        validations != null &&
++        cartItems.length > 0 &&
++        isCartOkForCheckout(validations);
++
++    const stripePromise = useMemo(() => {
++        if (!checkoutOk) return null;
++        const key = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
++        if (!key) return null;
++        return loadStripe(key);
++    }, [checkoutOk]);
+ 
+     const [formData, setFormData] = useState({
+         name: "",
+@@ -106,44 +154,60 @@ const CheckoutPage = () => {
+         address: "",
+     });
+ 
++    const paymentBootstrapKey = useMemo(
++        () => JSON.stringify({ lines: checkoutLines, email: formData.email }),
++        [checkoutLines, formData.email]
++    );
++
+     const [errors, setErrors] = useState({
+         name: "",
+         email: "",
+         address: "",
+     });
+ 
+-    const [total, setTotal] = useState(0);
+     const [paymentError, setPaymentError] = useState<string | null>(null);
+     const [processing, setProcessing] = useState(false);
+-    const [orderConfirmation, setOrderConfirmation] = useState(false);
+     const [formValid, setFormValid] = useState(false);
+ 
+     useEffect(() => {
+-        calculateTotal();
+-    }, [cartItems]);
++        if (cartItems.length === 0) {
++            navigate("/cart", { replace: true });
++        }
++    }, [cartItems.length, navigate]);
+ 
+     useEffect(() => {
+-        validateForm();
+-    }, [formData]);
+-
+-    const calculateTotal = () => {
+-        const subtotal = cartItems.reduce((x, y) => x + y.price * y.quantity, 0);
+-        setTotal(subtotal);
+-    };
++        let cancelled = false;
++        (async () => {
++            try {
++                const list = await getDefaultCatalogAdapter().listProducts();
++                if (!cancelled) {
++                    setCatalogList(list);
++                    setCatalogError(false);
++                }
++            } catch {
++                if (!cancelled) setCatalogError(true);
++            }
++        })();
++        return () => {
++            cancelled = true;
++        };
++    }, [cartItems]);
+ 
+-    const validateForm = () => {
++    const validateForm = useCallback(() => {
+         const isValid = formData.name !== "" && formData.email !== "" && formData.address !== "";
+         setFormValid(isValid);
+-    };
++    }, [formData.name, formData.email, formData.address]);
+ 
+-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+-        const { name, value } = e.target;
+-        setFormData({ ...formData, [name]: value });
+-        setErrors({ ...errors, [name]: "" });
++    useEffect(() => {
+         validateForm();
++    }, [validateForm]);
++
++    const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
++        const { name, value } = e.target;
++        setFormData((prev) => ({ ...prev, [name]: value }));
++        setErrors((prev) => ({ ...prev, [name]: "" }));
+     };
+ 
+-    // If you want a separate mock flow, define it here.
+     const mockStripe = {
+         confirmPayment: async (): Promise<PaymentIntentResult> => {
+             return new Promise((resolve, reject) => {
+@@ -168,43 +232,76 @@ const CheckoutPage = () => {
+     };
+ 
+     useEffect(() => {
+-        if (IS_MOCK_PAYMENT) return;
+-        // fetch clientSecret from API using a fallback amount
+-        const fetchClientSecret = async () => {
++        if (!checkoutOk) {
++            setClientSecret(null);
++        }
++    }, [checkoutOk]);
++
++    useEffect(() => {
++        if (IS_MOCK_PAYMENT || !checkoutOk || !quote || checkoutLines.length === 0) {
++            if (!IS_MOCK_PAYMENT) {
++                setClientSecret(null);
++            }
++            return;
++        }
++        let cancelled = false;
++        const run = async () => {
++            setClientSecret(null);
++            setPaymentError(null);
+             try {
+-                const tax = total * 0.07;
+-                const shipping = 5;
+-                const grandTotal = total + tax + shipping;
+                 const res = await fetch("/api/create-payment-intent", {
+                     method: "POST",
+                     headers: { "Content-Type": "application/json" },
+-                    body: JSON.stringify({ amount: Math.round(grandTotal * 100), currency: "usd" })
++                    body: JSON.stringify({
++                        items: checkoutLines,
++                        email: formData.email || undefined,
++                        currency: "usd",
++                    }),
+                 });
+-                const json = await res.json();
+-                if (json?.clientSecret) setClientSecret(json.clientSecret);
+-                else setPaymentError("Failed to create payment intent");
+-            } catch (e) {
+-                setPaymentError("Failed to initialize payment");
++                const json = (await res.json()) as { clientSecret?: string; error?: string; checkoutRef?: string };
++                if (cancelled) return;
++                if (!res.ok) {
++                    setClientSecret(null);
++                    setPaymentError(
++                        json.error ??
++                            "We could not start payment for your bag. Please return to your bag and try again."
++                    );
++                    return;
++                }
++                if (json?.clientSecret) {
++                    setClientSecret(json.clientSecret);
++                } else {
++                    setClientSecret(null);
++                    setPaymentError("Failed to create payment intent");
++                }
++            } catch {
++                if (!cancelled) {
++                    setClientSecret(null);
++                    setPaymentError("Failed to initialize payment");
++                }
+             }
+         };
+-        fetchClientSecret();
+-    }, [total]);
++        void run();
++        return () => {
++            cancelled = true;
++        };
++    }, [paymentBootstrapKey, checkoutOk, quote, checkoutLines, formData.email]);
++
+     const handleSubmit = async (event: React.FormEvent) => {
+         event.preventDefault();
++        if (!checkoutOk) return;
+         setProcessing(true);
+         setPaymentError(null);
+ 
+-        console.log("[handleSubmit] Checking IS_MOCK_PAYMENT:", IS_MOCK_PAYMENT);
+         const parsed = checkoutSchema.safeParse(formData);
+         if (!parsed.success) {
+-            const fieldErrors: any = {};
++            const fieldErrors: Record<string, string> = {};
+             parsed.error.issues.forEach((i) => { fieldErrors[i.path[0] as string] = i.message; });
+             setErrors({ ...errors, ...fieldErrors });
+             setProcessing(false);
+             return;
+         }
+         if (IS_MOCK_PAYMENT) {
+-            console.log("Using mockStripe for confirmPayment.");
+             try {
+                 const mockResult: PaymentIntentResult = await mockStripe.confirmPayment();
+                 handlePaymentResult(mockResult);
+@@ -215,9 +312,6 @@ const CheckoutPage = () => {
+             setProcessing(false);
+             return;
+         }
+-
+-        // Real Flow
+-        // This submit path only used in mock mode now.
+     };
+ 
+     function handlePaymentResult(paymentIntentResult: PaymentIntentResult) {
+@@ -227,19 +321,112 @@ const CheckoutPage = () => {
+         }
+ 
+         if (paymentIntentResult.paymentIntent) {
+-            console.log("Payment Successful", paymentIntentResult.paymentIntent);
++            const { id, status } = paymentIntentResult.paymentIntent;
++            if (status && status !== "succeeded") {
++                setPaymentError(
++                    status === "processing"
++                        ? "Payment is still processing. Check your email for updates."
++                        : `Payment not completed (status: ${status}). You can try again.`
++                );
++                return;
++            }
+             clearCart();
+-            setOrderConfirmation(true);
+             navigate("/order-confirmation", {
+                 state: {
+-                    orderId: paymentIntentResult.paymentIntent.id ?? "unknown",
+-                    total: total ?? 0,
++                    orderId: id ?? "unknown",
++                    total: quote ? quote.total_cents / 100 : 0,
+                     items: cartItems.length ? cartItems : [],
++                    email: formData.email || undefined,
+                 },
+             });
+         }
+     }
+ 
++    if (cartItems.length === 0) {
++        return null;
++    }
++
++    if (catalogList === null && !catalogError) {
++        return (
++            <div className="relative bg-black text-white min-h-screen">
++                <div className="h-56" />
++                <main className="max-w-4xl mx-auto p-6">
++                    <p className="text-gray-400">Verifying your bag…</p>
++                </main>
++            </div>
++        );
++    }
++
++    if (catalogError) {
++        return (
++            <div className="relative bg-black text-white min-h-screen">
++                <div className="h-56" />
++                <main className="max-w-4xl mx-auto p-6" role="alert">
++                    <h1 className="text-2xl font-bold mb-4">Checkout unavailable</h1>
++                    <p className="text-gray-300 mb-4">
++                        We could not verify your cart against the catalog. Return to your bag and try again.
++                    </p>
++                    <Link to="/cart" className="text-green-400 underline font-semibold">
++                        Return to bag
++                    </Link>
++                </main>
++            </div>
++        );
++    }
++
++    if (!checkoutOk && validations) {
++        return (
++            <div className="relative bg-black text-white min-h-screen">
++                <header className="fixed top-0 w-full z-10 bg-black text-white shadow">
++                    <div className="max-w-6xl mx-auto p-4 flex justify-between items-center">
++                        <h1 className="text-xl font-bold">Zephyr Lux</h1>
++                    </div>
++                </header>
++                <div className="h-56" />
++                <main className="max-w-4xl mx-auto p-6" role="alert">
++                    <h1 className="text-3xl font-extrabold mb-4">Update your bag</h1>
++                    <p className="text-gray-300 mb-4">
++                        One or more items need attention before you can pay. Fix the issues below in your bag, then try checkout again.
++                    </p>
++                    <ul className="list-disc list-inside text-gray-200 space-y-2 mb-6">
++                        {validations
++                            .filter((v) => v.issues.length > 0)
++                            .map((v) => (
++                                <li key={`${v.line.id}::${v.line.sku ?? ""}`}>
++                                    <span className="font-medium text-white">{v.line.name}: </span>
++                                    {v.issues.map((i) => i.message).join(" ")}
++                                </li>
++                            ))}
++                    </ul>
++                    <Link
++                        to="/cart"
++                        className="inline-block bg-green-600 text-white px-6 py-3 rounded font-semibold hover:bg-green-500"
++                    >
++                        Return to bag
++                    </Link>
++                </main>
++            </div>
++        );
++    }
++
++    const orderLineDisplay = quote
++        ? quote.lines.map((line) => ({
++            name: line.product_title,
++            quantity: line.quantity,
++            lineTotal: line.line_cents / 100,
++        }))
++        : validations
++            ? validations.map((v) => ({
++                name: v.line.name,
++                quantity: v.line.quantity,
++                lineTotal: (v.displayUnitPrice ?? v.line.price) * v.line.quantity,
++            }))
++            : cartItems.map((item) => ({
++                name: item.name,
++                quantity: item.quantity,
++                lineTotal: item.price * item.quantity,
++            }));
++
+     return (
+         <div className="relative bg-black text-white min-h-screen">
+             <header className="fixed top-0 w-full z-10 bg-black text-white shadow">
+@@ -248,43 +435,163 @@ const CheckoutPage = () => {
+                 </div>
+             </header>
+ 
+-            <div className="h-56"></div>
++            <div className="h-56" />
+ 
+             <main className="max-w-4xl mx-auto p-6">
++                {checkoutCanceled && (
++                    <div
++                        role="status"
++                        className="mb-4 p-3 rounded border border-amber-600 bg-amber-950 text-amber-100 text-sm"
++                    >
++                        Checkout was canceled — your bag is still saved. You can
++                        return to it anytime.
++                    </div>
++                )}
++                <div className="mb-4">
++                    <Link
++                        to="/cart"
++                        className="text-amber-300 underline text-sm"
++                    >
++                        ← Back to bag
++                    </Link>
++                </div>
+                 <h1 className="text-3xl font-extrabold mb-6">Checkout</h1>
+                 <div className="bg-gray-800 p-4 rounded mb-6">
+                     <h2 className="text-xl font-bold mb-4">Order Summary</h2>
+-                    {cartItems.map((item) => (
+-                        <div key={item.id} className="flex justify-between items-center mb-2">
+-                            <span className="text-gray-400">{item.name} x {item.quantity}</span>
+-                            <span className="text-gray-400">${(item.price * item.quantity).toFixed(2)}</span>
++                    {cartQuoteError && (
++                        <div className="text-red-400 mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2" role="alert">
++                            <span>{cartQuoteError}</span>
++                            <button
++                                type="button"
++                                onClick={refetchCartQuote}
++                                className="text-amber-300 underline text-sm"
++                            >
++                                Retry
++                            </button>
++                        </div>
++                    )}
++                    {orderLineDisplay.map((row, idx) => (
++                        <div key={`${idx}-${row.name}`} className="flex justify-between items-center mb-2">
++                            <span className="text-gray-400">{row.name} x {row.quantity}</span>
++                            <span className="text-gray-400">${row.lineTotal.toFixed(2)}</span>
+                         </div>
+                     ))}
+                     <hr className="border-gray-700 my-2" />
+-                    <p className="text-gray-400">Subtotal: ${total.toFixed(2)}</p>
+-                    <p className="text-gray-400">Shipping (Estimate): $5.00</p>
+-                    <p className="text-gray-400">Taxes (Estimate): ${(total * 0.07).toFixed(2)}</p>
+-                    <p className="font-bold text-lg mt-2">Total: ${(total + (total * 0.07) + 5).toFixed(2)}</p>
++                    {quote ? (
++                        <>
++                            <p className="text-gray-400">
++                                Subtotal: ${(quote.subtotal_cents / 100).toFixed(2)}
++                            </p>
++                            <p className="text-gray-400">
++                                Shipping:{" "}
++                                {quote.shipping_cents === 0
++                                    ? "Free"
++                                    : `$${(quote.shipping_cents / 100).toFixed(2)}`}
++                            </p>
++                            <p className="text-gray-400">
++                                Tax: ${(quote.tax_cents / 100).toFixed(2)}
++                            </p>
++                            <p className="font-bold text-lg mt-2">
++                                Total: ${(quote.total_cents / 100).toFixed(2)}
++                            </p>
++                        </>
++                    ) : (
++                        <p className="text-gray-500 text-sm" role="status">
++                            {!cartQuoteError
++                                ? "Calculating your totals from the current catalog…"
++                                : "Fix pricing above to continue."}
++                        </p>
++                    )}
+                 </div>
+ 
++                <div className="bg-gray-800 p-4 rounded mb-6">
++                    <h2 className="text-lg font-bold mb-3">Contact &amp; shipping</h2>
++                    <div className="space-y-3 max-w-md">
++                        <div>
++                            <label htmlFor="ck-name" className="block text-sm text-gray-400 mb-1">
++                                Full name
++                            </label>
++                            <input
++                                id="ck-name"
++                                name="name"
++                                value={formData.name}
++                                onChange={handleFormChange}
++                                className="w-full p-2 rounded bg-gray-900 border border-gray-600 text-white"
++                                autoComplete="name"
++                            />
++                            {errors.name && <p className="text-red-400 text-sm mt-1">{errors.name}</p>}
++                        </div>
++                        <div>
++                            <label htmlFor="ck-email" className="block text-sm text-gray-400 mb-1">
++                                Email
++                            </label>
++                            <input
++                                id="ck-email"
++                                name="email"
++                                type="email"
++                                value={formData.email}
++                                onChange={handleFormChange}
++                                className="w-full p-2 rounded bg-gray-900 border border-gray-600 text-white"
++                                autoComplete="email"
++                            />
++                            {errors.email && <p className="text-red-400 text-sm mt-1">{errors.email}</p>}
++                        </div>
++                        <div>
++                            <label htmlFor="ck-addr" className="block text-sm text-gray-400 mb-1">
++                                Shipping address
++                            </label>
++                            <textarea
++                                id="ck-addr"
++                                name="address"
++                                value={formData.address}
++                                onChange={handleFormChange}
++                                rows={3}
++                                className="w-full p-2 rounded bg-gray-900 border border-gray-600 text-white"
++                                autoComplete="street-address"
++                            />
++                            {errors.address && <p className="text-red-400 text-sm mt-1">{errors.address}</p>}
++                        </div>
++                    </div>
++                </div>
++
++                {!IS_MOCK_PAYMENT && paymentError && !clientSecret && (
++                    <p className="text-red-500 mt-2 mb-4" role="alert">
++                        {paymentError}
++                    </p>
++                )}
++
+                 {IS_MOCK_PAYMENT ? (
+                     <form onSubmit={handleSubmit}>
+-                        {paymentError && <p className="text-red-500 mt-2">{paymentError}</p>}
++                        {paymentError && (
++                            <p className="text-red-500 mt-2" role="alert">
++                                {paymentError}
++                            </p>
++                        )}
+                         <button
+                             type="submit"
+-                            disabled={!formValid || processing}
++                            disabled={!formValid || processing || !quote || Boolean(cartQuoteError)}
+                             className={`w-full p-3 rounded font-bold text-lg ${processing ? "bg-gray-600" : "bg-green-500 hover:bg-green-600"}`}
+                         >
+                             {processing ? "Processing..." : "Pay Now"}
+                         </button>
+                     </form>
+                 ) : (
+-                    clientSecret && stripePromise ? (
++                    clientSecret && stripePromise && quote ? (
+                         <Elements stripe={stripePromise} options={{ clientSecret }}>
+-                            <InnerCheckoutForm clientSecret={clientSecret} total={total} cartItems={cartItems} clearCart={clearCart} formValid={formValid} />
++                            <InnerCheckoutForm
++                                orderTotalDollars={quote.total_cents / 100}
++                                cartItems={cartItems}
++                                clearCart={clearCart}
++                                formValid={formValid}
++                                customerEmail={formData.email}
++                            />
+                         </Elements>
+                     ) : (
+-                        <p className="text-gray-400">Initializing payment...</p>
++                        <p className="text-gray-400" role="status">
++                            {!quote && !cartQuoteError
++                                ? "Loading pricing and payment…"
++                                : "Initializing payment..."}
++                        </p>
+                     )
+                 )}
+             </main>
+diff --git a/_bmad-output/planning-artifacts/architecture.md b/_bmad-output/planning-artifacts/architecture.md
+index 7632c8c..d4b15d9 100644
+--- a/_bmad-output/planning-artifacts/architecture.md
++++ b/_bmad-output/planning-artifacts/architecture.md
+@@ -112,7 +112,7 @@ order leaves the storefront half-migrated and nothing stable.
+   in production while tests run the `.ts`. Each pair requires a diff,
+   end-to-end parity run against Stripe test mode, and an explicit
+   choose-and-delete commit:
+-  - `api/create-payment-intent.js` vs. `api/create-payment-intent.ts`
++  - (Resolved E3-S5) Obsolete `api/create-payment-intent.js` was removed; only `api/create-payment-intent.ts` is maintained.
+   - `api/stripe-webhook.js` vs. `api/stripe-webhook.ts`
+   - `vite.config.js` vs. `vite.config.ts`
+   - `src/main.js` vs. `src/main.tsx` (compounded by `src/main.tsx`
+@@ -170,6 +170,7 @@ starter-template evaluation):**
+   This is simultaneously a UX decision (redirect vs. embedded brand
+   continuity) and a technical decision (how much of cart→order lives in
+   our code vs. Stripe's).
++- **Q1 — resolution (E3-S5):** The storefront stays on **Stripe PaymentIntents** with the **embedded Payment Element** on `/checkout` (existing brownfield). Merchandise, shipping, tax, and **PI `amount`** all come from **`quoteCartLines` / `quoteForPaymentItems`** in `api/_lib/catalog.ts`, aligned with **POST `/api/cart-quote`**. **Stripe Checkout Session** (hosted, redirect) remains a **future opt-in**; Epic 4 webhooks can switch between `payment_intent.*` and `checkout.session.completed` when we add a session-based path.
+ - **Q10 — Guest + order lookup vs. accounts-day-one**. Reshapes the
+   Supabase Auth configuration, RLS policy topology, order-confirmation
+   email content, nav structure, and whether `customers` is an
+diff --git a/api/_lib/createPaymentIntentBody.ts b/api/_lib/createPaymentIntentBody.ts
+new file mode 100644
+index 0000000..f9c1781
+--- /dev/null
++++ b/api/_lib/createPaymentIntentBody.ts
+@@ -0,0 +1,52 @@
++import { z } from "zod";
++
++/** One checkout line; `quantity` is the public Epic 3 field (mirrors `checkoutLineDraftSchema`). */
++export const paymentIntentLineItemSchema = z.object({
++  sku: z.string().min(1),
++  quantity: z.number().int().positive(),
++  variant_id: z.string().uuid().optional(),
++  product_slug: z.string().min(1).optional(),
++});
++
++export type PaymentIntentLineItem = z.infer<typeof paymentIntentLineItemSchema>;
++
++/**
++ * POST /api/create-payment-intent body. When `items` is non-empty, `amount` is ignored for pricing (AC 3-3).
++ */
++export const createPaymentIntentBodySchema = z
++  .object({
++    items: z.array(paymentIntentLineItemSchema).optional(),
++    /** Ignored when `items` has at least one line (server computes amount). */
++    amount: z.number().optional(),
++    currency: z.string().min(1).optional(),
++    email: z.preprocess(
++      (v) => (v === "" || v == null ? undefined : v),
++      z.string().email().optional()
++    ),
++  })
++  .superRefine((data, ctx) => {
++    const hasItems = (data.items?.length ?? 0) > 0;
++    const amount = data.amount;
++    if (!hasItems && (amount == null || !Number.isFinite(amount) || Math.floor(amount) < 1)) {
++      ctx.addIssue({
++        code: "custom",
++        message: "No items or amount",
++        path: ["amount"],
++      });
++    }
++  })
++  .transform((data) => ({
++    ...data,
++    currency: data.currency && data.currency.length > 0 ? data.currency : "usd",
++  }));
++
++export type CreatePaymentIntentBody = z.infer<typeof createPaymentIntentBodySchema>;
++
++export function parseCreatePaymentIntentBody(raw: unknown): CreatePaymentIntentBody {
++  return createPaymentIntentBodySchema.parse(raw);
++}
++
++/** Map validated lines to `computeAmountCents` / catalog input (`qty`). */
++export function lineItemsToCatalogRows(items: PaymentIntentLineItem[]): Array<{ sku: string; qty: number }> {
++  return items.map((l) => ({ sku: l.sku, qty: l.quantity }));
++}
+diff --git a/api/_lib/createPaymentIntentBody.test.ts b/api/_lib/createPaymentIntentBody.test.ts
+new file mode 100644
+index 0000000..3ba5761
+--- /dev/null
++++ b/api/_lib/createPaymentIntentBody.test.ts
+@@ -0,0 +1,45 @@
++import { describe, expect, it } from "vitest";
++import { createPaymentIntentBodySchema, lineItemsToCatalogRows } from "./createPaymentIntentBody";
++
++describe("createPaymentIntentBodySchema", () => {
++  it("accepts items[] with quantity and defaults currency", () => {
++    const r = createPaymentIntentBodySchema.safeParse({
++      items: [{ sku: "ZLX-A", quantity: 2 }],
++    });
++    expect(r.success).toBe(true);
++    if (r.success) {
++      expect(r.data.currency).toBe("usd");
++      expect(r.data.items?.[0].quantity).toBe(2);
++    }
++  });
++
++  it("rejects when neither items nor amount", () => {
++    const r = createPaymentIntentBodySchema.safeParse({});
++    expect(r.success).toBe(false);
++  });
++
++  it("accepts legacy amount-only body", () => {
++    const r = createPaymentIntentBodySchema.safeParse({ amount: 1000, currency: "usd" });
++    expect(r.success).toBe(true);
++  });
++
++  it("ignores amount in parse output when items present (caller responsibility)", () => {
++    const r = createPaymentIntentBodySchema.safeParse({
++      items: [{ sku: "ZLX-A", quantity: 1 }],
++      amount: 999_999,
++    });
++    expect(r.success).toBe(true);
++    if (r.success) {
++      expect(r.data.items?.length).toBe(1);
++      expect(r.data.amount).toBe(999_999);
++    }
++  });
++});
++
++describe("lineItemsToCatalogRows", () => {
++  it("maps quantity to qty", () => {
++    expect(
++      lineItemsToCatalogRows([{ sku: "S", quantity: 3, variant_id: "550e8400-e29b-41d4-a716-446655440000" }])
++    ).toEqual([{ sku: "S", qty: 3 }]);
++  });
++});
+diff --git a/api/_lib/checkoutQuote.ts b/api/_lib/checkoutQuote.ts
+new file mode 100644
+index 0000000..67ea393
+--- /dev/null
++++ b/api/_lib/checkoutQuote.ts
+@@ -0,0 +1,25 @@
++import {
++  quoteCartLines,
++  FLAT_SHIPPING_CENTS,
++  FREE_SHIPPING_THRESHOLD_CENTS,
++  TAX_BPS,
++  type CartQuote,
++} from "./catalog";
++
++export type { CartQuote };
++export { FLAT_SHIPPING_CENTS, FREE_SHIPPING_THRESHOLD_CENTS, TAX_BPS };
++
++/** @deprecated use `FLAT_SHIPPING_CENTS` / `TAX_BPS` (alias for story 3-3 / tests) */
++export const CHECKOUT_FLAT_SHIPPING_CENTS = FLAT_SHIPPING_CENTS;
++export const CHECKOUT_TAX_BPS = TAX_BPS;
++
++/**
++ * One PaymentIntent `amount` (minor units) — same rules as `quoteCartLines` / cart-quote `total_cents`.
++ */
++export function totalChargeCentsFromCatalogLines(
++  items: Array<{ sku: string; qty: number }>,
++): number {
++  return quoteCartLines(
++    items.map((i) => ({ sku: i.sku, quantity: i.qty })),
++  ).total_cents;
++}
+diff --git a/api/_lib/checkoutQuote.test.ts b/api/_lib/checkoutQuote.test.ts
+new file mode 100644
+index 0000000..ab5338f
+--- /dev/null
++++ b/api/_lib/checkoutQuote.test.ts
+@@ -0,0 +1,28 @@
++// @vitest-environment node
++import { describe, expect, it } from "vitest";
++import { FLAT_SHIPPING_CENTS, TAX_BPS, quoteCartLines } from "./catalog";
++import { totalChargeCentsFromCatalogLines } from "./checkoutQuote";
++
++describe("totalChargeCentsFromCatalogLines", () => {
++  it("matches quoteCartLines total (ZLX-BLK-S @ 2400¢ × 1, flat ship until free threshold)", () => {
++    const items = [{ sku: "ZLX-BLK-S", qty: 1 }];
++    const got = totalChargeCentsFromCatalogLines(items);
++    const q = quoteCartLines(items.map((l) => ({ sku: l.sku, quantity: l.qty })));
++    expect(got).toBe(q.total_cents);
++    const merchandise = 2400;
++    const tax = Math.round((merchandise * TAX_BPS) / 10_000);
++    const shipping = merchandise >= 5_000 ? 0 : FLAT_SHIPPING_CENTS;
++    expect(got).toBe(merchandise + tax + shipping);
++  });
++
++  it("throws for unknown SKU (propagates catalog error)", () => {
++    expect(() => totalChargeCentsFromCatalogLines([{ sku: "no-such-sku-xyz", qty: 1 }])).toThrow();
++  });
++
++  it("waives flat shipping at or above $50 merchandise (3 × ZLX-BLK-S)", () => {
++    const got = totalChargeCentsFromCatalogLines([{ sku: "ZLX-BLK-S", qty: 3 }]);
++    const sub = 7200;
++    const tax = Math.round((sub * TAX_BPS) / 10_000);
++    expect(got).toBe(sub + tax);
++  });
++});
+diff --git a/api/cart-quote.ts b/api/cart-quote.ts
+new file mode 100644
+index 0000000..a081eb0
+--- /dev/null
++++ b/api/cart-quote.ts
+@@ -0,0 +1,54 @@
++import type { VercelRequest, VercelResponse } from "@vercel/node";
++import { z } from "zod";
++import { QuoteError, quoteCartLines } from "./_lib/catalog";
++import { ENV } from "./_lib/env";
++import { log } from "./_lib/logger";
++
++const bodySchema = z.object({
++  items: z
++    .array(
++      z.object({
++        sku: z.string().min(1, "sku is required"),
++        quantity: z.coerce
++          .number()
++          .int("quantity must be an integer")
++          .positive("quantity must be a positive integer"),
++      }),
++    )
++    .min(1, "at least one line item is required"),
++});
++
++function cors(res: VercelResponse) {
++  res.setHeader("Access-Control-Allow-Origin", ENV.FRONTEND_URL);
++  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
++  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
++}
++
++export default async function handler(req: VercelRequest, res: VercelResponse) {
++  cors(res);
++  if (req.method === "OPTIONS") return res.status(200).end();
++  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
++
++  const parsed = bodySchema.safeParse(req.body);
++  if (!parsed.success) {
++    return res.status(400).json({
++      code: "INVALID_BODY",
++      error: "Invalid request body",
++      details: z.treeifyError(parsed.error),
++    });
++  }
++  const { items } = parsed.data;
++  try {
++    const q = quoteCartLines(items);
++    return res.status(200).json(q);
++  } catch (e) {
++    if (e instanceof QuoteError) {
++      if (e.code === "UNKNOWN_SKU") {
++        return res.status(400).json({ code: e.code, error: e.message });
++      }
++      return res.status(400).json({ code: e.code, error: e.message });
++    }
++    log.error({ err: e }, "cart-quote failed");
++    return res.status(500).json({ error: e instanceof Error ? e.message : "Server error" });
++  }
++}
+diff --git a/api/create-payment-intent.test.ts b/api/create-payment-intent.test.ts
+new file mode 100644
+index 0000000..6c5ab03
+--- /dev/null
++++ b/api/create-payment-intent.test.ts
+@@ -0,0 +1,12 @@
++// @vitest-environment node
++import { describe, expect, it } from "vitest";
++import { quoteForPaymentItems } from "./_lib/catalog";
++import { totalChargeCentsFromCatalogLines } from "./_lib/checkoutQuote";
++
++describe("create-payment-intent / checkout quote alignment (E3-S5)", () => {
++  it("totalChargeCentsFromCatalogLines matches quoteForPaymentItems for a known SKU", () => {
++    const fromQuote = quoteForPaymentItems([{ sku: "ZLX-BLK-S", qty: 1 }]).total_cents;
++    const fromHelper = totalChargeCentsFromCatalogLines([{ sku: "ZLX-BLK-S", qty: 1 }]);
++    expect(fromHelper).toBe(fromQuote);
++  });
++});
+diff --git a/src/hooks/useCartQuote.ts b/src/hooks/useCartQuote.ts
+new file mode 100644
+index 0000000..7f9d0b5
+--- /dev/null
++++ b/src/hooks/useCartQuote.ts
+@@ -0,0 +1,71 @@
++import { useCallback, useEffect, useMemo, useState } from "react";
++import { toCheckoutLines } from "../cart/checkoutLines";
++import type { StorefrontCartLine } from "../cart/cartLine";
++import type { ServerCartQuote } from "../lib/cartQuoteTypes";
++
++/**
++ * Fetches server catalog quote for current cart. Skips when there are no checkout SKUs.
++ */
++export function useCartQuote(cartItems: StorefrontCartLine[]) {
++  const drafts = useMemo(() => toCheckoutLines(cartItems), [cartItems]);
++
++  const [quote, setQuote] = useState<ServerCartQuote | null>(null);
++  const [loading, setLoading] = useState(false);
++  const [error, setError] = useState<string | null>(null);
++  const [retryToken, setRetryToken] = useState(0);
++
++  const refetch = useCallback(() => {
++    setRetryToken((t) => t + 1);
++  }, []);
++
++  useEffect(() => {
++    if (drafts.length === 0) {
++      setQuote(null);
++      setError(null);
++      setLoading(false);
++      return;
++    }
++
++    const ctrl = new AbortController();
++    const t = window.setTimeout(() => {
++      (async () => {
++        setLoading(true);
++        setError(null);
++        try {
++          const res = await fetch("/api/cart-quote", {
++            method: "POST",
++            signal: ctrl.signal,
++            headers: { "Content-Type": "application/json" },
++            body: JSON.stringify({ items: drafts }),
++          });
++          const json = (await res.json()) as { error?: string; code?: string };
++          if (!res.ok) {
++            const msg =
++              typeof json.error === "string"
++                ? json.error
++                : "Could not get price quote from the server.";
++            setQuote(null);
++            setError(msg);
++            return;
++          }
++          setQuote(json as ServerCartQuote);
++        } catch (e) {
++          if ((e as Error).name === "AbortError") return;
++          setQuote(null);
++          setError(
++            "We could not reach the server. Run `vercel dev` (with the app) or check your network.",
++          );
++        } finally {
++          if (!ctrl.signal.aborted) setLoading(false);
++        }
++      })();
++    }, 200);
++
++    return () => {
++      clearTimeout(t);
++      ctrl.abort();
++    };
++  }, [drafts, retryToken]);
++
++  return { quote, loading, error, refetch, drafts } as const;
++}
+diff --git a/src/lib/cartQuoteTypes.ts b/src/lib/cartQuoteTypes.ts
+new file mode 100644
+index 0000000..c406410
+--- /dev/null
++++ b/src/lib/cartQuoteTypes.ts
+@@ -0,0 +1,25 @@
++/**
++ * Browser-side mirror of `CartQuote` from `api/_lib/catalog` (JSON from POST /api/cart-quote).
++ */
++export type ServerCartLineQuote = {
++  sku: string;
++  quantity: number;
++  unit_cents: number;
++  line_cents: number;
++  product_title: string;
++};
++
++/** @alias for cart row display (same as `ServerCartLineQuote`) */
++export type CartLineQuote = ServerCartLineQuote;
++
++export type ServerCartQuote = {
++  currency: "usd";
++  lines: ServerCartLineQuote[];
++  subtotal_cents: number;
++  shipping_cents: number;
++  tax_cents: number;
++  total_cents: number;
++};
++
++/** Alias used by `useCartQuote` and API responses (same shape as `CartQuote` in `api/_lib/catalog`). */
++export type CartQuote = ServerCartQuote;

@@ -22,7 +22,7 @@ stripe listen --forward-to localhost:3000/api/stripe-webhook
 ```
 
 ## Flow
-- Client POSTs `/api/create-payment-intent` with items `{sku,qty}`.
-- Server computes amount from `data/products.json`, creates PaymentIntent, returns `clientSecret` + `orderId`.
-- Client renders `<PaymentElement>` and confirms.
+- **Cart + checkout subtotals, tax, shipping, and line amounts** come from `POST /api/cart-quote` (body: `{ items: { sku, quantity }[] }`). The server uses `data/products.json` and the same pricing policy as the PaymentIntent path (7% tax on merchandise, flat $5 shipping waived when subtotal is at or above $50.00 in merchandise).
+- Client POSTs `/api/create-payment-intent` with validated line items (including `quantity` per line). The server **ignores** a client `amount` when `items` is non-empty; it computes the charge from the catalog in minor units, **including** tax and shipping, so the charged amount matches the order summary and `/api/cart-quote` for the same lines.
+- Server returns `clientSecret` and creates PaymentIntent. Client renders `<PaymentElement>` and confirms.
 - Stripe sends webhook; we verify signature, record order (local JSON in dev, Vercel Blob in prod), and (optionally) send receipt.

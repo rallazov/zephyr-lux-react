@@ -1,22 +1,27 @@
 import React, {
   createContext,
   type ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
 } from "react";
+import type { StorefrontCartLine } from "../cart/cartLine";
+import {
+  reconcileCartLines,
+  storefrontCartLinesEqual,
+} from "../cart/reconcile";
+import {
+  readCartFromLocalStorage,
+  writeCartToLocalStorage,
+} from "../cart/storage";
+import type { CatalogListItem } from "../catalog/types";
+import { getDefaultCatalogAdapter } from "../catalog/factory";
 import { sameCartLine, normalizeLineSku } from "../cart/lineKey";
 
-export interface CartItem {
-  id: number;
-  name: string;
-  quantity: number;
-  price: number;
-  image: string;
-  /** Variant SKU; legacy rows may omit (merged as ""). */
-  sku?: string;
-}
+/** @alias StorefrontCartLine — persisted storefront cart row */
+export type CartItem = StorefrontCartLine;
 
 interface CartContextType {
   cartItems: CartItem[];
@@ -28,6 +33,11 @@ interface CartContextType {
   removeFromCart: (id: number, sku?: string) => void;
   cartCount: number;
   clearCart: () => void;
+  /** Shown after catalog sync updates prices */
+  reconcileNotice: string | null;
+  clearReconcileNotice: () => void;
+  /** Apply catalog price/SKU sync (e.g. cart mount or after cart edits on /cart). */
+  hydrateCartFromCatalog: (list: CatalogListItem[]) => void;
 }
 
 export const CartContext = createContext<CartContextType>({
@@ -36,19 +46,55 @@ export const CartContext = createContext<CartContextType>({
   removeFromCart: () => {},
   cartCount: 0,
   clearCart: () => {},
+  reconcileNotice: null,
+  clearReconcileNotice: () => {},
+  hydrateCartFromCatalog: () => {},
 });
 
 export const CartProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  const [cartItems, setCartItems] = useState<CartItem[]>(() => {
-    const savedCart = localStorage.getItem("cartItems");
-    return savedCart ? JSON.parse(savedCart) : [];
-  });
+  const [cartItems, setCartItems] = useState<CartItem[]>(() =>
+    typeof window === "undefined" ? [] : readCartFromLocalStorage()
+  );
+  const [reconcileNotice, setReconcileNotice] = useState<string | null>(null);
 
   useEffect(() => {
-    localStorage.setItem("cartItems", JSON.stringify(cartItems));
+    writeCartToLocalStorage(cartItems);
   }, [cartItems]);
+
+  const hydrateCartFromCatalog = useCallback((list: CatalogListItem[]) => {
+    setCartItems((prev) => {
+      const { lines, priceUpdated } = reconcileCartLines(prev, list);
+      if (storefrontCartLinesEqual(prev, lines)) {
+        return prev;
+      }
+      if (priceUpdated) {
+        queueMicrotask(() => {
+          setReconcileNotice("Prices were updated to match our current catalog.");
+        });
+      }
+      return lines;
+    });
+  }, []);
+
+  /** Initial catalog sync on app load */
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const adapter = getDefaultCatalogAdapter();
+        const list = await adapter.listProducts();
+        if (cancelled) return;
+        hydrateCartFromCatalog(list);
+      } catch (e) {
+        console.warn("[cart] catalog sync failed:", e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrateCartFromCatalog]);
 
   const addToCart = (product: CartItem) => {
     setCartItems((prevCartItems) => {
@@ -62,9 +108,15 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
             : item
         );
       }
+      const sku = normalizeLineSku(product.sku);
       return [
         ...prevCartItems,
-        { ...product, quantity: 1, sku: normalizeLineSku(product.sku) || undefined },
+        {
+          ...product,
+          quantity: 1,
+          sku: sku || undefined,
+          product_slug: product.product_slug?.trim() || undefined,
+        },
       ];
     });
   };
@@ -85,7 +137,10 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
 
   const clearCart = () => {
     setCartItems([]);
+    setReconcileNotice(null);
   };
+
+  const clearReconcileNotice = () => setReconcileNotice(null);
 
   const cartCount = useMemo(
     () => cartItems.reduce((count, item) => count + item.quantity, 0),
@@ -94,7 +149,16 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
 
   return (
     <CartContext.Provider
-      value={{ cartItems, addToCart, removeFromCart, cartCount, clearCart }}
+      value={{
+        cartItems,
+        addToCart,
+        removeFromCart,
+        cartCount,
+        clearCart,
+        reconcileNotice,
+        clearReconcileNotice,
+        hydrateCartFromCatalog,
+      }}
     >
       {children}
     </CartContext.Provider>

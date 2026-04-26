@@ -25,7 +25,7 @@
 #   - Dev moves story to 'review', then runs code-review
 
 generated: 2026-04-26T00:00:00Z
-last_updated: 2026-04-26T12:50:00Z
+last_updated: 2026-04-26T22:00:00Z
 project: zephyr-lux-react
 project_key: zlx
 tracking_system: file-system
@@ -49,14 +49,14 @@ development_status:
   2-6-admin-create-edit-product-variants: done
   epic-2-retrospective: optional
 
-  epic-3: backlog
-  # 3-1: Client cart merge key (storefrontProductId, sku) lands in story 2-4; this story = persistence, reconciliation, checkout/server alignment—update 3-1 *.md when authored to match.
-  3-1-cart-sku-variant-identity: backlog
-  3-2-cart-validate-stock-variants: backlog
-  3-3-checkout-line-items-sku-quantity: backlog
-  3-4-server-subtotal-from-catalog: backlog
-  3-5-stripe-checkout-or-payment-intent: backlog
-  3-6-checkout-confirmation-cancel-failure-ui: backlog
+  epic-3: in-progress
+  # 3-1: Client cart merge key (storefrontProductId, sku) lands in story 2-4; this story = persistence, reconciliation, checkout/server alignment—story file: 3-1-cart-sku-variant-identity.md
+  3-1-cart-sku-variant-identity: done
+  3-2-cart-validate-stock-variants: done
+  3-3-checkout-line-items-sku-quantity: done
+  3-4-server-subtotal-from-catalog: done
+  3-5-stripe-checkout-or-payment-intent: done
+  3-6-checkout-confirmation-cancel-failure-ui: done
   epic-3-retrospective: optional
 
   epic-4: backlog
