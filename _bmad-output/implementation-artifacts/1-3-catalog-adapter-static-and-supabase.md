@@ -1,6 +1,6 @@
 # Story 1.3: Catalog adapter (static now, Supabase later)
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -22,24 +22,38 @@ so that FR-CAT-001 (single canonical catalog), PRD Release 0 (“product list an
 
 ## Tasks / Subtasks
 
-- [ ] **Task 0 — Prerequisite (AC: 2)**  
-  - [ ] Confirm [1-2](1-2-define-shared-commerce-domain-types.md) shared module exists (e.g. `src/domain/commerce` or path chosen in 1-2) with `Product` + variant schemas. If not, **stop** and implement/merge 1-2 first.
+- [x] **Task 0 — Prerequisite (AC: 2)**  
+  - [x] Confirm [1-2](1-2-define-shared-commerce-domain-types.md) shared module exists (e.g. `src/domain/commerce` or path chosen in 1-2) with `Product` + variant schemas. If not, **stop** and implement/merge 1-2 first.
 
-- [ ] **Task 1 — Interface + static implementation (AC: 1, 3, 6, 7)**  
-  - [ ] Add a small `src/catalog/` (or `src/lib/catalog/`) area: `CatalogAdapter` interface, `createCatalogAdapter()` (or env-based factory), **static** implementation that loads/validates JSON → canonical types.  
-  - [ ] Replace inline fetch logic in [ProductList.tsx](src/components/ProductList/ProductList.tsx) and [ProductDetail.tsx](src/components/ProductDetail/ProductDetail.tsx) with calls to the adapter.  
-  - [ ] Unify `title` vs `name`, dollars vs `*_cents`, and slug presence per canonical model; document any temporary display-only fields.
+- [x] **Task 1 — Interface + static implementation (AC: 1, 3, 6, 7)**  
+  - [x] Add a small `src/catalog/` (or `src/lib/catalog/`) area: `CatalogAdapter` interface, `createCatalogAdapter()` (or env-based factory), **static** implementation that loads/validates JSON → canonical types.  
+  - [x] Replace inline fetch logic in [ProductList.tsx](src/components/ProductList/ProductList.tsx) and [ProductDetail.tsx](src/components/ProductDetail/ProductDetail.tsx) with calls to the adapter.  
+  - [x] Unify `title` vs `name`, dollars vs `*_cents`, and slug presence per canonical model; document any temporary display-only fields.
 
-- [ ] **Task 2 — Server alignment (AC: 4)**  
-  - [ ] Refactor [api/_lib/catalog.ts](api/_lib/catalog.ts) to use shared parse/normalize helpers from Task 1 (or re-export the same `loadCatalog` semantics built on the shared model).  
-  - [ ] Ensure SKU lookup and `computeAmountCents` still match **integer cents** rules from story 1-2 (no silent dollar/cents mix).
+- [x] **Task 2 — Server alignment (AC: 4)**  
+  - [x] Refactor [api/_lib/catalog.ts](api/_lib/catalog.ts) to use shared parse/normalize helpers from Task 1 (or re-export the same `loadCatalog` semantics built on the shared model).  
+  - [x] Ensure SKU lookup and `computeAmountCents` still match **integer cents** rules from story 1-2 (no silent dollar/cents mix).
 
-- [ ] **Task 3 — Supabase seam (AC: 5)**  
-  - [ ] Add `SupabaseCatalogAdapter` stub (or factory branch) with TODO pointing to Epic 2 / E2-S5; no real DB access in this story.
+- [x] **Task 3 — Supabase seam (AC: 5)**  
+  - [x] Add `SupabaseCatalogAdapter` stub (or factory branch) with TODO pointing to Epic 2 / E2-S5; no real DB access in this story.
 
-- [ ] **Task 4 — Verify (AC: 1, 7)**  
-  - [ ] `npm run build`.  
-  - [ ] Manually: `/products` and `/product/:slug` (for a slug present in the canonical data) show consistent data; unknown slug shows the existing not-found pattern.
+- [x] **Task 4 — Verify (AC: 1, 7)**  
+  - [x] `npm run build`.  
+  - [x] Manually: `/products` and `/product/:slug` (for a slug present in the canonical data) show consistent data; unknown slug shows the existing not-found pattern.
+
+### Review Findings
+
+- [x] [Review][Patch] Harden or contextualize `loadFromDisk` failures (missing or unreadable `data/products.json`, JSON parse, Zod) so API callers get actionable errors — `loadFromDisk` in [api/_lib/catalog.ts](api/_lib/catalog.ts) (no line: implementation spans loader body).
+
+- [x] [Review][Patch] Avoid silent duplicate-SKU loss when building the server `bySku` map: log, throw in development, or document first-wins policy explicitly — [api/_lib/catalog.ts](api/_lib/catalog.ts) (loop that sets `bySku`).
+
+- [x] [Review][Patch] Show a user-visible error when `listProducts` rejects (not only `console.error`) so an empty list is not mistaken for an empty catalog — [src/components/ProductList/ProductList.tsx](src/components/ProductList/ProductList.tsx).
+
+- [x] [Review][Patch] Make `VITE_CATALOG_BACKEND` selection robust to casing (e.g. compare `toLowerCase()`), so `Supabase` does not silently fall back to static — [src/catalog/adapter.ts](src/catalog/adapter.ts) (`readCatalogEnv`).
+
+- [x] [Review][Defer] Product detail still derives hero image and single price from the first variant; full variant pickers and per-variant prices are out of scope for this story and remain for a later epic — [src/components/ProductDetail/ProductDetail.tsx](src/components/ProductDetail/ProductDetail.tsx) — deferred, pre-existing / scoped out in story notes (cart and variant UX).
+
+- [x] [Review][Defer] Strict validation of line-item `qty` and hostile metadata in `computeAmountCents` and webhook order construction — [api/_lib/catalog.ts](api/_lib/catalog.ts) — deferred, pre-existing quantity coercion pattern not introduced by the cents migration.
 
 ## Dev Notes
 
@@ -118,20 +132,44 @@ so that FR-CAT-001 (single canonical catalog), PRD Release 0 (“product list an
 
 ## Story completion status
 
-- **Status:** `ready-for-dev`  
-- **Note:** Ultimate context engine analysis completed — comprehensive developer guide created.
+- **Status:** `done`  
+- **Note:** Code review (2026-04-26) patch items in `### Review Findings` were applied in the same session; remaining defer items are tracked in `deferred-work.md`.
 
 ## Dev Agent Record
 
 ### Agent Model Used
 
-_(Populate during dev-story)_
+Composer (dev-story session)
 
 ### Debug Log References
 
 ### Completion Notes List
 
+- Implemented `src/catalog/*`: Zod parse of authoritative `data/products.json`, `parseStaticCatalogData`, `StaticCatalogAdapter`, `getDefaultCatalogAdapter()` (bundles JSON via Vite), `createCatalogAdapter` + `SupabaseCatalogAdapter` stub; factory uses `VITE_CATALOG_BACKEND=supabase` to select stub (throws with Epic 2 pointer).
+- **Authoritative static source:** `data/products.json` (variant-level). SPA and API both use `parseStaticCatalogData`; public JSON duplicates removed: deleted `public/products.json` and `public/assets/products.json` (replaced by bundled catalog + list/detail consistency).
+- `ProductList` / `ProductDetail` use shared adapter and domain-derived list/detail types (`CatalogListItem`, `CatalogProductDetail`); cart still uses legacy numeric `storefrontProductId` from static `id` until Epic 3.
+- `api/_lib/catalog.ts` + `api/stripe-webhook.ts`: `loadCatalog` / `findVariantBySku` / `computeAmountCents` use `Product` / `ProductVariant` and `price_cents` (integer cents only).
+- Verification: `npm run build` passed; `eslint src/catalog` clean.
+- Code review follow-up: actionable errors in `api/_lib/catalog.ts` `loadFromDisk`, `console.warn` on duplicate SKU, user-visible `ProductList` load error, case-insensitive `VITE_CATALOG_BACKEND` in `readCatalogEnv`.
+
 ### File List
+
+- `tsconfig.json` — `resolveJsonModule` for bundling `data/products.json` in the SPA
+- `src/catalog/adapter.ts` — (new) interface, static + Supabase stub, factory
+- `src/catalog/factory.ts` — (new) `getDefaultCatalogAdapter`
+- `src/catalog/index.ts` — (new) barrel
+- `src/catalog/parse.ts` — (new) `parseStaticCatalogData`, normalization to `productSchema`
+- `src/catalog/raw-static.ts` — (new) Zod for static file shape
+- `src/catalog/static-bundled.ts` — (new) bundled import of `data/products.json`
+- `src/catalog/types.ts` — (new) list/detail view types
+- `src/components/ProductList/ProductList.tsx` — adapter + canonical fields
+- `src/components/ProductDetail/ProductDetail.tsx` — adapter + canonical fields
+- `api/_lib/catalog.ts` — shared parse + `price_cents` server usage
+- `api/stripe-webhook.ts` — `unitPrice` from `price_cents`
+- `public/products.json` — **deleted** (replaced by single authoritative source)
+- `public/assets/products.json` — **deleted** (replaced by single authoritative source)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — story status
+- `_bmad-output/implementation-artifacts/1-3-catalog-adapter-static-and-supabase.md` — story (permitted sections)
 
 ## Questions (non-blocking)
 
@@ -141,6 +179,7 @@ _(Populate during dev-story)_
 ## Change Log
 
 - 2026-04-26 — Story created (bmad-create-story). Target: PRD E1-S3; first `backlog` story in [sprint-status.yaml](_bmad-output/implementation-artifacts/sprint-status.yaml) at time of run.
+- 2026-04-26 — Dev-story complete: static catalog adapter, API alignment, remove redundant public JSON, Supabase stub; build verified.
 
 ---
 
