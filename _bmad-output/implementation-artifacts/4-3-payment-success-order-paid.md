@@ -1,6 +1,6 @@
 # Story 4.3: Payment success — create/update order as paid
 
-Status: in-progress
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -116,7 +116,7 @@ Composer (Cursor agent)
 ### Completion Notes List
 
 - **Contract (AC5):** **(B) pending `pending_payment` order** — `create-payment-intent` allocates `order_number` via `allocate_order_number()`, inserts `orders` + snapshot `order_items` from `quoteCartLines` / `findVariantBySku`, creates Stripe PI with metadata `order_id` (+ existing `checkoutRef`, `line_digest`, etc.), then links `orders.stripe_payment_intent_id`. Webhook **does not** read legacy `itemsJSON` / fake `orderId`; it loads the order by PI id or `metadata.order_id`, verifies `amount_received` + currency vs persisted totals, and flips `payment_status` to `paid` with a **conditional update** (`pending_payment` only) for idempotency. **No inventory decrement** here (4-4).
-- **Read path (AC3):** Paid order for confirmation uses **GET** [`api/order-by-payment-intent.ts`](../../api/order-by-payment-intent.ts) with query `payment_intent_id` (Stripe PaymentIntent id). [`OrderConfirmation`](../../src/components/OrderConfirmation/OrderConfirmation.tsx) polls this when it has a `pi_` reference (query return or state).
+- **Read path (AC3):** Paid order for confirmation uses **GET** [`api/order-by-payment-intent.ts`](../../api/order-by-payment-intent.ts) with `payment_intent_id` **and** `order_lookup` (must match `orders.order_confirmation_key`, issued once from `create-payment-intent` and held in `sessionStorage` for the PI). Not PI-id-only (NFR-SEC-002). Vitest: [`api/order-by-payment-intent.test.ts`](../../api/order-by-payment-intent.test.ts).
 - **4-1 + 4-2 in repo:** Migrations [`supabase/migrations/20260427090000_orders_and_order_items.sql`](../../supabase/migrations/20260427090000_orders_and_order_items.sql) (orders, `order_items`, `allocate_order_number`, partial unique on `stripe_payment_intent_id`, RLS, `inventory_movements` → `orders` FK) and [`supabase/migrations/20260427120000_payment_events.sql`](../../supabase/migrations/20260427120000_payment_events.sql) (`payment_events`, `claim_payment_event`). Webhook requires `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (503 if missing).
 - **Tests:** `paymentIntentOrder`, `paymentEventLedger`, `orderSnapshots`, `applyPaymentSuccess`, updated `create-payment-intent.handler` (Vitest). Removed unfinished duplicate `paymentEventsLedger` module that assumed an unimplemented `claim_payment_event` RPC.
 - **Lint:** `npm run lint` still reports pre-existing issues in other files; touched files pass `tsc` + `vitest`.
@@ -134,6 +134,8 @@ Composer (Cursor agent)
 - `api/create-payment-intent.ts`
 - `api/stripe-webhook.ts`
 - `api/order-by-payment-intent.ts`
+- `api/order-by-payment-intent.test.ts`
+- `supabase/migrations/20260427150000_order_confirmation_key.sql`
 - `api/_lib/paymentIntentOrder.test.ts`
 - `api/_lib/paymentEventLedger.test.ts`
 - `api/_lib/orderSnapshots.test.ts`
@@ -149,12 +151,13 @@ Composer (Cursor agent)
 ### Change Log
 
 - 2026-04-26 — Story 4-3: Supabase orders + payment_events, pending order at PI creation, webhook marks paid idempotently, confirmation read API + UI, Vitest coverage; bundled 4-1/4-2 schema into one migration.
+- 2026-04-26 — Closed review: confirmation lookup is two-factor (PI id + `order_confirmation_key`); added `api/order-by-payment-intent.test.ts` and JSDoc; story marked **review**.
 
 ### Review Findings
 
 - [x] [Review][Decision] Align app ledger with `claim_payment_event` (4-2) — *Resolved in tree:* `api/stripe-webhook.ts` uses `claimPaymentEvent` → `public.claim_payment_event` and handles `process` / `skip_ok` / `busy` / `error` (see `api/_lib/paymentEventLedger.ts`). Prior review text referred to the older `insertOrGet` path.
 
-- [ ] [Review][Decision] Unauthenticated `GET` order-by-PI — `api/order-by-payment-intent` returns `customer_email` and line items to any caller with a `pi_` id (query param). Confirm whether the PaymentIntent id is an acceptable unauthenticated lookup capability for v1, or if the confirmation path should use a short-lived server token or session-scoped id (AC3, NFR-SEC-002).
+- [x] [Review][Decision] Unauthenticated `GET` order-by-PI — **Resolved for v1:** lookup requires **both** `payment_intent` / `payment_intent_id` **and** `order_lookup` (≥32 chars) matching `orders.order_confirmation_key` (random, issued in `create-payment-intent`, compared with `timingSafeEqual`). `OrderConfirmation` + `CheckoutPage` pass the key via `sessionStorage` (`zlx_pilu_{pi}`). Documented in handler JSDoc; covered by [`api/order-by-payment-intent.test.ts`](../../api/order-by-payment-intent.test.ts). Future: optional signed deep-link token if email links need read without session.
 
 - [x] [Review][Patch] Failed link from order to PI still returns 200 — When `update` to set `orders.stripe_payment_intent_id` fails after Stripe create (`create-payment-intent.ts`, link step after PI create), the handler logs but returns success. The confirmation `fetch` and `order-by-payment-intent` query key off `stripe_payment_intent_id`; the webhook can still find the order via `metadata.order_id`, but the read path may stay 404 until the row is fixed. Prefer failing the request, retrying the update, or a reconciled read path. — *Addressed: retries, then cancel PI, delete pending order, 500; see `api/create-payment-intent.ts`.*
 
@@ -162,9 +165,23 @@ Composer (Cursor agent)
 
 - [x] [Review][Patch] Strengthen AC4/7 coverage — `paymentEventLedger.test` covers first insert and duplicate-`processed` / duplicate-`failed`. Consider a handler-level or integration test: same `event.id` after full success returns `{ duplicate: true }` and does not re-mutate `orders`. — *Addressed: `api/stripe-webhook.handler.test.ts`.*
 
+- [x] [Review][Decision] Sprint status: epic-4 follow-on stories — This diff sets `4-4-inventory-decrement-once` … `4-7-log-notification-status` from **backlog** to **ready-for-dev** in the same edit as `4-3` → **review**. Confirm that promoting those rows now (before `4-3` is **done**) matches your process, or revert those lines until `4-3` closes. — *Resolved 2026-04-26: reviewer confirmed **keep `ready-for-dev`** (option 1).*
+
+- [x] [Review][Patch] `sprint-status.yaml` `last_updated` regression — Timestamp went from `2026-04-26T23:59:59Z` to `2026-04-26T20:50:00Z` (backward). Update to the actual edit time (monotonic) so audit trail is trustworthy. [`_bmad-output/implementation-artifacts/sprint-status.yaml`:28] — *Addressed: `last_updated` set to `2026-04-27T00:00:00Z` (monotonic after prior max).*
+
+- [x] [Review][Patch] Vitest: `payment_intent` query alias — Handler accepts both `payment_intent` and `payment_intent_id` (`api/order-by-payment-intent.ts`); new tests only exercise `payment_intent_id`. Add a case using `payment_intent` for parity (AC3 read path). [`api/order-by-payment-intent.test.ts`] — *Addressed: test “returns 200 when payment_intent query alias is used”.*
+
+- [x] [Review][Patch] Vitest: `order_lookup` length boundary — Assert `401` for length 31 and success path only when length ≥32 (matches `lookupKeysEqual` / trim behavior). [`api/order-by-payment-intent.test.ts`, `api/order-by-payment-intent.ts`:37-38, :122] — *Addressed: 31-char `401` test + 32-char happy path test.*
+
+- [x] [Review][Patch] Vitest: tighten 200 JSON assertion — Include `currency`, `payment_status`, and `payment_intent_id` in the expected payload so shape regressions fail CI (currently `expect.objectContaining` omits them). [`api/order-by-payment-intent.test.ts`] — *Addressed: assertions extended on alias + primary happy-path tests.*
+
+- [x] [Review][Defer] JSDoc coupling to route/component names — Handler comment cites `CheckoutPage`, `OrderConfirmation`, and AC ids; harmless but can drift; fix when those files rename. — deferred, pre-existing doc pattern
+
+- [x] [Review][Defer] Broader `order-by-payment-intent` test matrix — Optional coverage for `503` (env not configured / no admin), `500` (Supabase errors), unpaid `payment_status`, and observability of uniform `404` messages; not introduced solely by this diff slice. — deferred, pre-existing gap
+
 ## Story completion status
 
-- **in-progress** — Code review: open decision and patch items in Review Findings above.
+- **done** — Code review complete (2026-04-26); decision + patch findings resolved; Vitest extended for `order-by-payment-intent`; sprint `last_updated` corrected.
 
 _Saved questions (optional follow-ups):_
 

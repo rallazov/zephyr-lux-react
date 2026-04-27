@@ -11,8 +11,11 @@ function cors(res: VercelResponse) {
 }
 
 /**
- * Public read for order confirmation: resolves a paid order by Stripe PaymentIntent id.
- * Definitive paid state comes from DB (FR-PAY-002), not browser PI status alone.
+ * Public read for order confirmation: resolves a **paid** order by Stripe PaymentIntent id
+ * **and** a server-issued secret (`order_lookup` must match `orders.order_confirmation_key`, timing-safe).
+ * Knowing only `pi_…` is insufficient (NFR-SEC-002 / AC3): the key is returned once from
+ * `create-payment-intent` and kept in `sessionStorage` for the return journey (`CheckoutPage` → `OrderConfirmation`).
+ * Definitive paid state still comes from DB (FR-PAY-002), not browser PI status alone.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   cors(res);
