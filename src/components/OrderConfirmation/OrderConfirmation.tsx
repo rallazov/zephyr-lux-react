@@ -1,17 +1,27 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import {
   formatLineSubtotalDollars,
   queryPartialHeading,
   queryPartialSubtitle,
   resolveConfirmationView,
+  type ConfirmationItemLine,
 } from "../../order-confirmation/confirmationViewModel";
 
 const SUPPORT_MAIL = "mailto:support@zephyrlux.com";
 
+type PaidOrderApiResponse = {
+  order_number: string;
+  email: string;
+  total_cents: number;
+  items: ConfirmationItemLine[];
+};
+
 const OrderConfirmation: React.FC = () => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const [paidOrder, setPaidOrder] = useState<PaidOrderApiResponse | null>(null);
+  const [paidOrderLoading, setPaidOrderLoading] = useState(false);
 
   const view = useMemo(
     () =>
@@ -21,6 +31,46 @@ const OrderConfirmation: React.FC = () => {
       }),
     [location.state, searchParams]
   );
+
+  const paymentIntentForLookup =
+    view.stripeQuery.paymentIntentId ??
+    (view.paymentRef?.startsWith("pi_") ? view.paymentRef : null);
+
+  useEffect(() => {
+    if (!paymentIntentForLookup) return;
+    let cancelled = false;
+    setPaidOrderLoading(true);
+    setPaidOrder(null);
+    const q = encodeURIComponent(paymentIntentForLookup);
+    let lookup: string | null = null;
+    try {
+      lookup = sessionStorage.getItem(`zlx_pilu_${paymentIntentForLookup}`);
+    } catch {
+      lookup = null;
+    }
+    if (!lookup) {
+      setPaidOrderLoading(false);
+      return;
+    }
+    const lq = encodeURIComponent(lookup);
+    fetch(
+      `/api/order-by-payment-intent?payment_intent_id=${q}&order_lookup=${lq}`,
+    )
+      .then(async (r) => {
+        if (!r.ok) return null;
+        return r.json() as Promise<PaidOrderApiResponse>;
+      })
+      .then((data) => {
+        if (cancelled) return;
+        if (data?.order_number) setPaidOrder(data);
+      })
+      .finally(() => {
+        if (!cancelled) setPaidOrderLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [paymentIntentForLookup]);
 
   if (view.mode === "fallback") {
     return (
@@ -56,6 +106,59 @@ const OrderConfirmation: React.FC = () => {
     );
   }
 
+  if (paidOrder && paymentIntentForLookup) {
+    const displayItems =
+      paidOrder.items?.length ? paidOrder.items : view.items ?? [];
+    const displayTotalDollars = paidOrder.total_cents / 100;
+    const displayEmail = paidOrder.email || view.email;
+    return (
+      <div className="min-h-screen bg-black text-white px-4 py-16 max-w-2xl mx-auto">
+        <h1 className="text-2xl font-bold mb-2">Order confirmed</h1>
+        <p className="text-amber-200 font-medium mb-2" role="status">
+          Order number: {paidOrder.order_number}
+        </p>
+        <p className="text-gray-200 mb-1">
+          <span className="text-gray-400">Payment reference: </span>
+          {paymentIntentForLookup}
+        </p>
+        {displayEmail && (
+          <p className="text-gray-300 mb-4">
+            <span className="text-gray-400">Email: </span>
+            {displayEmail}
+          </p>
+        )}
+        {displayItems.length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold mb-2">Items</h2>
+            <ul className="border border-gray-700 rounded divide-y divide-gray-800">
+              {displayItems.map((item) => (
+                <li
+                  key={String(item.id ?? item.name)}
+                  className="flex justify-between py-2 px-3 text-sm"
+                >
+                  <span>
+                    {item.name} × {item.quantity}
+                  </span>
+                  <span>${formatLineSubtotalDollars(item)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <p className="text-lg font-semibold mb-6">
+          Total: ${displayTotalDollars.toFixed(2)}
+        </p>
+        <p className="text-gray-300 mb-4" role="status">
+          Your payment is recorded in our system. You’ll receive a confirmation
+          email when fulfillment updates are available.
+        </p>
+        <Link to="/products" className="text-amber-300 underline">
+          Continue shopping
+        </Link>
+      </div>
+    );
+  }
+
   if (view.mode === "queryPartial") {
     const sub = queryPartialSubtitle(view.stripeQuery.redirectStatus);
     const head = queryPartialHeading(view.stripeQuery.redirectStatus);
@@ -71,6 +174,11 @@ const OrderConfirmation: React.FC = () => {
         {view.stripeQuery.redirectStatus && (
           <p className="text-sm text-gray-500 mb-4">
             Status: {view.stripeQuery.redirectStatus}
+          </p>
+        )}
+        {paidOrderLoading && (
+          <p className="text-sm text-gray-400 mb-4" role="status">
+            Checking your order in our system…
           </p>
         )}
         <p className="text-gray-300 mb-6">{sub}</p>
@@ -100,6 +208,11 @@ const OrderConfirmation: React.FC = () => {
   return (
     <div className="min-h-screen bg-black text-white px-4 py-16 max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold mb-2">Order confirmed</h1>
+      {paidOrderLoading && (
+        <p className="text-sm text-gray-400 mb-4" role="status">
+          Loading order details…
+        </p>
+      )}
       {view.paymentRef && (
         <p className="text-gray-200 mb-1">
           <span className="text-gray-400">Payment reference: </span>
@@ -141,8 +254,9 @@ const OrderConfirmation: React.FC = () => {
         support.
       </p>
       <p className="text-sm text-gray-500 mb-8">
-        We don’t show a store order number on this page until your order is saved
-        in our system (coming in a later update).
+        If your payment reference starts with <code className="text-gray-400">pi_</code>,
+        we also try to load your store order number from our records once the
+        webhook has run.
       </p>
       <Link to="/products" className="text-amber-300 underline">
         Continue shopping

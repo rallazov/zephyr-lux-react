@@ -25,7 +25,7 @@
 #   - Dev moves story to 'review', then runs code-review
 
 generated: 2026-04-26T00:00:00Z
-last_updated: 2026-04-26T22:00:00Z
+last_updated: 2026-04-26T23:59:59Z
 project: zephyr-lux-react
 project_key: zlx
 tracking_system: file-system
@@ -59,10 +59,10 @@ development_status:
   3-6-checkout-confirmation-cancel-failure-ui: done
   epic-3-retrospective: optional
 
-  epic-4: backlog
-  4-1-order-and-order-item-tables: backlog
-  4-2-payment-events-idempotent-webhook: backlog
-  4-3-payment-success-order-paid: backlog
+  epic-4: in-progress
+  4-1-order-and-order-item-tables: done
+  4-2-payment-events-idempotent-webhook: done
+  4-3-payment-success-order-paid: in-progress
   4-4-inventory-decrement-once: backlog
   4-5-owner-order-notification: backlog
   4-6-customer-confirmation-email: backlog
