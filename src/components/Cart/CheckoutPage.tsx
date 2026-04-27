@@ -26,8 +26,9 @@ const InnerCheckoutForm: React.FC<{
     cartItems: unknown[];
     clearCart: () => void;
     formValid: boolean;
+    readyToPay: boolean;
     customerEmail: string;
-}> = ({ orderTotalDollars, cartItems, clearCart, formValid, customerEmail }) => {
+}> = ({ orderTotalDollars, cartItems, clearCart, formValid, readyToPay, customerEmail }) => {
     const navigate = useNavigate();
     const stripe = useStripe();
     const elements = useElements();
@@ -105,7 +106,7 @@ const InnerCheckoutForm: React.FC<{
             )}
             <button
                 type="submit"
-                disabled={!formValid || processing}
+                disabled={!formValid || !readyToPay || processing}
                 className={`w-full p-3 rounded font-bold text-lg ${processing ? "bg-gray-600" : "bg-green-500 hover:bg-green-600"}`}
             >
                 {processing ? "Processing..." : "Pay Now"}
@@ -162,6 +163,8 @@ const CheckoutPage = () => {
         const t = setTimeout(() => setDebouncedEmail(formData.email), 500);
         return () => clearTimeout(t);
     }, [formData.email]);
+
+    const emailInSync = formData.email.trim() === debouncedEmail.trim();
 
     const paymentBootstrapKey = useMemo(
         () => JSON.stringify({ lines: checkoutLines, email: debouncedEmail }),
@@ -276,11 +279,16 @@ const CheckoutPage = () => {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         items: checkoutLines,
-                        email: formData.email || undefined,
+                        email: debouncedEmail.trim() || undefined,
                         currency: "usd",
                     }),
                 });
-                const json = (await res.json()) as { clientSecret?: string; error?: string; checkoutRef?: string };
+                const json = (await res.json()) as {
+                    clientSecret?: string;
+                    error?: string;
+                    checkoutRef?: string;
+                    orderLookupKey?: string;
+                };
                 if (cancelled) return;
                 if (!res.ok) {
                     setClientSecret(null);
@@ -292,6 +300,16 @@ const CheckoutPage = () => {
                 }
                 if (json?.clientSecret) {
                     setClientSecret(json.clientSecret);
+                    const cs = json.clientSecret;
+                    const at = cs.indexOf("_secret_");
+                    const piId = at > 0 ? cs.slice(0, at) : null;
+                    if (piId && json.orderLookupKey) {
+                        try {
+                            sessionStorage.setItem(`zlx_pilu_${piId}`, json.orderLookupKey);
+                        } catch {
+                            // ignore private mode / quota
+                        }
+                    }
                 } else {
                     setClientSecret(null);
                     setPaymentError("Failed to create payment intent");
@@ -609,6 +627,7 @@ const CheckoutPage = () => {
                             disabled={
                                 !checkoutOk ||
                                 !formValid ||
+                                !emailInSync ||
                                 processing ||
                                 !quote ||
                                 Boolean(cartQuoteError)
@@ -620,15 +639,24 @@ const CheckoutPage = () => {
                     </form>
                 ) : (
                     clientSecret && stripePromise && quote ? (
-                        <Elements key={paymentBootstrapKey} stripe={stripePromise} options={{ clientSecret }}>
+                        <>
+                            {!emailInSync && formValid && (
+                                <p className="text-amber-200 text-sm mb-3" role="status">
+                                    Syncing your email with the payment form — wait a moment, then use Pay
+                                    Now.
+                                </p>
+                            )}
+                            <Elements key={paymentBootstrapKey} stripe={stripePromise} options={{ clientSecret }}>
                             <InnerCheckoutForm
                                 orderTotalDollars={quote.total_cents / 100}
                                 cartItems={cartItems}
                                 clearCart={clearCart}
                                 formValid={formValid}
+                                readyToPay={emailInSync}
                                 customerEmail={formData.email}
                             />
                         </Elements>
+                        </>
                     ) : (
                         <p className="text-gray-400" role="status">
                             {!quote && !cartQuoteError
