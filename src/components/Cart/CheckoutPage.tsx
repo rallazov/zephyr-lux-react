@@ -156,19 +156,57 @@ const CheckoutPage = () => {
         name: "",
         email: "",
         address: "",
+        city: "",
+        state: "",
+        postal_code: "",
+        country: "US",
     });
 
-    const [debouncedEmail, setDebouncedEmail] = useState("");
-    useEffect(() => {
-        const t = setTimeout(() => setDebouncedEmail(formData.email), 500);
-        return () => clearTimeout(t);
-    }, [formData.email]);
+    const [debouncedCheckoutContext, setDebouncedCheckoutContext] = useState({
+        email: "",
+        name: "",
+        address: "",
+        city: "",
+        state: "",
+        postal_code: "",
+        country: "US",
+    });
 
-    const emailInSync = formData.email.trim() === debouncedEmail.trim();
+    useEffect(() => {
+        const t = setTimeout(() => {
+            setDebouncedCheckoutContext({
+                email: formData.email.trim(),
+                name: formData.name.trim(),
+                address: formData.address.trim(),
+                city: formData.city.trim(),
+                state: formData.state.trim(),
+                postal_code: formData.postal_code.trim(),
+                country: formData.country.trim() || "US",
+            });
+        }, 500);
+        return () => clearTimeout(t);
+    }, [
+        formData.email,
+        formData.name,
+        formData.address,
+        formData.city,
+        formData.state,
+        formData.postal_code,
+        formData.country,
+    ]);
+
+    const contactInSync =
+        formData.email.trim() === debouncedCheckoutContext.email &&
+        formData.name.trim() === debouncedCheckoutContext.name &&
+        formData.address.trim() === debouncedCheckoutContext.address &&
+        formData.city.trim() === debouncedCheckoutContext.city &&
+        formData.state.trim() === debouncedCheckoutContext.state &&
+        formData.postal_code.trim() === debouncedCheckoutContext.postal_code &&
+        formData.country.trim() === debouncedCheckoutContext.country;
 
     const paymentBootstrapKey = useMemo(
-        () => JSON.stringify({ lines: checkoutLines, email: debouncedEmail }),
-        [checkoutLines, debouncedEmail]
+        () => JSON.stringify({ lines: checkoutLines, ...debouncedCheckoutContext }),
+        [checkoutLines, debouncedCheckoutContext]
     );
 
     /** Stable fingerprint so catalog list fetch is not tied to cart array identity. */
@@ -188,6 +226,10 @@ const CheckoutPage = () => {
         name: "",
         email: "",
         address: "",
+        city: "",
+        state: "",
+        postal_code: "",
+        country: "",
     });
 
     const [paymentError, setPaymentError] = useState<string | null>(null);
@@ -219,9 +261,24 @@ const CheckoutPage = () => {
     }, [catalogFetchKey]);
 
     const validateForm = useCallback(() => {
-        const isValid = formData.name !== "" && formData.email !== "" && formData.address !== "";
+        const isValid =
+            formData.name !== "" &&
+            formData.email !== "" &&
+            formData.address !== "" &&
+            formData.city !== "" &&
+            formData.state !== "" &&
+            formData.postal_code !== "" &&
+            formData.country !== "";
         setFormValid(isValid);
-    }, [formData.name, formData.email, formData.address]);
+    }, [
+        formData.name,
+        formData.email,
+        formData.address,
+        formData.city,
+        formData.state,
+        formData.postal_code,
+        formData.country,
+    ]);
 
     useEffect(() => {
         validateForm();
@@ -279,8 +336,26 @@ const CheckoutPage = () => {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         items: checkoutLines,
-                        email: debouncedEmail.trim() || undefined,
+                        email: debouncedCheckoutContext.email || undefined,
                         currency: "usd",
+                        ...(debouncedCheckoutContext.name.length > 0 &&
+                        debouncedCheckoutContext.address.length > 0 &&
+                        debouncedCheckoutContext.city.length > 0 &&
+                        debouncedCheckoutContext.state.length > 0 &&
+                        debouncedCheckoutContext.postal_code.length > 0 &&
+                        debouncedCheckoutContext.country.length > 0
+                            ? {
+                                  customer_name: debouncedCheckoutContext.name,
+                                  shipping_address: {
+                                      name: debouncedCheckoutContext.name,
+                                      line1: debouncedCheckoutContext.address,
+                                      city: debouncedCheckoutContext.city,
+                                      state: debouncedCheckoutContext.state,
+                                      postal_code: debouncedCheckoutContext.postal_code,
+                                      country: debouncedCheckoutContext.country,
+                                  },
+                              }
+                            : {}),
                     }),
                 });
                 const json = (await res.json()) as {
@@ -325,7 +400,9 @@ const CheckoutPage = () => {
         return () => {
             cancelled = true;
         };
-    }, [paymentBootstrapKey, checkoutOk, quote, checkoutLines]);
+    // paymentBootstrapKey encodes checkoutLines + debounced contact/shipping
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- avoid duplicate fetches when primitives match fingerprint
+    }, [paymentBootstrapKey, checkoutOk, quote]);
 
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
@@ -606,6 +683,66 @@ const CheckoutPage = () => {
                             />
                             {errors.address && <p className="text-red-400 text-sm mt-1">{errors.address}</p>}
                         </div>
+                        <div>
+                            <label htmlFor="ck-city" className="block text-sm text-gray-400 mb-1">
+                                City
+                            </label>
+                            <input
+                                id="ck-city"
+                                name="city"
+                                value={formData.city}
+                                onChange={handleFormChange}
+                                className="w-full p-2 rounded bg-gray-900 border border-gray-600 text-white"
+                                autoComplete="address-level2"
+                            />
+                            {errors.city && <p className="text-red-400 text-sm mt-1">{errors.city}</p>}
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label htmlFor="ck-state" className="block text-sm text-gray-400 mb-1">
+                                    State / region
+                                </label>
+                                <input
+                                    id="ck-state"
+                                    name="state"
+                                    value={formData.state}
+                                    onChange={handleFormChange}
+                                    className="w-full p-2 rounded bg-gray-900 border border-gray-600 text-white"
+                                    autoComplete="address-level1"
+                                />
+                                {errors.state && <p className="text-red-400 text-sm mt-1">{errors.state}</p>}
+                            </div>
+                            <div>
+                                <label htmlFor="ck-postal" className="block text-sm text-gray-400 mb-1">
+                                    Postal code
+                                </label>
+                                <input
+                                    id="ck-postal"
+                                    name="postal_code"
+                                    value={formData.postal_code}
+                                    onChange={handleFormChange}
+                                    className="w-full p-2 rounded bg-gray-900 border border-gray-600 text-white"
+                                    autoComplete="postal-code"
+                                />
+                                {errors.postal_code && (
+                                    <p className="text-red-400 text-sm mt-1">{errors.postal_code}</p>
+                                )}
+                            </div>
+                        </div>
+                        <div>
+                            <label htmlFor="ck-country" className="block text-sm text-gray-400 mb-1">
+                                Country
+                            </label>
+                            <input
+                                id="ck-country"
+                                name="country"
+                                value={formData.country}
+                                onChange={handleFormChange}
+                                className="w-full p-2 rounded bg-gray-900 border border-gray-600 text-white"
+                                autoComplete="country-name"
+                            />
+                            {errors.country && <p className="text-red-400 text-sm mt-1">{errors.country}</p>}
+                        </div>
                     </div>
                 </div>
 
@@ -627,7 +764,7 @@ const CheckoutPage = () => {
                             disabled={
                                 !checkoutOk ||
                                 !formValid ||
-                                !emailInSync ||
+                                !contactInSync ||
                                 processing ||
                                 !quote ||
                                 Boolean(cartQuoteError)
@@ -640,9 +777,9 @@ const CheckoutPage = () => {
                 ) : (
                     clientSecret && stripePromise && quote ? (
                         <>
-                            {!emailInSync && formValid && (
+                            {!contactInSync && formValid && (
                                 <p className="text-amber-200 text-sm mb-3" role="status">
-                                    Syncing your email with the payment form — wait a moment, then use Pay
+                                    Syncing your details with the payment form — wait a moment, then use Pay
                                     Now.
                                 </p>
                             )}
@@ -652,7 +789,7 @@ const CheckoutPage = () => {
                                 cartItems={cartItems}
                                 clearCart={clearCart}
                                 formValid={formValid}
-                                readyToPay={emailInSync}
+                                readyToPay={contactInSync}
                                 customerEmail={formData.email}
                             />
                         </Elements>

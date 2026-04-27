@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { addressSchema } from "../../src/domain/commerce/address";
 
 /** One checkout line; `quantity` is the public Epic 3 field (mirrors `checkoutLineDraftSchema`). */
 export const paymentIntentLineItemSchema = z.object({
@@ -21,6 +22,8 @@ export const createPaymentIntentBodySchema = z
       (v) => (v === "" || v == null ? undefined : v),
       z.string().email().optional()
     ),
+    customer_name: z.string().min(1).max(200).optional(),
+    shipping_address: addressSchema.optional(),
   });
 
 export type CreatePaymentIntentBody = z.infer<typeof createPaymentIntentBodySchema>;

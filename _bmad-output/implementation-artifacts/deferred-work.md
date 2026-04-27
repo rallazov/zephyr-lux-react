@@ -1,5 +1,26 @@
 # Deferred work (from reviews and triage)
 
+## Deferred from: code review of 4-7-log-notification-status.md (2026-04-26)
+
+- **`notificationLog.test` mock shape vs real PostgREST chain** — The Vitest double for `notification_logs` may not assert the full `update().eq("id").eq("status", "queued")` shape; consider tightening the mock or an integration test when the API layer next changes. Pre-existing test-quality gap noted in 4-7 review.
+
+## Deferred from: code review of 4-6-customer-confirmation-email.md (2026-04-26)
+
+- **Resend `fetch` without timeout/retry** — `api/_lib/transactionalEmail.ts` can block a serverless invocation; add `AbortSignal`, backoff, or delegate to 4-7.
+- **Dual `validation.ts` / `validation.js` maintenance** — same schema duplicated; consolidate when build pipeline allows a single source.
+- **API import from `src/domain/.../address`** — decouple when introducing a shared package for storefront + API.
+- **Post-ledger email failure vs Stripe retry** — once `payment_events` is `processed`, Stripe will not re-drive the same event; email failure is logged, not retried by the webhook. Align with 4-7/ops.
+- **Placeholder `isPendingCheckoutShippingAddress` heuristics** — `line1` + `city` match to `PENDING_CHECKOUT_SHIPPING_JSON` is brittle; prefer explicit sentinel or full structured validation from checkout.
+
+## Deferred from: code review of 4-5-owner-order-notification.md (2026-04-26)
+
+- **Full notification audit trail (`notification_logs`, `provider_message_id`)** — Story 4-5 uses `owner_order_paid_notified_at` and structured logs; richer rows from **4-7** would improve failure deduplication and operator visibility without changing the paid-order guarantee.
+
+## Deferred from: code review of 4-3-payment-success-order-paid.md (2026-04-26)
+
+- **JSDoc coupling to route/component names** (`api/order-by-payment-intent.ts`) — Comment references `CheckoutPage` / `OrderConfirmation` and AC identifiers; may drift on renames; tidy when those modules move.
+- **Broader `order-by-payment-intent` test matrix** — Optional tests for `503` / `500` paths, unpaid `payment_status`, and whether uniform `404` responses are acceptable for observability vs security through obscurity.
+
 ## Deferred from: code review of 3-5-stripe-checkout-or-payment-intent.md (2026-04-26)
 
 - **`?checkout=canceled` query banner on `CheckoutPage`:** Renders a “Checkout was canceled” message when `checkout=canceled` is present; the Payment Element path does not set this from Stripe redirects, so the banner is mostly manual URL or future Session `cancel_url`. Defer full polish to **3-6** and any hosted Checkout Session wiring.
