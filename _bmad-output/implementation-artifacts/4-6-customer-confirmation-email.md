@@ -1,6 +1,6 @@
 # Story 4.6: customer-confirmation-email
 
-Status: ready-for-dev
+Status: done
 
 ## Review Gate (must resolve before dev)
 
@@ -38,33 +38,33 @@ so that **I have a record of my order (number, what I bought, where it ships), k
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Provider + env (AC: 4, 6)**  
-  - [ ] Add **`resend`** npm package (official SDK) **or** document minimal `fetch` to `https://api.resend.com/emails` with the same security boundaries.  
-  - [ ] Extend [`api/_lib/env.ts`](../../api/_lib/env.ts) / [`.env.example`](../../.env.example): **`FROM_EMAIL`** (or `RESEND_FROM`) — Resend requires a verified domain/sender; document sandbox vs production.  
-  - [ ] Add **`SUPPORT_EMAIL`** (or `CONTACT_EMAIL`) for footer/support copy.  
-  - [ ] If `RESEND_API_KEY` is missing in dev: **no-op** with `info` log (same spirit as optional email in `.env.example` line 43).
-  - [ ] Add a launch-readiness check/runbook: `RESEND_API_KEY`, support/contact email, and verified `from` domain/address must be present before production sends are enabled; document local/sandbox sender behavior in [`.env.example`](../../.env.example).
+- [x] **Task 1 — Provider + env (AC: 4, 6)**  
+  - [x] Add **`resend`** npm package (official SDK) **or** document minimal `fetch` to `https://api.resend.com/emails` with the same security boundaries.  
+  - [x] Extend [`api/_lib/env.ts`](../../api/_lib/env.ts) / [`.env.example`](../../.env.example): **`FROM_EMAIL`** (or `RESEND_FROM`) — Resend requires a verified domain/sender; document sandbox vs production.  
+  - [x] Add **`SUPPORT_EMAIL`** (or `CONTACT_EMAIL`) for footer/support copy.  
+  - [x] If `RESEND_API_KEY` is missing in dev: **no-op** with `info` log (same spirit as optional email in `.env.example` line 43).  
+  - [x] Add a launch-readiness check/runbook: `RESEND_API_KEY`, support/contact email, and verified `from` domain/address must be present before production sends are enabled; document local/sandbox sender behavior in [`.env.example`](../../.env.example).
 
-- [ ] **Task 2 — Send on paid transition (AC: 1, 3, 4)**  
-  - [ ] Hook **after** the order is durably `paid`, using a durable marker/log to decide whether this customer confirmation is still pending. The already-paid retry path must be able to send/backfill if the first webhook crashed after marking paid but before notification.  
-  - [ ] Load **full** order + `order_items` for the message body (use existing Supabase admin client patterns from [`api/_lib/supabaseAdmin.ts`](../../api/_lib/supabaseAdmin.ts)).  
-  - [ ] **Idempotency:** Prefer [4-7](4-7-log-notification-status.md) `notification_logs` or add a column (e.g. `customer_confirmation_sent_at timestamptz` on `orders`) with a conditional send decision. Do not rely strictly on the single “rows updated = 1” path without a recovery mechanism.
-  - [ ] Guard against fallback recipients: never send to `pending@checkout.zephyr.local` or any configured placeholder domain; log/record a failed/unsendable notification instead.
+- [x] **Task 2 — Send on paid transition (AC: 1, 3, 4)**  
+  - [x] Hook **after** the order is durably `paid`, using a durable marker/log to decide whether this customer confirmation is still pending. The already-paid retry path must be able to send/backfill if the first webhook crashed after marking paid but before notification.  
+  - [x] Load **full** order + `order_items` for the message body (use existing Supabase admin client patterns from [`api/_lib/supabaseAdmin.ts`](../../api/_lib/supabaseAdmin.ts)).  
+  - [x] **Idempotency:** Prefer [4-7](4-7-log-notification-status.md) `notification_logs` or add a column (e.g. `customer_confirmation_sent_at timestamptz` on `orders`) with a conditional send decision. Do not rely strictly on the single “rows updated = 1” path without a recovery mechanism.
+  - [x] Guard against fallback recipients: never send to `pending@checkout.zephyr.local` or any configured placeholder domain; log/record a failed/unsendable notification instead.
 
-- [ ] **Task 3 — Content + templates (AC: 2)**  
-  - [ ] Implement a **plain, readable** HTML body (and optional `text` part) with order number, line table, address block, support line, and next steps; keep styling minimal and **mobile-email** safe.  
-  - [ ] Use **snapshot** fields from `order_items` (FR-ORD-005), not live catalog.  
-  - [ ] **Money:** format from cents + `orders.currency` (consistent with server formatting elsewhere).
-  - [ ] Verify `orders.shipping_address_json` is a real structured address, not `PENDING_CHECKOUT_SHIPPING_JSON`. If checkout still has a single freeform textarea, add/require a prerequisite story to reshape it into `addressSchema` fields or Stripe AddressElement output.
+- [x] **Task 3 — Content + templates (AC: 2)**  
+  - [x] Implement a **plain, readable** HTML body (and optional `text` part) with order number, line table, address block, support line, and next steps; keep styling minimal and **mobile-email** safe.  
+  - [x] Use **snapshot** fields from `order_items` (FR-ORD-005), not live catalog.  
+  - [x] **Money:** format from cents + `orders.currency` (consistent with server formatting elsewhere).
+  - [x] Verify `orders.shipping_address_json` is a real structured address, not `PENDING_CHECKOUT_SHIPPING_JSON`. If checkout still has a single freeform textarea, add/require a prerequisite story to reshape it into `addressSchema` fields or Stripe AddressElement output.
 
-- [ ] **Task 4 — Coordination with [4-5](sprint-status.yaml) (AC: —)**  
-  - [ ] If **[4-5](4-5-owner-order-notification.md)** (owner email) is implemented in the same sprint, **extract** a shared `api/_lib/transactionalEmail.ts` (or similar) for Resend client + logging; if 4-5 is not merged yet, **keep** a small internal module for customer mail only and leave a short note for 4-5 to **reuse** (avoid two competing Resend wrappers).
+- [x] **Task 4 — Coordination with [4-5](sprint-status.yaml) (AC: —)**  
+  - [x] If **[4-5](4-5-owner-order-notification.md)** (owner email) is implemented in the same sprint, **extract** a shared `api/_lib/transactionalEmail.ts` (or similar) for Resend client + logging; if 4-5 is not merged yet, **keep** a small internal module for customer mail only and leave a short note for 4-5 to **reuse** (avoid two competing Resend wrappers).
 
-- [ ] **Task 5 — [4-7](4-7-log-notification-status.md) handoff (AC: 4)**  
-  - [ ] Prefer sequencing **[4-7](4-7-log-notification-status.md) before 4-6** so queued/sent/failed state exists before real customer email. If 4-6 lands first, add an equivalent durable marker now and document exactly how 4-7 will migrate/reuse it.
+- [x] **Task 5 — [4-7](4-7-log-notification-status.md) handoff (AC: 4)**  
+  - [x] Prefer sequencing **[4-7](4-7-log-notification-status.md) before 4-6** so queued/sent/failed state exists before real customer email. If 4-6 lands first, add an equivalent durable marker now and document exactly how 4-7 will migrate/reuse it.
 
-- [ ] **Task 6 — Tests (AC: 7)**  
-  - [ ] Unit tests for formatters; mock Resend; assert idempotent call counts on duplicate “paid” application.
+- [x] **Task 6 — Tests (AC: 7)**  
+  - [x] Unit tests for formatters; mock Resend; assert idempotent call counts on duplicate “paid” application.
 
 ## Dev Notes
 
@@ -134,24 +134,70 @@ so that **I have a record of my order (number, what I bought, where it ships), k
 
 ### Agent Model Used
 
-_(filled by dev agent)_
+_(Cursor / Composer implementation — 4-6)_
 
 ### Debug Log References
 
 ### Completion Notes List
 
+- Implemented `customer_confirmation_sent_at` on `orders`, `api/_lib/customerOrderConfirmation.ts` (Resend via shared `sendViaResendApi` in `transactionalEmail.ts`), wired after paid + inventory + ledger in `applyPaymentSuccess` (before owner 4-5). Idempotent send + retry/backfill on already-`paid` path.
+- `create-payment-intent` now requires a real customer email (rejects `pending@checkout.zephyr.local` and empty); structured `shipping_address` from checkout is persisted as before.
+- `SUPPORT_EMAIL` / `CONTACT_EMAIL` in `env.ts`; production/sandbox + Resend `RESEND_FROM` notes in `.env.example`.
+- **4-7 handoff:** `customer_confirmation_sent_at` is the durable per-order marker; future `notification_logs` can treat each send as a row keyed by `order_id` + `template: customer_order_confirmation` while keeping the column as a fast backfill/operator signal or denormalize from the log.
+
 ### File List
+
+- `api/_lib/transactionalEmail.ts` (new)
+- `api/_lib/customerOrderConfirmation.ts` (new)
+- `api/_lib/customerOrderConfirmation.test.ts` (new)
+- `api/_lib/applyPaymentSuccess.ts`
+- `api/_lib/applyPaymentSuccess.test.ts`
+- `api/_lib/env.ts`
+- `api/_lib/ownerOrderNotification.ts`
+- `api/create-payment-intent.ts`
+- `api/create-payment-intent.handler.test.ts`
+- `.env.example`
+- `supabase/migrations/20260428140000_customer_confirmation_sent_at.sql` (new)
 
 ### Review Findings
 
-- [ ] [Review][Blocker] Current checkout does not persist a real structured shipping address; `create-payment-intent` stores the placeholder shipping JSON. 4-6 cannot meet required content until checkout passes/persists address data.
-- [ ] [Review][Blocker] First-paid-branch-only email sending can silently lose customer confirmations after a webhook crash. Add durable notification state (prefer 4-7 first) and allow backfill from already-paid retry paths.
-- [ ] [Review][Patch] Guard against `pending@checkout.zephyr.local` and other placeholder recipients before calling Resend.
-- [ ] [Review][Patch] Add Resend sender/domain readiness checks and documentation so the first production order does not discover an unverified `from` address.
-- [ ] [Review][Sequence] Do not start until 4-3's paid-order review findings are resolved.
+- [x] [Review][Blocker] Current checkout does not persist a real structured shipping address; `create-payment-intent` stores the placeholder shipping JSON. 4-6 cannot meet required content until checkout passes/persists address data.
+- [x] [Review][Blocker] First-paid-branch-only email sending can silently lose customer confirmations after a webhook crash. Add durable notification state (prefer 4-7 first) and allow backfill from already-paid retry paths.
+- [x] [Review][Patch] Guard against `pending@checkout.zephyr.local` and other placeholder recipients before calling Resend.
+- [x] [Review][Patch] Add Resend sender/domain readiness checks and documentation so the first production order does not discover an unverified `from` address.
+- [x] [Review][Sequence] Do not start until 4-3's paid-order review findings are resolved.
+
+#### Code review (2026-04-26) — B-MAD
+
+- [x] [Review][Decision] Idempotency (AC3) — **Resolved (2026-04-26):** D1.1. Customer sends use Resend `Idempotency-Key: customer-confirmation/{orderId}` (24h provider dedupe, same pattern as owner). DB marker `customer_confirmation_sent_at` after send is unchanged; full outbox/claim row remains 4-7 for durable ops visibility.
+
+- [x] [Review][Decision] AC2 “published policies” / `FRONTEND_URL` — **Resolved (2026-04-26):** D2.3. MVP treats the primary storefront link from `FRONTEND_URL` as sufficient for “published policies if URLs are available”; dedicated `/returns` et al. can follow when routes exist (optional envs later).
+
+- [x] [Review][Patch] `.env.example` — duplicate `RESEND_FROM` block removed.
+
+- [x] [Review][Patch] `api/_lib/applyPaymentSuccess.test.ts` — `maybeSendCustomerOrderConfirmation` now asserted on happy paths and not called when inventory blocks.
+
+- [x] [Review][Patch] `api/_lib/customerOrderConfirmation.ts` — HTML `Qty` cell uses `escapeHtml(String(quantity))`.
+
+- [x] [Review][Patch] `stripeEventId` — `stripe-webhook.ts` already passes `event.id`; “already paid” test now passes a non-empty `stripeEventId` for customer/owner notification assertions.
+
+- [x] [Review][Defer] `fetch` in `sendViaResendApi` has no timeout/retry — serverless can hang; defer until reliability pass or 4-7. — *deferred, pre-existing / NFR*
+
+- [x] [Review][Defer] `validation.ts` and `validation.js` both edited — drift risk until one is generated from the other. — *deferred, pre-existing*
+
+- [x] [Review][Defer] `create-payment-intent` / API importing `src/domain/.../address` — cross-layer import; consider `packages/shared` or `api` copy when the repo splits. — *deferred, pre-existing*
+
+- [x] [Review][Defer] After `markPaymentEventProcessed`, the same Stripe event will not re-open the ledger — a failed post-ledger email is not retried by Stripe; recovery is backfill/ops (aligns with NFR-REL-003; 4-7 can improve). — *deferred, architectural*
+
+- [x] [Review][Defer] `isPendingCheckoutShippingAddress` only compares `line1` + `city` to the placeholder — a coincidental real address could be misclassified; broader shape checks or a dedicated sentinel field would be safer. — *deferred, pre-existing / story gate*
 
 ## Story completion status
 
-- **ready-for-dev with review gate** — Story context exists, but dev should not start until the blockers in Review Findings are resolved.
+- **done** — Code-review decisions and patches applied (2026-04-26). Apply migration in Supabase and verify `RESEND_FROM` in Resend before first production send.
 
 _— Ultimate context engine analysis completed; comprehensive developer guide created._
+
+## Change Log
+
+- 2026-04-26: Code review — D1.1 + D2.3, Resend idempotency key for customer send, test/assertions, HTML qty escape, `.env.example` dedupe; story marked done; sprint status synced.
+- 2026-04-26: Story 4-6 — customer order confirmation email (Resend), `customer_confirmation_sent_at`, shared transactional email module, required checkout email, tests.

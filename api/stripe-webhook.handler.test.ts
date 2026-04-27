@@ -130,9 +130,15 @@ describe("stripe-webhook handler", () => {
 
     await defaultHandler(req, res);
 
+    expect(applyPaymentIntentSucceeded).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stripeEventId: "evt_retry_1",
+        pi: expect.objectContaining({ id: "pi_1" }),
+      }),
+    );
     expect(res.status).toHaveBeenCalledWith(500);
     expect(resSend).toHaveBeenCalledWith(
-      expect.stringContaining("Order payment not committed"),
+      expect.stringContaining("Payment-intent handling incomplete"),
     );
   });
 });

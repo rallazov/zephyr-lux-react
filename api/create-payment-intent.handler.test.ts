@@ -80,7 +80,11 @@ describe("create-payment-intent handler (Stripe create)", () => {
   it("passes server-derived amount to stripe.paymentIntents.create for items body", async () => {
     const { quoteForPaymentItems } = await import("./_lib/catalog");
 
-    const body = { items: [{ sku: "ZLX-BLK-S", quantity: 1 }], currency: "usd" as const };
+    const body = {
+      items: [{ sku: "ZLX-BLK-S", quantity: 1 }],
+      currency: "usd" as const,
+      email: "buyer@example.com",
+    };
     const expected = quoteForPaymentItems([{ sku: "ZLX-BLK-S", qty: 1 }]).total_cents;
 
     const req = { method: "POST", body } as VercelRequest;

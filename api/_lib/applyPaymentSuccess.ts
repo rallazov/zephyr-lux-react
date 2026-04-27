@@ -5,8 +5,11 @@ import {
   markPaymentEventProcessed,
   type PaymentEventRow,
 } from "./paymentEventLedger";
+import { applyInventoryForPaidOrder } from "./applyInventoryForPaidOrder";
 import { log } from "./logger";
 import { paymentIntentMatchesOrderTotals } from "./paymentIntentOrder";
+import { maybeSendCustomerOrderConfirmation } from "./customerOrderConfirmation";
+import { maybeSendOwnerOrderPaidNotification } from "./ownerOrderNotification";
 
 export type OrderHeaderRow = {
   id: string;
@@ -22,16 +25,61 @@ export type ApplyPaymentIntentSucceededResult =
   | { outcome: "ledger" }
   | { outcome: "retry" };
 
+async function finalizeInventoryAndLedger(args: {
+  admin: SupabaseClient;
+  orderId: string;
+  ledgerRowId: string;
+}): Promise<ApplyPaymentIntentSucceededResult> {
+  const inv = await applyInventoryForPaidOrder(args.admin, args.orderId);
+  if (!inv.ok) {
+    return { outcome: "retry" };
+  }
+  await markPaymentEventProcessed(args.admin, args.ledgerRowId);
+  return { outcome: "ledger" };
+}
+
+async function finalizeLedgerThenTransactionalEmails(args: {
+  admin: SupabaseClient;
+  orderId: string;
+  ledgerRowId: string;
+  pi: Stripe.PaymentIntent;
+  stripeEventId: string | undefined;
+}): Promise<ApplyPaymentIntentSucceededResult> {
+  const result = await finalizeInventoryAndLedger({
+    admin: args.admin,
+    orderId: args.orderId,
+    ledgerRowId: args.ledgerRowId,
+  });
+  if (result.outcome === "ledger") {
+    const eventId = args.stripeEventId ?? "";
+    await maybeSendCustomerOrderConfirmation({
+      admin: args.admin,
+      orderId: args.orderId,
+      stripePaymentIntentId: args.pi.id,
+      stripeEventId: eventId,
+    });
+    await maybeSendOwnerOrderPaidNotification({
+      admin: args.admin,
+      orderId: args.orderId,
+      stripePaymentIntentId: args.pi.id,
+      stripeEventId: eventId,
+    });
+  }
+  return result;
+}
+
 /**
- * Mark a pending order paid when `payment_intent.succeeded` matches totals (idempotent).
- * Does not touch inventory (Epic 4-4).
+ * Mark a pending order paid when `payment_intent.succeeded` matches totals (idempotent),
+ * then apply inventory (4-4) before finalizing the payment_events ledger.
  */
 export async function applyPaymentIntentSucceeded(args: {
   admin: SupabaseClient;
   pi: Stripe.PaymentIntent;
   ledgerRow: PaymentEventRow;
+  /** Stripe `Event.id` — owner notification logs / correlation (AC3). */
+  stripeEventId?: string;
 }): Promise<ApplyPaymentIntentSucceededResult> {
-  const { admin, pi, ledgerRow } = args;
+  const { admin, pi, ledgerRow, stripeEventId } = args;
 
   try {
     const order = await loadOrderForPaymentIntent(admin, pi);
@@ -76,21 +124,32 @@ export async function applyPaymentIntentSucceeded(args: {
       return { outcome: "retry" };
     }
 
-    if (!updatedRows?.length) {
-      const { data: cur } = await admin
-        .from("orders")
-        .select("payment_status")
-        .eq("id", order.id)
-        .maybeSingle();
-      if (cur && (cur as { payment_status: string }).payment_status === "paid") {
-        await markPaymentEventProcessed(admin, ledgerRow.id);
-        return { outcome: "ledger" };
-      }
-      return { outcome: "retry" };
+    if (updatedRows?.length) {
+      return finalizeLedgerThenTransactionalEmails({
+        admin,
+        orderId: order.id,
+        ledgerRowId: ledgerRow.id,
+        pi,
+        stripeEventId,
+      });
     }
 
-    await markPaymentEventProcessed(admin, ledgerRow.id);
-    return { outcome: "ledger" };
+    const { data: cur } = await admin
+      .from("orders")
+      .select("payment_status")
+      .eq("id", order.id)
+      .maybeSingle();
+    if (cur && (cur as { payment_status: string }).payment_status === "paid") {
+      return finalizeLedgerThenTransactionalEmails({
+        admin,
+        orderId: order.id,
+        ledgerRowId: ledgerRow.id,
+        pi,
+        stripeEventId,
+      });
+    }
+
+    return { outcome: "retry" };
   } catch (err) {
     log.error(
       { err, ledgerId: ledgerRow.id },

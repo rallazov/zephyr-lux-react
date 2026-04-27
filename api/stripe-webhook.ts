@@ -85,13 +85,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     switch (event.type) {
       case "payment_intent.succeeded": {
         const pi = event.data.object as Stripe.PaymentIntent;
-        const applied = await applyPaymentIntentSucceeded({ admin, pi, ledgerRow: ledger.row });
+        const applied = await applyPaymentIntentSucceeded({
+          admin,
+          pi,
+          ledgerRow: ledger.row,
+          stripeEventId: event.id,
+        });
         if (applied.outcome === "retry") {
           log.warn(
             { eventId: event.id, paymentIntentId: pi.id, orderId: pi.metadata?.order_id },
-            "payment_intent.succeeded: order not marked paid (transient) — nack for Stripe retry",
+            "payment_intent.succeeded: handler incomplete (transient — e.g. order still pending_payment, inventory apply, or DB error) — nack for Stripe retry",
           );
-          return res.status(500).send("Order payment not committed — will retry");
+          return res.status(500).send("Payment-intent handling incomplete — will retry");
         }
         log.info(
           { eventId: event.id, paymentIntentId: pi.id, orderId: pi.metadata?.order_id },

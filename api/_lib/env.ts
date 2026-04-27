@@ -8,6 +8,12 @@ export const ENV = {
   /** Service role — server only; never expose to Vite. */
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
   RESEND_API_KEY: process.env.RESEND_API_KEY || "",
+  /** Verified sender in Resend (e.g. orders@mail.yourdomain.com). Server-only. */
+  RESEND_FROM: process.env.RESEND_FROM || "",
+  /** Comma-separated owner inboxes for paid-order alerts (E4-S5). Server-only. */
+  OWNER_NOTIFICATION_EMAIL: process.env.OWNER_NOTIFICATION_EMAIL || "",
+  /** Customer support / contact in confirmation emails (E4-S6). `CONTACT_EMAIL` accepted as alias. */
+  SUPPORT_EMAIL: process.env.SUPPORT_EMAIL || process.env.CONTACT_EMAIL || "",
   STORE_BACKEND: process.env.STORE_BACKEND || "auto", // auto | blob | local
   VERCEL_BLOB_RW_TOKEN: process.env.VERCEL_BLOB_READ_WRITE_TOKEN || "",
   LOG_LEVEL: process.env.LOG_LEVEL || "info",

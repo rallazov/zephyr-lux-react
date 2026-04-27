@@ -1,6 +1,6 @@
 # Story 4.4: Decrement inventory exactly once (paid order)
 
-Status: ready-for-dev
+Status: done
 
 ## Review Gate (must resolve before dev)
 
@@ -32,19 +32,19 @@ so that **FR-PAY-003, FR-CAT-007 (MVP: paid orders create movement records), NFR
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Idempotency design (AC: 2, 3)**  
-  - [ ] Decide: **Postgres RPC/transaction** (single round-trip) vs **sequential** Supabase calls with a **durable** “inventory applied” key (e.g. nullable column on `orders`, or a join table keyed by `payment_events.id` / `order_id` uniqueness).  
-  - [ ] **Patch** [`api/_lib/applyPaymentSuccess.ts`](../../api/_lib/applyPaymentSuccess.ts) **or** add `_lib/applyInventoryForPaidOrder.ts` and wire from [`api/stripe-webhook.ts`](../../api/stripe-webhook.ts) so the “**already paid, finish ledger**” branch **still** runs **inventory backfill** if not yet applied (AC3).
-  - [ ] Resolve the current static-catalog gap: if `order_items.variant_id` is null, load the canonical variant by `sku` from `public.product_variants` using the service role and persist/use that UUID; do **not** attempt movement inserts with null or static JSON-only IDs.
+- [x] **Task 1 — Idempotency design (AC: 2, 3)**  
+  - [x] Decide: **Postgres RPC/transaction** (single round-trip) vs **sequential** Supabase calls with a **durable** “inventory applied” key (e.g. nullable column on `orders`, or a join table keyed by `payment_events.id` / `order_id` uniqueness).  
+  - [x] **Patch** [`api/_lib/applyPaymentSuccess.ts`](../../api/_lib/applyPaymentSuccess.ts) **or** add `_lib/applyInventoryForPaidOrder.ts` and wire from [`api/stripe-webhook.ts`](../../api/stripe-webhook.ts) so the “**already paid, finish ledger**” branch **still** runs **inventory backfill** if not yet applied (AC3).
+  - [x] Resolve the current static-catalog gap: if `order_items.variant_id` is null, load the canonical variant by `sku` from `public.product_variants` using the service role and persist/use that UUID; do **not** attempt movement inserts with null or static JSON-only IDs.
 
-- [ ] **Task 2 — Data writes (AC: 1, 4, 5)**  
-  - [ ] For each `order_items` row with non-null `variant_id`, update `product_variants.inventory_quantity` and insert `inventory_movements` (`delta` negative, `reason = 'order_paid'`, `order_id` set).  
-  - [ ] If schema needs a **unique** guard to prevent duplicate `(order_id, …)` movement rows, add a **migration** under `supabase/migrations/` (timestamp after existing) — keep compatible with [2-5 `inventory_movements`](../../supabase/migrations/20260426180000_catalog_inventory.sql) and [4-1 orders + FK](../../supabase/migrations/20260427090000_orders_and_order_items.sql).  
-  - [ ] Document oversell **policy** (AC4).
+- [x] **Task 2 — Data writes (AC: 1, 4, 5)**  
+  - [x] For each `order_items` row with non-null `variant_id`, update `product_variants.inventory_quantity` and insert `inventory_movements` (`delta` negative, `reason = 'order_paid'`, `order_id` set).  
+  - [x] If schema needs a **unique** guard to prevent duplicate `(order_id, …)` movement rows, add a **migration** under `supabase/migrations/` (timestamp after existing) — keep compatible with [2-5 `inventory_movements`](../../supabase/migrations/20260426180000_catalog_inventory.sql) and [4-1 orders + FK](../../supabase/migrations/20260427090000_orders_and_order_items.sql).  
+  - [x] Document oversell **policy** (AC4).
 
-- [ ] **Task 3 — Tests (AC: 6)**  
-  - [ ] Unit tests in `api/_lib/*.test.ts` following [`applyPaymentSuccess.test.ts`](../../api/_lib/applyPaymentSuccess.test.ts) patterns.  
-  - [ ] Ensure `npm test` (or project script) passes for touched files.
+- [x] **Task 3 — Tests (AC: 6)**  
+  - [x] Unit tests in `api/_lib/*.test.ts` following [`applyPaymentSuccess.test.ts`](../../api/_lib/applyPaymentSuccess.test.ts) patterns.  
+  - [x] Ensure `npm test` (or project script) passes for touched files.
 
 ## Dev Notes
 
@@ -105,23 +105,43 @@ so that **FR-PAY-003, FR-CAT-007 (MVP: paid orders create movement records), NFR
 
 ### Agent Model Used
 
-_TBD (dev-story)_
+Composer (Cursor agent)
 
 ### Debug Log References
 
 ### Completion Notes List
 
+- Implemented **`public.apply_order_paid_inventory(p_order_id uuid)`** (security definer, service_role): locks order, requires `payment_status = paid`, for each `order_item` skips if a movement with that `order_item_id` + `order_paid` exists, resolves `variant_id` via `product_variants.sku` when null (backfills `order_items.variant_id`), rejects insufficient stock, decrements `product_variants.inventory_quantity`, inserts movements (`delta` negative).
+- **Oversell (AC4):** insufficient on-hand stock raises from the RPC; webhook gets **500** / retry until stock or data is fixed.
+- **Movement granularity:** one movement row per **`order_items` line**, idempotent via **`order_item_id`** + partial unique index (`order_paid`).
+- **`applyPaymentIntentSucceeded`** calls **`applyInventoryForPaidOrder`** (RPC wrapper) **before** `markPaymentEventProcessed` on both the fresh paid transition and the **already paid** branch so webhook retries complete inventory (AC3).
+- Vitest: inventory success path, inventory failure → retry without ledger finalize, already-paid → inventory + ledger; RPC wrapper success/failure.
+
 ### File List
+
+- `supabase/migrations/20260427180000_apply_order_paid_inventory.sql`
+- `api/_lib/applyInventoryForPaidOrder.ts`
+- `api/_lib/applyInventoryForPaidOrder.test.ts`
+- `api/_lib/applyPaymentSuccess.ts`
+- `api/_lib/applyPaymentSuccess.test.ts`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/implementation-artifacts/4-4-inventory-decrement-once.md`
+
+### Change Log
+
+- 2026-04-26: Story 4-4 — Postgres RPC for idempotent paid-order inventory; wire payment success path; tests; sprint/story status → review.
+- 2026-04-26: Code review — patch webhook retry messaging (`api/stripe-webhook.ts` + test); story → done.
 
 ### Review Findings
 
-- [ ] [Review][Blocker] Static catalog variants have no UUID ids, so current PI-created `order_items.variant_id` is null for every sellable line. 4-4 must add a Supabase SKU-to-variant resolver or depend on a prerequisite API catalog switch to Supabase before inventory movements can be written.
-- [ ] [Review][Patch] Retry-after-paid inventory backfill is not optional. Make the already-paid branch run/verify inventory application and add a required Vitest case for missing movements on retry.
-- [ ] [Review][Sequence] Do not start until 4-3's paid-order review findings are resolved and its status no longer leaves the order/payment contract in flux.
+- [x] [Review][Blocker] Static catalog variants have no UUID ids, so current PI-created `order_items.variant_id` is null for every sellable line. 4-4 must add a Supabase SKU-to-variant resolver or depend on a prerequisite API catalog switch to Supabase before inventory movements can be written.
+- [x] [Review][Patch] Retry-after-paid inventory backfill is not optional. Make the already-paid branch run/verify inventory application and add a required Vitest case for missing movements on retry.
+- [x] [Review][Sequence] Do not start until 4-3's paid-order review findings are resolved and its status no longer leaves the order/payment contract in flux.
+- [x] [Review][Patch] Webhook nack log says “order not marked paid” for any `applyPaymentIntentSucceeded` retry — misleading when the order is already `paid` but inventory RPC failed (ops should see inventory/transient vs payment). [`api/stripe-webhook.ts` ~94–98]
 
 ## Story completion status
 
-- **ready-for-dev with review gate** — Story context exists, but dev should not start until the blockers in Review Findings are resolved.
+- **done** — Code review complete; webhook retry log/response aligned with inventory + ledger paths (2026-04-26).
 
 _Questions saved for product/engineering (optional):_
 

@@ -1,0 +1,1856 @@
+diff --git a/.env.example b/.env.example
+index d793232..861541c 100644
+--- a/.env.example
++++ b/.env.example
+@@ -42,6 +42,21 @@
+ 
+ # RESEND_API_KEY: optional. Transactional email when wired. Server only.
+ #RESEND_API_KEY=re_xxxxxxxx
++#
++# RESEND_FROM: required for real sends — must be a verified domain/sender in the Resend dashboard
++# (sandbox: use their docs for test addresses; production: your domain DNS verified).
++#RESEND_FROM="Zephyr Lux <orders@mail.yourdomain.com>"
++#
++# SUPPORT_EMAIL and CONTACT_EMAIL: optional (CONTACT_EMAIL is an alias for SUPPORT_EMAIL).
++# Shown in customer order confirmation (E4-S6) when set; otherwise copy falls back to RESEND_FROM.
++#SUPPORT_EMAIL=help@yourdomain.com
++#
++# RESEND_FROM: required for real sends — verified domain/sender in Resend (e.g. "Zephyr Lux <orders@mail.yourdomain.com>"). Server only.
++#RESEND_FROM="Zephyr Lux <orders@mail.yourdomain.com>"
++#
++# OWNER_NOTIFICATION_EMAIL: optional. Comma-separated inboxes for "new paid order" owner alerts (Epic 4 E4-S5). Server only.
++# Without RESEND_API_KEY + RESEND_FROM + this recipient, paid orders still complete but owner email is skipped (warn logged).
++#OWNER_NOTIFICATION_EMAIL=you@yourdomain.com
+ 
+ # STORE_BACKEND: optional. auto | blob | local — controls order/blob storage. Default: auto
+ #STORE_BACKEND=auto
+@@ -89,3 +104,6 @@
+ # Never expose the service role key in VITE_* or client code (NFR-SEC-002).
+ # TRANSACTIONAL_EMAIL_API_KEY= # example reserved name if email is abstracted / renamed from RESEND_API_KEY; server-only
+ # (Additional provider keys as named in PRD / architecture when implemented.)
++#
++# Before enabling customer/owner Resend in production: set RESEND_API_KEY, RESEND_FROM (verified),
++# SUPPORT_EMAIL for human-facing support, and owner inbox OWNER_NOTIFICATION_EMAIL (E4-S5) if used.
+diff --git a/api/_lib/applyPaymentSuccess.test.ts b/api/_lib/applyPaymentSuccess.test.ts
+index 21e83d0..b05682c 100644
+--- a/api/_lib/applyPaymentSuccess.test.ts
++++ b/api/_lib/applyPaymentSuccess.test.ts
+@@ -3,12 +3,26 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
+ import type { SupabaseClient } from "@supabase/supabase-js";
+ import type Stripe from "stripe";
+ import { applyPaymentIntentSucceeded } from "./applyPaymentSuccess";
++import { applyInventoryForPaidOrder } from "./applyInventoryForPaidOrder";
++import { maybeSendOwnerOrderPaidNotification } from "./ownerOrderNotification";
+ import * as ledger from "./paymentEventLedger";
+ 
+ vi.mock("./logger", () => ({
+   log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+ }));
+ 
++vi.mock("./applyInventoryForPaidOrder", () => ({
++  applyInventoryForPaidOrder: vi.fn(),
++}));
++
++vi.mock("./customerOrderConfirmation", () => ({
++  maybeSendCustomerOrderConfirmation: vi.fn().mockResolvedValue(undefined),
++}));
++
++vi.mock("./ownerOrderNotification", () => ({
++  maybeSendOwnerOrderPaidNotification: vi.fn().mockResolvedValue(undefined),
++}));
++
+ const ledgerRowBase = {
+   provider: "stripe" as const,
+   provider_event_id: "evt_1",
+@@ -23,6 +37,9 @@ const ledgerRowBase = {
+ describe("applyPaymentIntentSucceeded", () => {
+   beforeEach(() => {
+     vi.restoreAllMocks();
++    vi.mocked(applyInventoryForPaidOrder).mockResolvedValue({ ok: true });
++    vi.mocked(maybeSendOwnerOrderPaidNotification).mockClear();
++    vi.mocked(maybeSendOwnerOrderPaidNotification).mockResolvedValue(undefined);
+   });
+ 
+   it("updates pending order to paid and marks ledger processed", async () => {
+@@ -69,10 +86,19 @@ describe("applyPaymentIntentSucceeded", () => {
+       admin: client,
+       pi,
+       ledgerRow: { id: "ledger-1", ...ledgerRowBase },
++      stripeEventId: "evt_test_1",
+     });
+ 
+     expect(r).toEqual({ outcome: "ledger" });
++    expect(applyInventoryForPaidOrder).toHaveBeenCalledWith(client, "o1");
+     expect(ledger.markPaymentEventProcessed).toHaveBeenCalledWith(client, "ledger-1");
++    expect(maybeSendOwnerOrderPaidNotification).toHaveBeenCalledWith(
++      expect.objectContaining({
++        orderId: "o1",
++        stripePaymentIntentId: "pi_test_1",
++        stripeEventId: "evt_test_1",
++      }),
++    );
+     expect(markFailed).not.toHaveBeenCalled();
+     expect(updateFn).toHaveBeenCalled();
+   });
+@@ -147,4 +173,111 @@ describe("applyPaymentIntentSucceeded", () => {
+     expect(r).toEqual({ outcome: "retry" });
+     expect(markFailed).not.toHaveBeenCalled();
+   });
++
++  it("returns retry when inventory apply fails and does not finalize the ledger", async () => {
++    vi.mocked(applyInventoryForPaidOrder).mockResolvedValue({ ok: false });
++    vi.spyOn(ledger, "markPaymentEventProcessed").mockResolvedValue();
++
++    const orderRow = {
++      id: "o1",
++      order_number: "ZLX-20260426-0001",
++      payment_status: "pending_payment",
++      total_cents: 5350,
++      currency: "usd",
++      stripe_payment_intent_id: "pi_test_1",
++    };
++
++    const updateEq2 = vi.fn().mockReturnValue({
++      select: vi.fn().mockResolvedValue({ data: [{ id: "o1" }], error: null }),
++    });
++    const updateEq1 = vi.fn().mockReturnValue({ eq: updateEq2 });
++    const updateFn = vi.fn().mockReturnValue({ eq: updateEq1 });
++
++    const client = {
++      from: vi.fn().mockImplementation((table: string) => {
++        if (table !== "orders") return {};
++        return {
++          select: vi.fn().mockReturnValue({
++            eq: vi.fn().mockReturnValue({
++              maybeSingle: vi.fn().mockResolvedValue({ data: orderRow, error: null }),
++            }),
++          }),
++          update: updateFn,
++        };
++      }),
++    } as unknown as SupabaseClient;
++
++    const r = await applyPaymentIntentSucceeded({
++      admin: client,
++      pi: {
++        id: "pi_test_1",
++        amount_received: 5350,
++        currency: "usd",
++        metadata: {},
++      } as unknown as Stripe.PaymentIntent,
++      ledgerRow: { id: "ledger-1", ...ledgerRowBase },
++    });
++
++    expect(r).toEqual({ outcome: "retry" });
++    expect(ledger.markPaymentEventProcessed).not.toHaveBeenCalled();
++    expect(maybeSendOwnerOrderPaidNotification).not.toHaveBeenCalled();
++  });
++
++  it("when order already paid, applies inventory then marks ledger processed", async () => {
++    vi.spyOn(ledger, "markPaymentEventProcessed").mockResolvedValue();
++
++    const orderRow = {
++      id: "o-paid",
++      order_number: "ZLX-20260426-0002",
++      payment_status: "pending_payment",
++      total_cents: 100,
++      currency: "usd",
++      stripe_payment_intent_id: "pi_retry",
++    };
++
++    const updateEq2 = vi.fn().mockReturnValue({
++      select: vi.fn().mockResolvedValue({ data: [], error: null }),
++    });
++    const updateEq1 = vi.fn().mockReturnValue({ eq: updateEq2 });
++    const updateFn = vi.fn().mockReturnValue({ eq: updateEq1 });
++
++    let maybeSingleCalls = 0;
++    const maybeSingle = vi.fn().mockImplementation(() => {
++      maybeSingleCalls += 1;
++      if (maybeSingleCalls === 1) {
++        return Promise.resolve({ data: orderRow, error: null });
++      }
++      return Promise.resolve({ data: { payment_status: "paid" }, error: null });
++    });
++
++    const client = {
++      from: vi.fn().mockImplementation((table: string) => {
++        if (table !== "orders") return {};
++        return {
++          select: vi.fn().mockReturnValue({
++            eq: vi.fn().mockReturnValue({ maybeSingle }),
++          }),
++          update: updateFn,
++        };
++      }),
++    } as unknown as SupabaseClient;
++
++    const r = await applyPaymentIntentSucceeded({
++      admin: client,
++      pi: {
++        id: "pi_retry",
++        amount_received: 100,
++        currency: "usd",
++        metadata: { order_id: "o-paid" },
++      } as unknown as Stripe.PaymentIntent,
++      ledgerRow: { id: "ledger-retry", ...ledgerRowBase },
++    });
++
++    expect(r).toEqual({ outcome: "ledger" });
++    expect(applyInventoryForPaidOrder).toHaveBeenCalledWith(client, "o-paid");
++    expect(ledger.markPaymentEventProcessed).toHaveBeenCalledWith(client, "ledger-retry");
++    expect(maybeSendOwnerOrderPaidNotification).toHaveBeenCalledWith(
++      expect.objectContaining({ orderId: "o-paid", stripePaymentIntentId: "pi_retry" }),
++    );
++  });
+ });
+diff --git a/api/_lib/applyPaymentSuccess.ts b/api/_lib/applyPaymentSuccess.ts
+index e62c38b..fe9cdcc 100644
+--- a/api/_lib/applyPaymentSuccess.ts
++++ b/api/_lib/applyPaymentSuccess.ts
+@@ -5,8 +5,11 @@ import {
+   markPaymentEventProcessed,
+   type PaymentEventRow,
+ } from "./paymentEventLedger";
++import { applyInventoryForPaidOrder } from "./applyInventoryForPaidOrder";
+ import { log } from "./logger";
+ import { paymentIntentMatchesOrderTotals } from "./paymentIntentOrder";
++import { maybeSendCustomerOrderConfirmation } from "./customerOrderConfirmation";
++import { maybeSendOwnerOrderPaidNotification } from "./ownerOrderNotification";
+ 
+ export type OrderHeaderRow = {
+   id: string;
+@@ -22,16 +25,61 @@ export type ApplyPaymentIntentSucceededResult =
+   | { outcome: "ledger" }
+   | { outcome: "retry" };
+ 
++async function finalizeInventoryAndLedger(args: {
++  admin: SupabaseClient;
++  orderId: string;
++  ledgerRowId: string;
++}): Promise<ApplyPaymentIntentSucceededResult> {
++  const inv = await applyInventoryForPaidOrder(args.admin, args.orderId);
++  if (!inv.ok) {
++    return { outcome: "retry" };
++  }
++  await markPaymentEventProcessed(args.admin, args.ledgerRowId);
++  return { outcome: "ledger" };
++}
++
++async function finalizeLedgerThenTransactionalEmails(args: {
++  admin: SupabaseClient;
++  orderId: string;
++  ledgerRowId: string;
++  pi: Stripe.PaymentIntent;
++  stripeEventId: string | undefined;
++}): Promise<ApplyPaymentIntentSucceededResult> {
++  const result = await finalizeInventoryAndLedger({
++    admin: args.admin,
++    orderId: args.orderId,
++    ledgerRowId: args.ledgerRowId,
++  });
++  if (result.outcome === "ledger") {
++    const eventId = args.stripeEventId ?? "";
++    await maybeSendCustomerOrderConfirmation({
++      admin: args.admin,
++      orderId: args.orderId,
++      stripePaymentIntentId: args.pi.id,
++      stripeEventId: eventId,
++    });
++    await maybeSendOwnerOrderPaidNotification({
++      admin: args.admin,
++      orderId: args.orderId,
++      stripePaymentIntentId: args.pi.id,
++      stripeEventId: eventId,
++    });
++  }
++  return result;
++}
++
+ /**
+- * Mark a pending order paid when `payment_intent.succeeded` matches totals (idempotent).
+- * Does not touch inventory (Epic 4-4).
++ * Mark a pending order paid when `payment_intent.succeeded` matches totals (idempotent),
++ * then apply inventory (4-4) before finalizing the payment_events ledger.
+  */
+ export async function applyPaymentIntentSucceeded(args: {
+   admin: SupabaseClient;
+   pi: Stripe.PaymentIntent;
+   ledgerRow: PaymentEventRow;
++  /** Stripe `Event.id` — owner notification logs / correlation (AC3). */
++  stripeEventId?: string;
+ }): Promise<ApplyPaymentIntentSucceededResult> {
+-  const { admin, pi, ledgerRow } = args;
++  const { admin, pi, ledgerRow, stripeEventId } = args;
+ 
+   try {
+     const order = await loadOrderForPaymentIntent(admin, pi);
+@@ -76,21 +124,32 @@ export async function applyPaymentIntentSucceeded(args: {
+       return { outcome: "retry" };
+     }
+ 
+-    if (!updatedRows?.length) {
+-      const { data: cur } = await admin
+-        .from("orders")
+-        .select("payment_status")
+-        .eq("id", order.id)
+-        .maybeSingle();
+-      if (cur && (cur as { payment_status: string }).payment_status === "paid") {
+-        await markPaymentEventProcessed(admin, ledgerRow.id);
+-        return { outcome: "ledger" };
+-      }
+-      return { outcome: "retry" };
++    if (updatedRows?.length) {
++      return finalizeLedgerThenTransactionalEmails({
++        admin,
++        orderId: order.id,
++        ledgerRowId: ledgerRow.id,
++        pi,
++        stripeEventId,
++      });
++    }
++
++    const { data: cur } = await admin
++      .from("orders")
++      .select("payment_status")
++      .eq("id", order.id)
++      .maybeSingle();
++    if (cur && (cur as { payment_status: string }).payment_status === "paid") {
++      return finalizeLedgerThenTransactionalEmails({
++        admin,
++        orderId: order.id,
++        ledgerRowId: ledgerRow.id,
++        pi,
++        stripeEventId,
++      });
+     }
+ 
+-    await markPaymentEventProcessed(admin, ledgerRow.id);
+-    return { outcome: "ledger" };
++    return { outcome: "retry" };
+   } catch (err) {
+     log.error(
+       { err, ledgerId: ledgerRow.id },
+diff --git a/api/_lib/createPaymentIntentBody.test.ts b/api/_lib/createPaymentIntentBody.test.ts
+index 19bc67f..65bed87 100644
+--- a/api/_lib/createPaymentIntentBody.test.ts
++++ b/api/_lib/createPaymentIntentBody.test.ts
+@@ -30,6 +30,21 @@ describe("createPaymentIntentBodySchema", () => {
+     } as unknown);
+     expect(r.success).toBe(false);
+   });
++
++  it("accepts optional customer_name and shipping_address", () => {
++    const r = createPaymentIntentBodySchema.safeParse({
++      items: [{ sku: "ZLX-A", quantity: 1 }],
++      customer_name: "Ada Lovelace",
++      shipping_address: {
++        line1: "1 Main St",
++        city: "Austin",
++        state: "TX",
++        postal_code: "78701",
++        country: "US",
++      },
++    });
++    expect(r.success).toBe(true);
++  });
+ });
+ 
+ describe("lineItemsToCatalogRows", () => {
+diff --git a/api/_lib/createPaymentIntentBody.ts b/api/_lib/createPaymentIntentBody.ts
+index 721825f..6c95802 100644
+--- a/api/_lib/createPaymentIntentBody.ts
++++ b/api/_lib/createPaymentIntentBody.ts
+@@ -1,4 +1,5 @@
+ import { z } from "zod";
++import { addressSchema } from "../../src/domain/commerce/address";
+ 
+ /** One checkout line; `quantity` is the public Epic 3 field (mirrors `checkoutLineDraftSchema`). */
+ export const paymentIntentLineItemSchema = z.object({
+@@ -21,6 +22,8 @@ export const createPaymentIntentBodySchema = z
+       (v) => (v === "" || v == null ? undefined : v),
+       z.string().email().optional()
+     ),
++    customer_name: z.string().min(1).max(200).optional(),
++    shipping_address: addressSchema.optional(),
+   });
+ 
+ export type CreatePaymentIntentBody = z.infer<typeof createPaymentIntentBodySchema>;
+diff --git a/api/_lib/env.ts b/api/_lib/env.ts
+index a998ffa..61ba511 100644
+--- a/api/_lib/env.ts
++++ b/api/_lib/env.ts
+@@ -8,6 +8,12 @@ export const ENV = {
+   /** Service role — server only; never expose to Vite. */
+   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
+   RESEND_API_KEY: process.env.RESEND_API_KEY || "",
++  /** Verified sender in Resend (e.g. orders@mail.yourdomain.com). Server-only. */
++  RESEND_FROM: process.env.RESEND_FROM || "",
++  /** Comma-separated owner inboxes for paid-order alerts (E4-S5). Server-only. */
++  OWNER_NOTIFICATION_EMAIL: process.env.OWNER_NOTIFICATION_EMAIL || "",
++  /** Customer support / contact in confirmation emails (E4-S6). `CONTACT_EMAIL` accepted as alias. */
++  SUPPORT_EMAIL: process.env.SUPPORT_EMAIL || process.env.CONTACT_EMAIL || "",
+   STORE_BACKEND: process.env.STORE_BACKEND || "auto", // auto | blob | local
+   VERCEL_BLOB_RW_TOKEN: process.env.VERCEL_BLOB_READ_WRITE_TOKEN || "",
+   LOG_LEVEL: process.env.LOG_LEVEL || "info",
+diff --git a/api/create-payment-intent.handler.test.ts b/api/create-payment-intent.handler.test.ts
+index c1c1fa5..f99341b 100644
+--- a/api/create-payment-intent.handler.test.ts
++++ b/api/create-payment-intent.handler.test.ts
+@@ -80,7 +80,11 @@ describe("create-payment-intent handler (Stripe create)", () => {
+   it("passes server-derived amount to stripe.paymentIntents.create for items body", async () => {
+     const { quoteForPaymentItems } = await import("./_lib/catalog");
+ 
+-    const body = { items: [{ sku: "ZLX-BLK-S", quantity: 1 }], currency: "usd" as const };
++    const body = {
++      items: [{ sku: "ZLX-BLK-S", quantity: 1 }],
++      currency: "usd" as const,
++      email: "buyer@example.com",
++    };
+     const expected = quoteForPaymentItems([{ sku: "ZLX-BLK-S", qty: 1 }]).total_cents;
+ 
+     const req = { method: "POST", body } as VercelRequest;
+diff --git a/api/create-payment-intent.ts b/api/create-payment-intent.ts
+index ccc8058..27df7b6 100644
+--- a/api/create-payment-intent.ts
++++ b/api/create-payment-intent.ts
+@@ -9,6 +9,7 @@ import {
+ } from "./_lib/createPaymentIntentBody";
+ import { ENV, isSupabaseOrderPersistenceConfigured } from "./_lib/env";
+ import { log } from "./_lib/logger";
++import { isUnsendableCustomerEmail } from "./_lib/customerOrderConfirmation";
+ import { orderItemRowsFromQuote, PENDING_CHECKOUT_SHIPPING_JSON } from "./_lib/orderSnapshots";
+ import { getSupabaseAdmin } from "./_lib/supabaseAdmin";
+ 
+@@ -101,8 +102,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
+     const orderConfirmationKey = randomBytes(24).toString("hex");
+ 
+     const emailRaw = (data.email ?? "").trim().slice(0, 256);
+-    const customerEmail =
+-      emailRaw.length > 0 ? emailRaw : "pending@checkout.zephyr.local";
++    if (!emailRaw || isUnsendableCustomerEmail(emailRaw)) {
++      log.warn("create-payment-intent: valid customer email required");
++      return res.status(400).json({ error: "A valid email is required to complete checkout." });
++    }
++    const customerEmail = emailRaw;
+ 
+     const lineKey = catalogRows
+       .map((l) => ({ sku: l.sku, q: l.qty }))
+@@ -126,10 +130,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
+       return res.status(500).json({ error: "Payment setup failed. Please try again." });
+     }
+ 
++    const customerName = data.customer_name?.trim().slice(0, 200) || null;
++    const shippingJson = data.shipping_address ?? PENDING_CHECKOUT_SHIPPING_JSON;
++
+     const orderInsert = {
+       order_number: orderNumber,
+       order_confirmation_key: orderConfirmationKey,
+       customer_email: customerEmail,
++      customer_name: customerName,
+       payment_status: "pending_payment" as const,
+       fulfillment_status: "processing" as const,
+       subtotal_cents: quote.subtotal_cents,
+@@ -138,7 +146,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
+       discount_cents: 0,
+       total_cents: quote.total_cents,
+       currency: quote.currency,
+-      shipping_address_json: PENDING_CHECKOUT_SHIPPING_JSON,
++      shipping_address_json: shippingJson,
+       stripe_payment_intent_id: null as string | null,
+     };
+ 
+diff --git a/api/stripe-webhook.handler.test.ts b/api/stripe-webhook.handler.test.ts
+index 51a08a7..d25c1d6 100644
+--- a/api/stripe-webhook.handler.test.ts
++++ b/api/stripe-webhook.handler.test.ts
+@@ -130,6 +130,12 @@ describe("stripe-webhook handler", () => {
+ 
+     await defaultHandler(req, res);
+ 
++    expect(applyPaymentIntentSucceeded).toHaveBeenCalledWith(
++      expect.objectContaining({
++        stripeEventId: "evt_retry_1",
++        pi: expect.objectContaining({ id: "pi_1" }),
++      }),
++    );
+     expect(res.status).toHaveBeenCalledWith(500);
+     expect(resSend).toHaveBeenCalledWith(
+       expect.stringContaining("Order payment not committed"),
+diff --git a/api/stripe-webhook.ts b/api/stripe-webhook.ts
+index 0f11940..789d5e9 100644
+--- a/api/stripe-webhook.ts
++++ b/api/stripe-webhook.ts
+@@ -85,7 +85,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
+     switch (event.type) {
+       case "payment_intent.succeeded": {
+         const pi = event.data.object as Stripe.PaymentIntent;
+-        const applied = await applyPaymentIntentSucceeded({ admin, pi, ledgerRow: ledger.row });
++        const applied = await applyPaymentIntentSucceeded({
++          admin,
++          pi,
++          ledgerRow: ledger.row,
++          stripeEventId: event.id,
++        });
+         if (applied.outcome === "retry") {
+           log.warn(
+             { eventId: event.id, paymentIntentId: pi.id, orderId: pi.metadata?.order_id },
+diff --git a/src/components/Cart/CheckoutPage.tsx b/src/components/Cart/CheckoutPage.tsx
+index 9930a0f..663c78c 100644
+--- a/src/components/Cart/CheckoutPage.tsx
++++ b/src/components/Cart/CheckoutPage.tsx
+@@ -156,19 +156,57 @@ const CheckoutPage = () => {
+         name: "",
+         email: "",
+         address: "",
++        city: "",
++        state: "",
++        postal_code: "",
++        country: "US",
++    });
++
++    const [debouncedCheckoutContext, setDebouncedCheckoutContext] = useState({
++        email: "",
++        name: "",
++        address: "",
++        city: "",
++        state: "",
++        postal_code: "",
++        country: "US",
+     });
+ 
+-    const [debouncedEmail, setDebouncedEmail] = useState("");
+     useEffect(() => {
+-        const t = setTimeout(() => setDebouncedEmail(formData.email), 500);
++        const t = setTimeout(() => {
++            setDebouncedCheckoutContext({
++                email: formData.email.trim(),
++                name: formData.name.trim(),
++                address: formData.address.trim(),
++                city: formData.city.trim(),
++                state: formData.state.trim(),
++                postal_code: formData.postal_code.trim(),
++                country: formData.country.trim() || "US",
++            });
++        }, 500);
+         return () => clearTimeout(t);
+-    }, [formData.email]);
+-
+-    const emailInSync = formData.email.trim() === debouncedEmail.trim();
++    }, [
++        formData.email,
++        formData.name,
++        formData.address,
++        formData.city,
++        formData.state,
++        formData.postal_code,
++        formData.country,
++    ]);
++
++    const contactInSync =
++        formData.email.trim() === debouncedCheckoutContext.email &&
++        formData.name.trim() === debouncedCheckoutContext.name &&
++        formData.address.trim() === debouncedCheckoutContext.address &&
++        formData.city.trim() === debouncedCheckoutContext.city &&
++        formData.state.trim() === debouncedCheckoutContext.state &&
++        formData.postal_code.trim() === debouncedCheckoutContext.postal_code &&
++        formData.country.trim() === debouncedCheckoutContext.country;
+ 
+     const paymentBootstrapKey = useMemo(
+-        () => JSON.stringify({ lines: checkoutLines, email: debouncedEmail }),
+-        [checkoutLines, debouncedEmail]
++        () => JSON.stringify({ lines: checkoutLines, ...debouncedCheckoutContext }),
++        [checkoutLines, debouncedCheckoutContext]
+     );
+ 
+     /** Stable fingerprint so catalog list fetch is not tied to cart array identity. */
+@@ -188,6 +226,10 @@ const CheckoutPage = () => {
+         name: "",
+         email: "",
+         address: "",
++        city: "",
++        state: "",
++        postal_code: "",
++        country: "",
+     });
+ 
+     const [paymentError, setPaymentError] = useState<string | null>(null);
+@@ -219,9 +261,24 @@ const CheckoutPage = () => {
+     }, [catalogFetchKey]);
+ 
+     const validateForm = useCallback(() => {
+-        const isValid = formData.name !== "" && formData.email !== "" && formData.address !== "";
++        const isValid =
++            formData.name !== "" &&
++            formData.email !== "" &&
++            formData.address !== "" &&
++            formData.city !== "" &&
++            formData.state !== "" &&
++            formData.postal_code !== "" &&
++            formData.country !== "";
+         setFormValid(isValid);
+-    }, [formData.name, formData.email, formData.address]);
++    }, [
++        formData.name,
++        formData.email,
++        formData.address,
++        formData.city,
++        formData.state,
++        formData.postal_code,
++        formData.country,
++    ]);
+ 
+     useEffect(() => {
+         validateForm();
+@@ -279,8 +336,26 @@ const CheckoutPage = () => {
+                     headers: { "Content-Type": "application/json" },
+                     body: JSON.stringify({
+                         items: checkoutLines,
+-                        email: debouncedEmail.trim() || undefined,
++                        email: debouncedCheckoutContext.email || undefined,
+                         currency: "usd",
++                        ...(debouncedCheckoutContext.name.length > 0 &&
++                        debouncedCheckoutContext.address.length > 0 &&
++                        debouncedCheckoutContext.city.length > 0 &&
++                        debouncedCheckoutContext.state.length > 0 &&
++                        debouncedCheckoutContext.postal_code.length > 0 &&
++                        debouncedCheckoutContext.country.length > 0
++                            ? {
++                                  customer_name: debouncedCheckoutContext.name,
++                                  shipping_address: {
++                                      name: debouncedCheckoutContext.name,
++                                      line1: debouncedCheckoutContext.address,
++                                      city: debouncedCheckoutContext.city,
++                                      state: debouncedCheckoutContext.state,
++                                      postal_code: debouncedCheckoutContext.postal_code,
++                                      country: debouncedCheckoutContext.country,
++                                  },
++                              }
++                            : {}),
+                     }),
+                 });
+                 const json = (await res.json()) as {
+@@ -325,7 +400,9 @@ const CheckoutPage = () => {
+         return () => {
+             cancelled = true;
+         };
+-    }, [paymentBootstrapKey, checkoutOk, quote, checkoutLines]);
++    // paymentBootstrapKey encodes checkoutLines + debounced contact/shipping
++    // eslint-disable-next-line react-hooks/exhaustive-deps -- avoid duplicate fetches when primitives match fingerprint
++    }, [paymentBootstrapKey, checkoutOk, quote]);
+ 
+     const handleSubmit = async (event: React.FormEvent) => {
+         event.preventDefault();
+@@ -606,6 +683,66 @@ const CheckoutPage = () => {
+                             />
+                             {errors.address && <p className="text-red-400 text-sm mt-1">{errors.address}</p>}
+                         </div>
++                        <div>
++                            <label htmlFor="ck-city" className="block text-sm text-gray-400 mb-1">
++                                City
++                            </label>
++                            <input
++                                id="ck-city"
++                                name="city"
++                                value={formData.city}
++                                onChange={handleFormChange}
++                                className="w-full p-2 rounded bg-gray-900 border border-gray-600 text-white"
++                                autoComplete="address-level2"
++                            />
++                            {errors.city && <p className="text-red-400 text-sm mt-1">{errors.city}</p>}
++                        </div>
++                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
++                            <div>
++                                <label htmlFor="ck-state" className="block text-sm text-gray-400 mb-1">
++                                    State / region
++                                </label>
++                                <input
++                                    id="ck-state"
++                                    name="state"
++                                    value={formData.state}
++                                    onChange={handleFormChange}
++                                    className="w-full p-2 rounded bg-gray-900 border border-gray-600 text-white"
++                                    autoComplete="address-level1"
++                                />
++                                {errors.state && <p className="text-red-400 text-sm mt-1">{errors.state}</p>}
++                            </div>
++                            <div>
++                                <label htmlFor="ck-postal" className="block text-sm text-gray-400 mb-1">
++                                    Postal code
++                                </label>
++                                <input
++                                    id="ck-postal"
++                                    name="postal_code"
++                                    value={formData.postal_code}
++                                    onChange={handleFormChange}
++                                    className="w-full p-2 rounded bg-gray-900 border border-gray-600 text-white"
++                                    autoComplete="postal-code"
++                                />
++                                {errors.postal_code && (
++                                    <p className="text-red-400 text-sm mt-1">{errors.postal_code}</p>
++                                )}
++                            </div>
++                        </div>
++                        <div>
++                            <label htmlFor="ck-country" className="block text-sm text-gray-400 mb-1">
++                                Country
++                            </label>
++                            <input
++                                id="ck-country"
++                                name="country"
++                                value={formData.country}
++                                onChange={handleFormChange}
++                                className="w-full p-2 rounded bg-gray-900 border border-gray-600 text-white"
++                                autoComplete="country-name"
++                            />
++                            {errors.country && <p className="text-red-400 text-sm mt-1">{errors.country}</p>}
++                        </div>
+                     </div>
+                 </div>
+ 
+@@ -627,7 +764,7 @@ const CheckoutPage = () => {
+                             disabled={
+                                 !checkoutOk ||
+                                 !formValid ||
+-                                !emailInSync ||
++                                !contactInSync ||
+                                 processing ||
+                                 !quote ||
+                                 Boolean(cartQuoteError)
+@@ -640,9 +777,9 @@ const CheckoutPage = () => {
+                 ) : (
+                     clientSecret && stripePromise && quote ? (
+                         <>
+-                            {!emailInSync && formValid && (
++                            {!contactInSync && formValid && (
+                                 <p className="text-amber-200 text-sm mb-3" role="status">
+-                                    Syncing your email with the payment form — wait a moment, then use Pay
++                                    Syncing your details with the payment form — wait a moment, then use Pay
+                                     Now.
+                                 </p>
+                             )}
+@@ -652,7 +789,7 @@ const CheckoutPage = () => {
+                                 cartItems={cartItems}
+                                 clearCart={clearCart}
+                                 formValid={formValid}
+-                                readyToPay={emailInSync}
++                                readyToPay={contactInSync}
+                                 customerEmail={formData.email}
+                             />
+                         </Elements>
+diff --git a/src/lib/validation.js b/src/lib/validation.js
+index bd22a7e..5800375 100644
+--- a/src/lib/validation.js
++++ b/src/lib/validation.js
+@@ -2,5 +2,9 @@ import { z } from "zod";
+ export const checkoutSchema = z.object({
+     name: z.string().min(2, "Name is required"),
+     email: z.string().email("Valid email required"),
+-    address: z.string().min(5, "Address is required"),
++    address: z.string().min(5, "Street address is required"),
++    city: z.string().min(2, "City is required"),
++    state: z.string().min(2, "State / region is required"),
++    postal_code: z.string().min(3, "Postal code is required"),
++    country: z.string().min(2, "Country is required"),
+ });
+diff --git a/src/lib/validation.ts b/src/lib/validation.ts
+index e4d0355..183701c 100644
+--- a/src/lib/validation.ts
++++ b/src/lib/validation.ts
+@@ -6,7 +6,11 @@ import { z } from "zod";
+ export const checkoutSchema = z.object({
+   name: z.string().min(2, "Name is required"),
+   email: z.string().email("Valid email required"),
+-  address: z.string().min(5, "Address is required"),
++  address: z.string().min(5, "Street address is required"),
++  city: z.string().min(2, "City is required"),
++  state: z.string().min(2, "State / region is required"),
++  postal_code: z.string().min(3, "Postal code is required"),
++  country: z.string().min(2, "Country is required"),
+ });
+ 
+ export type CheckoutForm = z.infer<typeof checkoutSchema>;
+diff --git a/api/_lib/transactionalEmail.ts b/api/_lib/transactionalEmail.ts
+new file mode 100644
+index 0000000..90408c0
+--- /dev/null
++++ b/api/_lib/transactionalEmail.ts
+@@ -0,0 +1,38 @@
++import { ENV } from "./env";
++
++/** Shared Resend transport — server-only. Used by owner + customer transactional mail (4-5, 4-6). */
++export async function sendViaResendApi(args: {
++  from: string;
++  to: string[];
++  subject: string;
++  html: string;
++  text: string;
++  fetchImpl?: typeof fetch;
++}): Promise<{ ok: true } | { ok: false; message: string }> {
++  const fetchFn = args.fetchImpl ?? fetch;
++  const res = await fetchFn("https://api.resend.com/emails", {
++    method: "POST",
++    headers: {
++      Authorization: `Bearer ${ENV.RESEND_API_KEY}`,
++      "Content-Type": "application/json",
++    },
++    body: JSON.stringify({
++      from: args.from,
++      to: args.to,
++      subject: args.subject,
++      html: args.html,
++      text: args.text,
++    }),
++  });
++  if (!res.ok) {
++    let message = res.statusText;
++    try {
++      const j = (await res.json()) as { message?: string };
++      if (typeof j?.message === "string") message = j.message;
++    } catch {
++      /* ignore */
++    }
++    return { ok: false, message };
++  }
++  return { ok: true };
++}
+diff --git a/api/_lib/customerOrderConfirmation.ts b/api/_lib/customerOrderConfirmation.ts
+new file mode 100644
+index 0000000..354976e
+--- /dev/null
++++ b/api/_lib/customerOrderConfirmation.ts
+@@ -0,0 +1,295 @@
++import type { SupabaseClient } from "@supabase/supabase-js";
++import { formatMoneyCents, formatShippingAddressForEmail } from "./ownerOrderNotification";
++import { PENDING_CHECKOUT_SHIPPING_JSON } from "./orderSnapshots";
++import { ENV } from "./env";
++import { log } from "./logger";
++import { sendViaResendApi } from "./transactionalEmail";
++
++/** Checkout placeholder — must never receive Resend traffic (AC8). */
++export const PLACEHOLDER_CHECKOUT_EMAIL = "pending@checkout.zephyr.local";
++
++export function isUnsendableCustomerEmail(email: string): boolean {
++  const e = email.trim().toLowerCase();
++  return e === PLACEHOLDER_CHECKOUT_EMAIL || e.endsWith("@checkout.zephyr.local");
++}
++
++export function isPendingCheckoutShippingAddress(json: unknown): boolean {
++  if (json == null || typeof json !== "object") return true;
++  const o = json as Record<string, unknown>;
++  return (
++    o.line1 === PENDING_CHECKOUT_SHIPPING_JSON.line1 &&
++    o.city === PENDING_CHECKOUT_SHIPPING_JSON.city
++  );
++}
++
++function escapeHtml(s: string): string {
++  return s
++    .replace(/&/g, "&amp;")
++    .replace(/</g, "&lt;")
++    .replace(/>/g, "&gt;")
++    .replace(/"/g, "&quot;");
++}
++
++export type CustomerNotifyItemRow = {
++  sku: string;
++  product_title: string;
++  variant_title: string | null;
++  quantity: number;
++  unit_price_cents: number;
++  total_cents: number;
++};
++
++export type CustomerNotifyOrderRow = {
++  id: string;
++  order_number: string;
++  customer_email: string;
++  customer_name: string | null;
++  total_cents: number;
++  currency: string;
++  shipping_address_json: unknown;
++  payment_status: string;
++  customer_confirmation_sent_at: string | null;
++};
++
++export function supportLineForEmail(): string {
++  const s = ENV.SUPPORT_EMAIL.trim();
++  if (s) return `Questions? Email us at ${s}.`;
++  const from = ENV.RESEND_FROM.trim();
++  if (from) return `Reply to this message or contact us at ${from}.`;
++  return "Questions? Use the contact options on our site.";
++}
++
++export function buildCustomerOrderConfirmationEmail(args: {
++  order: Pick<
++    CustomerNotifyOrderRow,
++    | "order_number"
++    | "customer_name"
++    | "total_cents"
++    | "currency"
++    | "shipping_address_json"
++  >;
++  items: CustomerNotifyItemRow[];
++}): { subject: string; html: string; text: string } {
++  const { order, items } = args;
++  const greet = order.customer_name?.trim() || "Hello";
++  const total = formatMoneyCents(order.total_cents, order.currency);
++  const shipBlock = formatShippingAddressForEmail(order.shipping_address_json);
++  const baseUrl = ENV.FRONTEND_URL.replace(/\/$/, "");
++  const support = supportLineForEmail();
++  const subject = `Order confirmed — ${order.order_number}`;
++
++  const linesText = items
++    .map((it) => {
++      const vt = it.variant_title?.trim();
++      const label = vt ? `${it.product_title} (${vt})` : it.product_title;
++      return `${label} | SKU ${it.sku} × ${it.quantity} — ${formatMoneyCents(it.total_cents, order.currency)}`;
++    })
++    .join("\n");
++
++  const linesHtml = items
++    .map((it) => {
++      const vt = it.variant_title?.trim();
++      const label = vt ? `${it.product_title} (${vt})` : it.product_title;
++      return `<tr><td>${escapeHtml(label)}</td><td>${escapeHtml(it.sku)}</td><td>${it.quantity}</td><td>${escapeHtml(formatMoneyCents(it.unit_price_cents, order.currency))}</td><td>${escapeHtml(formatMoneyCents(it.total_cents, order.currency))}</td></tr>`;
++    })
++    .join("");
++
++  const nextSteps = [
++    "We're preparing your order for shipment.",
++    "You'll receive tracking information by email when it ships.",
++    `Store: ${baseUrl}`,
++  ].join("\n");
++
++  const text = [
++    `${greet},`,
++    ``,
++    `Thank you for your order ${order.order_number}.`,
++    ``,
++    `Order total: ${total}`,
++    ``,
++    `Shipping address:`,
++    shipBlock,
++    ``,
++    `Items:`,
++    linesText,
++    ``,
++    nextSteps,
++    ``,
++    support,
++  ].join("\n");
++
++  const html = `<!doctype html><html><body style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.45;color:#111;">
++<p>${escapeHtml(greet)},</p>
++<p>Thank you for your order <strong>${escapeHtml(order.order_number)}</strong>.</p>
++<p><strong>Order total:</strong> ${escapeHtml(total)}</p>
++<p><strong>Shipping address</strong><br/>${escapeHtml(shipBlock).replace(/\n/g, "<br/>")}</p>
++<table style="width:100%;max-width:560px;border-collapse:collapse;font-size:14px" cellpadding="8"><thead><tr style="text-align:left;border-bottom:1px solid #ccc"><th>Item</th><th>SKU</th><th>Qty</th><th>Unit</th><th>Line</th></tr></thead><tbody>${linesHtml}</tbody></table>
++<p style="margin-top:1.2em">We're preparing your order for shipment. You'll receive tracking information when it ships.</p>
++<p><a href="${escapeHtml(baseUrl)}">Visit our store</a></p>
++<p style="color:#555;font-size:14px">${escapeHtml(support)}</p>
++</body></html>`;
++
++  return { subject, html, text };
++}
++
++/**
++ * After order is durably `paid` and payment_events ledger succeeded, email the customer.
++ * Idempotent via `orders.customer_confirmation_sent_at`. Does not throw (webhook must succeed).
++ */
++export async function maybeSendCustomerOrderConfirmation(args: {
++  admin: SupabaseClient;
++  orderId: string;
++  stripeEventId: string;
++  stripePaymentIntentId: string;
++  sendViaResend?: typeof sendViaResendApi;
++}): Promise<void> {
++  const { admin, orderId, stripeEventId, stripePaymentIntentId } = args;
++  const sendFn = args.sendViaResend ?? sendViaResendApi;
++
++  const { data: order, error: ordErr } = await admin
++    .from("orders")
++    .select(
++      "id, order_number, customer_email, customer_name, total_cents, currency, shipping_address_json, payment_status, customer_confirmation_sent_at",
++    )
++    .eq("id", orderId)
++    .maybeSingle();
++
++  if (ordErr || !order) {
++    log.error(
++      { err: ordErr, orderId, stripeEventId, stripePaymentIntentId },
++      "customer_order_confirmation: could not load order",
++    );
++    return;
++  }
++
++  const row = order as CustomerNotifyOrderRow;
++  if (row.payment_status !== "paid") {
++    log.warn(
++      { orderId: row.id, order_number: row.order_number, stripeEventId, stripePaymentIntentId },
++      "customer_order_confirmation: skip — order not paid",
++    );
++    return;
++  }
++
++  if (row.customer_confirmation_sent_at) {
++    return;
++  }
++
++  if (isUnsendableCustomerEmail(row.customer_email)) {
++    log.warn(
++      {
++        orderId: row.id,
++        order_number: row.order_number,
++        stripeEventId,
++        stripePaymentIntentId,
++        reason: "unsendable_recipient",
++      },
++      "customer_order_confirmation: skipped — placeholder or invalid checkout email",
++    );
++    return;
++  }
++
++  if (isPendingCheckoutShippingAddress(row.shipping_address_json)) {
++    log.warn(
++      {
++        orderId: row.id,
++        order_number: row.order_number,
++        stripeEventId,
++        stripePaymentIntentId,
++      },
++      "customer_order_confirmation: skipped — shipping address still pending in snapshot (retry when fixed)",
++    );
++    return;
++  }
++
++  if (!ENV.RESEND_API_KEY) {
++    log.info(
++      {
++        orderId: row.id,
++        order_number: row.order_number,
++        stripeEventId,
++        stripePaymentIntentId,
++      },
++      "customer_order_confirmation: skipped — RESEND_API_KEY not configured",
++    );
++    return;
++  }
++
++  if (!ENV.RESEND_FROM) {
++    log.info(
++      {
++        orderId: row.id,
++        order_number: row.order_number,
++        stripeEventId,
++        stripePaymentIntentId,
++      },
++      "customer_order_confirmation: skipped — RESEND_FROM not configured",
++    );
++    return;
++  }
++
++  const { data: items, error: itemsErr } = await admin
++    .from("order_items")
++    .select("sku, product_title, variant_title, quantity, unit_price_cents, total_cents")
++    .eq("order_id", orderId);
++
++  if (itemsErr || !items?.length) {
++    log.error(
++      {
++        err: itemsErr,
++        orderId: row.id,
++        order_number: row.order_number,
++        stripeEventId,
++        stripePaymentIntentId,
++      },
++      "customer_order_confirmation: could not load order_items",
++    );
++    return;
++  }
++
++  const itemRows = items as CustomerNotifyItemRow[];
++  const { subject, html, text } = buildCustomerOrderConfirmationEmail({ order: row, items: itemRows });
++  const to = [row.customer_email.trim()];
++
++  const sent = await sendFn({
++    from: ENV.RESEND_FROM,
++    to,
++    subject,
++    html,
++    text,
++  });
++
++  if (!sent.ok) {
++    log.error(
++      {
++        orderId: row.id,
++        order_number: row.order_number,
++        stripeEventId,
++        stripePaymentIntentId,
++        providerError: sent.message,
++      },
++      "customer_order_confirmation: Resend send failed (order remains paid, retry may backfill)",
++    );
++    return;
++  }
++
++  const now = new Date().toISOString();
++  const { error: updErr } = await admin
++    .from("orders")
++    .update({ customer_confirmation_sent_at: now, updated_at: now })
++    .eq("id", row.id)
++    .is("customer_confirmation_sent_at", null);
++
++  if (updErr) {
++    log.error(
++      {
++        err: updErr,
++        orderId: row.id,
++        order_number: row.order_number,
++        stripeEventId,
++        stripePaymentIntentId,
++      },
++      "customer_order_confirmation: email sent but could not persist customer_confirmation_sent_at",
++    );
++  }
++}
+diff --git a/api/_lib/customerOrderConfirmation.test.ts b/api/_lib/customerOrderConfirmation.test.ts
+new file mode 100644
+index 0000000..7b721a4
+--- /dev/null
++++ b/api/_lib/customerOrderConfirmation.test.ts
+@@ -0,0 +1,191 @@
++// @vitest-environment node
++import { describe, expect, it, vi } from "vitest";
++import type { SupabaseClient } from "@supabase/supabase-js";
++
++vi.mock("./env", () => ({
++  ENV: {
++    NODE_ENV: "test",
++    FRONTEND_URL: "https://store.example.com",
++    STRIPE_SECRET_KEY: "",
++    STRIPE_WEBHOOK_SECRET: "",
++    SUPABASE_URL: "",
++    SUPABASE_SERVICE_ROLE_KEY: "",
++    RESEND_API_KEY: "re_test",
++    RESEND_FROM: "orders@store.example.com",
++    OWNER_NOTIFICATION_EMAIL: "",
++    SUPPORT_EMAIL: "help@store.example.com",
++    STORE_BACKEND: "auto",
++    VERCEL_BLOB_RW_TOKEN: "",
++    LOG_LEVEL: "info",
++  },
++  isSupabaseOrderPersistenceConfigured: () => true,
++}));
++
++vi.mock("./logger", () => ({
++  log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
++}));
++
++import {
++  buildCustomerOrderConfirmationEmail,
++  isPendingCheckoutShippingAddress,
++  isUnsendableCustomerEmail,
++  maybeSendCustomerOrderConfirmation,
++} from "./customerOrderConfirmation";
++import { PENDING_CHECKOUT_SHIPPING_JSON } from "./orderSnapshots";
++import { sendViaResendApi } from "./transactionalEmail";
++
++describe("customerOrderConfirmation helpers", () => {
++  it("flags placeholder checkout email as unsendable", () => {
++    expect(isUnsendableCustomerEmail("pending@checkout.zephyr.local")).toBe(true);
++    expect(isUnsendableCustomerEmail("  Pending@CHECKOUT.zephyr.local  ")).toBe(true);
++    expect(isUnsendableCustomerEmail("ok@example.com")).toBe(false);
++  });
++
++  it("detects pending shipping snapshot", () => {
++    expect(isPendingCheckoutShippingAddress(PENDING_CHECKOUT_SHIPPING_JSON)).toBe(true);
++    expect(
++      isPendingCheckoutShippingAddress({
++        line1: "123 Main",
++        city: "NYC",
++        state: "NY",
++        postal_code: "10001",
++        country: "US",
++      }),
++    ).toBe(false);
++  });
++});
++
++describe("buildCustomerOrderConfirmationEmail", () => {
++  it("embeds order number, lines, and support line in HTML", () => {
++    const { subject, html, text } = buildCustomerOrderConfirmationEmail({
++      order: {
++        order_number: "ZLX-20260426-0001",
++        customer_name: "Pat",
++        total_cents: 12050,
++        currency: "usd",
++        shipping_address_json: {
++          line1: "1 Test Way",
++          city: "Austin",
++          state: "TX",
++          postal_code: "78701",
++          country: "US",
++        },
++      },
++      items: [
++        {
++          sku: "ZLX-BLK-S",
++          product_title: "Crew",
++          variant_title: "S / Black",
++          quantity: 1,
++          unit_price_cents: 12000,
++          total_cents: 12000,
++        },
++      ],
++    });
++    expect(subject).toBe("Order confirmed — ZLX-20260426-0001");
++    expect(html).toContain("ZLX-20260426-0001");
++    expect(html).toContain("Crew (S / Black)");
++    expect(html).toContain("ZLX-BLK-S");
++    expect(text).toContain("help@store.example.com");
++  });
++});
++
++describe("maybeSendCustomerOrderConfirmation", () => {
++  it("does not call Resend when customer_confirmation_sent_at is already set", async () => {
++    const sendMock = vi.fn().mockResolvedValue({ ok: true as const });
++    const order = {
++      id: "o1",
++      order_number: "ZLX-1",
++      customer_email: "c@x.com",
++      customer_name: "C",
++      total_cents: 100,
++      currency: "usd",
++      shipping_address_json: { line1: "a", city: "b", state: "c", postal_code: "d", country: "US" },
++      payment_status: "paid",
++      customer_confirmation_sent_at: "2026-01-01T00:00:00.000Z",
++    };
++
++    const client = {
++      from: vi.fn().mockImplementation((table: string) => {
++        if (table === "orders") {
++          return {
++            select: vi.fn().mockReturnValue({
++              eq: vi.fn().mockReturnValue({
++                maybeSingle: vi.fn().mockResolvedValue({ data: order, error: null }),
++              }),
++            }),
++          };
++        }
++        return {};
++      }),
++    } as unknown as SupabaseClient;
++
++    await maybeSendCustomerOrderConfirmation({
++      admin: client,
++      orderId: "o1",
++      stripeEventId: "evt_1",
++      stripePaymentIntentId: "pi_1",
++      sendViaResend: sendMock as unknown as typeof sendViaResendApi,
++    });
++    expect(sendMock).not.toHaveBeenCalled();
++  });
++
++  it("sends once when marker is null", async () => {
++    const sendMock = vi.fn().mockResolvedValue({ ok: true as const });
++    const order = {
++      id: "o1",
++      order_number: "ZLX-1",
++      customer_email: "c@x.com",
++      customer_name: "C",
++      total_cents: 100,
++      currency: "usd",
++      shipping_address_json: { line1: "a", city: "b", state: "c", postal_code: "d", country: "US" },
++      payment_status: "paid",
++      customer_confirmation_sent_at: null,
++    };
++    const items = [
++      {
++        sku: "S",
++        product_title: "P",
++        variant_title: null,
++        quantity: 1,
++        unit_price_cents: 100,
++        total_cents: 100,
++      },
++    ];
++
++    const client = {
++      from: vi.fn().mockImplementation((table: string) => {
++        if (table === "orders") {
++          return {
++            select: vi.fn().mockReturnValue({
++              eq: vi.fn().mockReturnValue({
++                maybeSingle: vi.fn().mockResolvedValue({ data: order, error: null }),
++              }),
++            }),
++            update: vi.fn().mockReturnValue({
++              eq: vi.fn().mockReturnValue({ is: vi.fn().mockResolvedValue({ error: null }) }),
++            }),
++          };
++        }
++        if (table === "order_items") {
++          return {
++            select: vi.fn().mockReturnValue({
++              eq: vi.fn().mockResolvedValue({ data: items, error: null }),
++            }),
++          };
++        }
++        return {};
++      }),
++    } as unknown as SupabaseClient;
++
++    await maybeSendCustomerOrderConfirmation({
++      admin: client,
++      orderId: "o1",
++      stripeEventId: "evt_1",
++      stripePaymentIntentId: "pi_1",
++      sendViaResend: sendMock as unknown as typeof sendViaResendApi,
++    });
++    expect(sendMock).toHaveBeenCalledTimes(1);
++  });
++});
+diff --git a/api/_lib/ownerOrderNotification.ts b/api/_lib/ownerOrderNotification.ts
+new file mode 100644
+index 0000000..eee2488
+--- /dev/null
++++ b/api/_lib/ownerOrderNotification.ts
+@@ -0,0 +1,250 @@
++import type { SupabaseClient } from "@supabase/supabase-js";
++import { addressSchema } from "../../src/domain/commerce/address";
++import { ENV } from "./env";
++import { log } from "./logger";
++import { sendViaResendApi } from "./transactionalEmail";
++
++export type OwnerNotifyOrderRow = {
++  id: string;
++  order_number: string;
++  customer_email: string;
++  customer_name: string | null;
++  total_cents: number;
++  currency: string;
++  shipping_address_json: unknown;
++  payment_status: string;
++  owner_order_paid_notified_at: string | null;
++};
++
++export type OwnerNotifyItemRow = {
++  sku: string;
++  product_title: string;
++  quantity: number;
++  unit_price_cents: number;
++  total_cents: number;
++};
++
++export function formatMoneyCents(cents: number, currency: string): string {
++  const cur = currency.toUpperCase();
++  try {
++    return new Intl.NumberFormat("en-US", { style: "currency", currency: cur }).format(cents / 100);
++  } catch {
++    return `${(cents / 100).toFixed(2)} ${cur}`;
++  }
++}
++
++function escapeHtml(s: string): string {
++  return s
++    .replace(/&/g, "&amp;")
++    .replace(/</g, "&lt;")
++    .replace(/>/g, "&gt;")
++    .replace(/"/g, "&quot;");
++}
++
++/** Format shipping for email bodies only (not for logs). */
++export function formatShippingAddressForEmail(shippingAddressJson: unknown): string {
++  const parsed = addressSchema.safeParse(shippingAddressJson);
++  if (!parsed.success) {
++    return "[Address on file]";
++  }
++  const a = parsed.data;
++  const lines = [
++    a.name,
++    a.line1,
++    a.line2,
++    [a.city, a.state, a.postal_code].filter(Boolean).join(", "),
++    a.country,
++    a.phone,
++  ]
++    .filter((x): x is string => Boolean(x && x.trim()))
++    .map((x) => x.trim());
++  return lines.join("\n");
++}
++
++export function buildOwnerOrderPaidEmail(args: {
++  order: Pick<
++    OwnerNotifyOrderRow,
++    "order_number" | "customer_email" | "customer_name" | "total_cents" | "currency" | "shipping_address_json" | "id"
++  >;
++  items: OwnerNotifyItemRow[];
++}): { subject: string; html: string; text: string } {
++  const { order, items } = args;
++  const cust = order.customer_name?.trim() || "—";
++  const total = formatMoneyCents(order.total_cents, order.currency);
++  const shipBlock = formatShippingAddressForEmail(order.shipping_address_json);
++  const adminTarget = `${ENV.FRONTEND_URL.replace(/\/$/, "")}/admin/orders/${order.id}`;
++  const subject = `New paid order ${order.order_number}`;
++
++  const linesText = items
++    .map(
++      (it) =>
++        `${it.product_title} | SKU ${it.sku} × ${it.quantity} — ${formatMoneyCents(it.total_cents, order.currency)} (unit ${formatMoneyCents(it.unit_price_cents, order.currency)})`,
++    )
++    .join("\n");
++
++  const linesHtml = items
++    .map(
++      (it) =>
++        `<tr><td>${escapeHtml(it.product_title)}</td><td>${escapeHtml(it.sku)}</td><td>${it.quantity}</td><td>${escapeHtml(formatMoneyCents(it.unit_price_cents, order.currency))}</td><td>${escapeHtml(formatMoneyCents(it.total_cents, order.currency))}</td></tr>`,
++    )
++    .join("");
++
++  const text = [
++    `Order ${order.order_number} is paid.`,
++    ``,
++    `Customer: ${cust}`,
++    `Email: ${order.customer_email}`,
++    `Total: ${total}`,
++    ``,
++    `Shipping:`,
++    shipBlock,
++    ``,
++    `Line items:`,
++    linesText,
++    ``,
++    `Admin (Epic 5 — link target, not a live route yet):`,
++    adminTarget,
++  ].join("\n");
++
++  const html = `<!doctype html><html><body>
++<p><strong>Paid order ${escapeHtml(order.order_number)}</strong></p>
++<p>Customer: ${escapeHtml(cust)}<br/>Email: ${escapeHtml(order.customer_email)}<br/>Total: ${escapeHtml(total)}</p>
++<p><strong>Shipping</strong><br/>${escapeHtml(shipBlock).replace(/\n/g, "<br/>")}</p>
++<table border="1" cellpadding="6" cellspacing="0"><thead><tr><th>Item</th><th>SKU</th><th>Qty</th><th>Unit</th><th>Line</th></tr></thead><tbody>${linesHtml}</tbody></table>
++<p><small>Admin deep link (planned): <a href="${escapeHtml(adminTarget)}">${escapeHtml(adminTarget)}</a></small></p>
++</body></html>`;
++
++  return { subject, html, text };
++}
++
++function parseOwnerRecipients(raw: string): string[] {
++  return raw
++    .split(",")
++    .map((s) => s.trim())
++    .filter((s) => s.length > 0);
++}
++
++/**
++ * After order is durably `paid` and inventory + payment_events ledger succeeded, notify the store owner.
++ * Failures are logged with correlation ids; never throws to callers (webhook must not 500 for email alone).
++ */
++export async function maybeSendOwnerOrderPaidNotification(args: {
++  admin: SupabaseClient;
++  orderId: string;
++  stripeEventId: string;
++  stripePaymentIntentId: string;
++  sendViaResend?: typeof sendViaResendApi;
++}): Promise<void> {
++  const { admin, orderId, stripeEventId, stripePaymentIntentId } = args;
++  const sendFn = args.sendViaResend ?? sendViaResendApi;
++
++  const { data: order, error: ordErr } = await admin
++    .from("orders")
++    .select(
++      "id, order_number, customer_email, customer_name, total_cents, currency, shipping_address_json, payment_status, owner_order_paid_notified_at",
++    )
++    .eq("id", orderId)
++    .maybeSingle();
++
++  if (ordErr || !order) {
++    log.error(
++      { err: ordErr, orderId, stripeEventId, stripePaymentIntentId },
++      "owner_order_paid_notification: could not load order",
++    );
++    return;
++  }
++
++  const row = order as OwnerNotifyOrderRow;
++  if (row.payment_status !== "paid") {
++    log.warn(
++      { orderId: row.id, order_number: row.order_number, stripeEventId, stripePaymentIntentId },
++      "owner_order_paid_notification: skip — order not paid",
++    );
++    return;
++  }
++
++  if (row.owner_order_paid_notified_at) {
++    return;
++  }
++
++  const recipients = parseOwnerRecipients(ENV.OWNER_NOTIFICATION_EMAIL);
++  if (!ENV.RESEND_API_KEY || recipients.length === 0 || !ENV.RESEND_FROM) {
++    log.warn(
++      {
++        orderId: row.id,
++        order_number: row.order_number,
++        stripeEventId,
++        stripePaymentIntentId,
++        hasKey: Boolean(ENV.RESEND_API_KEY),
++        hasFrom: Boolean(ENV.RESEND_FROM),
++        recipientCount: recipients.length,
++      },
++      "owner_order_paid_notification: skipped — missing RESEND_API_KEY, RESEND_FROM, or OWNER_NOTIFICATION_EMAIL",
++    );
++    return;
++  }
++
++  const { data: items, error: itemsErr } = await admin
++    .from("order_items")
++    .select("sku, product_title, quantity, unit_price_cents, total_cents")
++    .eq("order_id", orderId);
++
++  if (itemsErr || !items?.length) {
++    log.error(
++      {
++        err: itemsErr,
++        orderId: row.id,
++        order_number: row.order_number,
++        stripeEventId,
++        stripePaymentIntentId,
++      },
++      "owner_order_paid_notification: could not load order_items",
++    );
++    return;
++  }
++
++  const itemRows = items as OwnerNotifyItemRow[];
++  const { subject, html, text } = buildOwnerOrderPaidEmail({ order: row, items: itemRows });
++
++  const sent = await sendFn({
++    from: ENV.RESEND_FROM,
++    to: recipients,
++    subject,
++    html,
++    text,
++  });
++
++  if (!sent.ok) {
++    log.error(
++      {
++        orderId: row.id,
++        order_number: row.order_number,
++        stripeEventId,
++        stripePaymentIntentId,
++        providerError: sent.message,
++      },
++      "owner_order_paid_notification: Resend send failed (order remains paid)",
++    );
++    return;
++  }
++
++  const now = new Date().toISOString();
++  const { error: updErr } = await admin
++    .from("orders")
++    .update({ owner_order_paid_notified_at: now, updated_at: now })
++    .eq("id", row.id)
++    .is("owner_order_paid_notified_at", null);
++
++  if (updErr) {
++    log.error(
++      {
++        err: updErr,
++        orderId: row.id,
++        order_number: row.order_number,
++        stripeEventId,
++        stripePaymentIntentId,
++      },
++      "owner_order_paid_notification: email sent but could not persist owner_order_paid_notified_at",
++    );
++  }
++}
+diff --git a/api/_lib/ownerOrderNotification.test.ts b/api/_lib/ownerOrderNotification.test.ts
+new file mode 100644
+index 0000000..da0a7c6
+--- /dev/null
++++ b/api/_lib/ownerOrderNotification.test.ts
+@@ -0,0 +1,268 @@
++// @vitest-environment node
++import { describe, expect, it, vi, beforeEach } from "vitest";
++import type { SupabaseClient } from "@supabase/supabase-js";
++
++vi.mock("./env", () => ({
++  ENV: {
++    FRONTEND_URL: "http://localhost:5173",
++    RESEND_API_KEY: "re_test",
++    RESEND_FROM: "Orders <orders@test.com>",
++    OWNER_NOTIFICATION_EMAIL: "owner@test.com, second@example.com",
++  },
++}));
++
++vi.mock("./logger", () => ({
++  log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
++}));
++
++import {
++  buildOwnerOrderPaidEmail,
++  formatMoneyCents,
++  formatShippingAddressForEmail,
++  maybeSendOwnerOrderPaidNotification,
++} from "./ownerOrderNotification";
++import { sendViaResendApi } from "./transactionalEmail";
++
++describe("ownerOrderNotification helpers", () => {
++  it("formatMoneyCents formats USD", () => {
++    expect(formatMoneyCents(5350, "usd")).toMatch(/53\.50/);
++  });
++
++  it("formatShippingAddressForEmail renders structured address", () => {
++    const s = formatShippingAddressForEmail({
++      line1: "1 Main St",
++      city: "Austin",
++      state: "TX",
++      postal_code: "78701",
++      country: "US",
++    });
++    expect(s).toContain("1 Main St");
++    expect(s).toContain("Austin");
++  });
++
++  it("buildOwnerOrderPaidEmail includes order number, customer, lines, admin target", () => {
++    const { subject, text, html } = buildOwnerOrderPaidEmail({
++      order: {
++        id: "ord-uuid",
++        order_number: "ZLX-20260426-0001",
++        customer_email: "buyer@example.com",
++        customer_name: "Buyer Name",
++        total_cents: 1000,
++        currency: "usd",
++        shipping_address_json: {
++          line1: "1 Main",
++          city: "Austin",
++          state: "TX",
++          postal_code: "78701",
++          country: "US",
++        },
++      },
++      items: [
++        {
++          sku: "ZLX-A",
++          product_title: "Silk Shirt",
++          quantity: 1,
++          unit_price_cents: 1000,
++          total_cents: 1000,
++        },
++      ],
++    });
++    expect(subject).toContain("ZLX-20260426-0001");
++    expect(text).toContain("Buyer Name");
++    expect(text).toContain("buyer@example.com");
++    expect(text).toContain("ZLX-A");
++    expect(text).toContain("/admin/orders/ord-uuid");
++    expect(html).toContain("Silk Shirt");
++  });
++});
++
++describe("sendViaResendApi", () => {
++  it("returns ok when Resend returns 200", async () => {
++    const fetchImpl = vi.fn().mockResolvedValue({
++      ok: true,
++      status: 200,
++      json: async () => ({}),
++    });
++    const r = await sendViaResendApi({
++      from: "a@b.com",
++      to: ["c@d.com"],
++      subject: "s",
++      html: "<p>x</p>",
++      text: "x",
++      fetchImpl: fetchImpl as unknown as typeof fetch,
++    });
++    expect(r).toEqual({ ok: true });
++    expect(fetchImpl).toHaveBeenCalledWith(
++      "https://api.resend.com/emails",
++      expect.objectContaining({ method: "POST" }),
++    );
++  });
++});
++
++describe("maybeSendOwnerOrderPaidNotification", () => {
++  beforeEach(() => {
++    vi.clearAllMocks();
++  });
++
++  it("skips when owner_order_paid_notified_at is already set (idempotent)", async () => {
++    const sendViaResend = vi.fn();
++    const maybeSingle = vi.fn().mockResolvedValue({
++      data: {
++        id: "o1",
++        order_number: "ZLX-1",
++        customer_email: "b@e.com",
++        customer_name: "B",
++        total_cents: 100,
++        currency: "usd",
++        shipping_address_json: { line1: "x", city: "c", state: "s", postal_code: "1", country: "US" },
++        payment_status: "paid",
++        owner_order_paid_notified_at: "2026-01-01T00:00:00Z",
++      },
++      error: null,
++    });
++
++    const admin = {
++      from: vi.fn(() => ({
++        select: vi.fn().mockReturnValue({
++          eq: vi.fn().mockReturnValue({ maybeSingle }),
++        }),
++      })),
++    } as unknown as SupabaseClient;
++
++    await maybeSendOwnerOrderPaidNotification({
++      admin,
++      orderId: "o1",
++      stripeEventId: "evt_1",
++      stripePaymentIntentId: "pi_1",
++      sendViaResend,
++    });
++
++    expect(sendViaResend).not.toHaveBeenCalled();
++  });
++
++  it("sends once and persists notified_at", async () => {
++    const sendViaResend = vi.fn().mockResolvedValue({ ok: true });
++    const isFn = vi.fn().mockResolvedValue({ error: null });
++    const eqAfterUpdate = vi.fn().mockReturnValue({ is: isFn });
++    const updateFn = vi.fn().mockReturnValue({ eq: eqAfterUpdate });
++
++    const maybeSingle = vi.fn().mockResolvedValue({
++      data: {
++        id: "o1",
++        order_number: "ZLX-1",
++        customer_email: "b@e.com",
++        customer_name: "B",
++        total_cents: 100,
++        currency: "usd",
++        shipping_address_json: { line1: "x", city: "c", state: "s", postal_code: "1", country: "US" },
++        payment_status: "paid",
++        owner_order_paid_notified_at: null,
++      },
++      error: null,
++    });
++
++    const itemsEq = vi.fn().mockResolvedValue({
++      data: [
++        {
++          sku: "S",
++          product_title: "P",
++          quantity: 1,
++          unit_price_cents: 100,
++          total_cents: 100,
++        },
++      ],
++      error: null,
++    });
++
++    const admin = {
++      from: vi.fn((table: string) => {
++        if (table === "orders") {
++          return {
++            select: vi.fn().mockReturnValue({
++              eq: vi.fn().mockReturnValue({ maybeSingle }),
++            }),
++            update: updateFn,
++          };
++        }
++        if (table === "order_items") {
++          return {
++            select: vi.fn().mockReturnValue({
++              eq: itemsEq,
++            }),
++          };
++        }
++        return {};
++      }),
++    } as unknown as SupabaseClient;
++
++    await maybeSendOwnerOrderPaidNotification({
++      admin,
++      orderId: "o1",
++      stripeEventId: "evt_1",
++      stripePaymentIntentId: "pi_1",
++      sendViaResend,
++    });
++
++    expect(sendViaResend).toHaveBeenCalledTimes(1);
++    expect(sendViaResend.mock.calls[0][0].to).toEqual(["owner@test.com", "second@example.com"]);
++    expect(updateFn).toHaveBeenCalled();
++    expect(isFn).toHaveBeenCalledWith("owner_order_paid_notified_at", null);
++  });
++
++  it("does not persist notified_at when Resend fails", async () => {
++    const sendViaResend = vi.fn().mockResolvedValue({ ok: false, message: "bad from" });
++    const updateFn = vi.fn();
++
++    const maybeSingle = vi.fn().mockResolvedValue({
++      data: {
++        id: "o1",
++        order_number: "ZLX-1",
++        customer_email: "b@e.com",
++        customer_name: "B",
++        total_cents: 100,
++        currency: "usd",
++        shipping_address_json: { line1: "x", city: "c", state: "s", postal_code: "1", country: "US" },
++        payment_status: "paid",
++        owner_order_paid_notified_at: null,
++      },
++      error: null,
++    });
++
++    const itemsEq = vi.fn().mockResolvedValue({
++      data: [{ sku: "S", product_title: "P", quantity: 1, unit_price_cents: 100, total_cents: 100 }],
++      error: null,
++    });
++
++    const admin = {
++      from: vi.fn((table: string) => {
++        if (table === "orders") {
++          return {
++            select: vi.fn().mockReturnValue({
++              eq: vi.fn().mockReturnValue({ maybeSingle }),
++            }),
++            update: updateFn,
++          };
++        }
++        if (table === "order_items") {
++          return {
++            select: vi.fn().mockReturnValue({
++              eq: itemsEq,
++            }),
++          };
++        }
++        return {};
++      }),
++    } as unknown as SupabaseClient;
++
++    await maybeSendOwnerOrderPaidNotification({
++      admin,
++      orderId: "o1",
++      stripeEventId: "evt_1",
++      stripePaymentIntentId: "pi_1",
++      sendViaResend,
++    });
++
++    expect(sendViaResend).toHaveBeenCalled();
++    expect(updateFn).not.toHaveBeenCalled();
++  });
++});
+diff --git a/supabase/migrations/20260428140000_customer_confirmation_sent_at.sql b/supabase/migrations/20260428140000_customer_confirmation_sent_at.sql
+new file mode 100644
+index 0000000..656ff63
+--- /dev/null
++++ b/supabase/migrations/20260428140000_customer_confirmation_sent_at.sql
+@@ -0,0 +1,6 @@
++-- Story 4-6: durable marker for customer order confirmation email (idempotency / retry backfill).
++
++ALTER TABLE public.orders
++ADD COLUMN IF NOT EXISTS customer_confirmation_sent_at timestamptz;
++
++COMMENT ON COLUMN public.orders.customer_confirmation_sent_at IS 'Set when customer order confirmation email was sent successfully (E4-S6, FR-NOT-002).';

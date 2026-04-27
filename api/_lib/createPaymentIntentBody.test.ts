@@ -30,6 +30,21 @@ describe("createPaymentIntentBodySchema", () => {
     } as unknown);
     expect(r.success).toBe(false);
   });
+
+  it("accepts optional customer_name and shipping_address", () => {
+    const r = createPaymentIntentBodySchema.safeParse({
+      items: [{ sku: "ZLX-A", quantity: 1 }],
+      customer_name: "Ada Lovelace",
+      shipping_address: {
+        line1: "1 Main St",
+        city: "Austin",
+        state: "TX",
+        postal_code: "78701",
+        country: "US",
+      },
+    });
+    expect(r.success).toBe(true);
+  });
 });
 
 describe("lineItemsToCatalogRows", () => {

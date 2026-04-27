@@ -1,14 +1,10 @@
 # Story 4.5: Owner order notification
 
-Status: ready-for-dev
+Status: done
 
 ## Review Gate (must resolve before dev)
 
-- **Blocked by [4-3](4-3-payment-success-order-paid.md):** 4-3 is still `in-progress`; do not implement owner notification until the paid-order transition contract is settled.
-- **Blocked by checkout contact/shipping persistence:** current checkout only sends `items`, `email`, and `currency` to `api/create-payment-intent`; `orders.customer_name` is never set and `orders.shipping_address_json` is currently a placeholder. 4-5 cannot honestly meet AC1 until checkout passes/persists customer name and a real structured shipping address.
-- **Notification idempotency must be durable:** if a first webhook marks an order `paid` and later retries through the already-paid path, owner email must not be silently skipped forever. Prefer landing [4-7](4-7-log-notification-status.md) first and keying sends by order/template/channel.
-- **Admin route caveat:** `/admin/orders/:id` does not exist yet (Epic 5 backlog). Either document a stable future URL or add a real useful route; do not claim a working deep link to a missing page.
-- **Resend launch gate:** before enabling real sends, confirm server env vars are present and the configured `from` domain/address is verified in Resend; document sandbox vs production sender expectations.
+- **Resolved in implementation (2026-04-26):** [4-3](4-3-payment-success-order-paid.md) is `done` in sprint status; checkout now sends optional `customer_name` + `shipping_address` (structured) when the debounced contact block is complete; `orders.owner_order_paid_notified_at` provides durable idempotency and backfill on the already-`paid` webhook path; admin link is labeled as future Epic 5 in email copy; `.env.example` documents Resend + owner inbox launch expectations.
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -34,22 +30,22 @@ so that **I can fulfill it without relying on the dashboard alone** (FR-NOT-001 
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Provider + env (AC: 4, 6)**  
-  - [ ] Confirm **Resend** as MVP provider (matches `RESEND_API_KEY` already documented; [architecture.md](../planning-artifacts/architecture.md) Q2). Add **`resend`** npm dependency **or** a thin `fetch`-based client if you want zero extra deps — justify in Dev Agent Record.  
-  - [ ] Add env vars (names illustrative — adjust to match code): `OWNER_NOTIFICATION_EMAIL`, `EMAIL_FROM` / `RESEND_FROM` (verified sender), wire into `ENV`.
-  - [ ] Add a launch-readiness check/runbook: `RESEND_API_KEY`, owner recipient, and verified `from` domain/address must be present before production sends are enabled; document local/sandbox sender behavior in [`.env.example`](../../.env.example).
+- [x] **Task 1 — Provider + env (AC: 4, 6)**  
+  - [x] Confirm **Resend** as MVP provider (matches `RESEND_API_KEY` already documented; [architecture.md](../planning-artifacts/architecture.md) Q2). Add **`resend`** npm dependency **or** a thin `fetch`-based client if you want zero extra deps — justify in Dev Agent Record.  
+  - [x] Add env vars (names illustrative — adjust to match code): `OWNER_NOTIFICATION_EMAIL`, `EMAIL_FROM` / `RESEND_FROM` (verified sender), wire into `ENV`.
+  - [x] Add a launch-readiness check/runbook: `RESEND_API_KEY`, owner recipient, and verified `from` domain/address must be present before production sends are enabled; document local/sandbox sender behavior in [`.env.example`](../../.env.example).
 
-- [ ] **Task 2 — Compose + send (AC: 1, 3, 4)**  
-  - [ ] Implement `api/_lib/ownerOrderNotification.ts` (name flexible) that loads **`orders` + `order_items`** (or accepts rows passed from the payment-success path) and sends HTML + text body.  
-  - [ ] Verify checkout has persisted `orders.customer_name` and a real structured `orders.shipping_address_json`; if not, add a prerequisite/follow-up story and keep 4-5 gated.
-  - [ ] Admin URL: ``${ENV.FRONTEND_URL.replace(/\/$/, '')}/admin/orders/${order.id}`` can be used as the stable future target, but do not describe it as working until an actual route exists.
+- [x] **Task 2 — Compose + send (AC: 1, 3, 4)**  
+  - [x] Implement `api/_lib/ownerOrderNotification.ts` (name flexible) that loads **`orders` + `order_items`** (or accepts rows passed from the payment-success path) and sends HTML + text body.  
+  - [x] Verify checkout has persisted `orders.customer_name` and a real structured `orders.shipping_address_json`; if not, add a prerequisite/follow-up story and keep 4-5 gated.
+  - [x] Admin URL: ``${ENV.FRONTEND_URL.replace(/\/$/, '')}/admin/orders/${order.id}`` can be used as the stable future target, but do not describe it as working until an actual route exists.
 
-- [ ] **Task 3 — Hook after first paid transition (AC: 1, 2)**  
-  - [ ] Invoke notify from a durable per-order/template decision: send after the order is durably paid, but allow retry/backfill if the first webhook crashed after `paid` and before notification. Do **not** rely only on the first `updatedRows.length > 0` branch unless a DB marker/log makes the missed-send case recoverable.  
-  - [ ] Ensure **ordering**: persist **`paid`** first; then **best-effort** email; **`markPaymentEventProcessed`** should remain correct relative to today’s semantics — *email failure must not roll back paid state or cause misleading webhook 500.*
+- [x] **Task 3 — Hook after first paid transition (AC: 1, 2)**  
+  - [x] Invoke notify from a durable per-order/template decision: send after the order is durably paid, but allow retry/backfill if the first webhook crashed after `paid` and before notification. Do **not** rely only on the first `updatedRows.length > 0` branch unless a DB marker/log makes the missed-send case recoverable.  
+  - [x] Ensure **ordering**: persist **`paid`** first; then **best-effort** email; **`markPaymentEventProcessed`** should remain correct relative to today’s semantics — *email failure must not roll back paid state or cause misleading webhook 500.*
 
-- [ ] **Task 4 — Tests (AC: 5)**  
-  - [ ] Unit tests for formatting + spy on send from `applyPaymentIntentSucceeded` / webhook fixture.
+- [x] **Task 4 — Tests (AC: 5)**  
+  - [x] Unit tests for formatting + spy on send from `applyPaymentIntentSucceeded` / webhook fixture.
 
 ## Dev Notes
 
@@ -105,25 +101,59 @@ so that **I can fulfill it without relying on the dashboard alone** (FR-NOT-001 
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Composer (Cursor AI agent)
 
 ### Debug Log References
 
+_(none)_
+
 ### Completion Notes List
+
+- **Resend transport:** Implemented as `fetch` to `https://api.resend.com/emails` in `api/_lib/transactionalEmail.ts` (no `resend` npm package).
+- **Owner notify:** `maybeSendOwnerOrderPaidNotification` runs after `markPaymentEventProcessed` (inside `finalizeLedgerThenTransactionalEmails`), uses atomic claim `NULL` → in-flight sentinel then success timestamp, Resend `Idempotency-Key: owner-order-paid/{id}`, 20s HTTP timeout, stale in-flight clear (10m); logs with `stripeEventId`, `stripePaymentIntentId`, `order.id`, `order_number`, `idempotencyKey` on persist failure; skips with warn if env incomplete; never throws.
+- **Checkout:** Debounced contact/shipping fingerprint drives PaymentIntent bootstrap; POST includes `customer_name` + `shipping_address` when all structured fields are non-empty; otherwise order keeps placeholder shipping until the shopper completes the block.
+- **Tests:** `api/_lib/ownerOrderNotification.test.ts`, extended `applyPaymentSuccess` + `stripe-webhook.handler` tests; `npm test` and `npm run build` pass.
 
 ### File List
 
+- `supabase/migrations/20260428120000_owner_order_paid_notification.sql`
+- `api/_lib/transactionalEmail.ts`
+- `api/_lib/ownerOrderNotification.ts`
+- `api/_lib/ownerOrderNotification.test.ts`
+- `api/_lib/applyPaymentSuccess.ts`
+- `api/_lib/applyPaymentSuccess.test.ts`
+- `api/_lib/env.ts`
+- `api/_lib/createPaymentIntentBody.ts`
+- `api/_lib/createPaymentIntentBody.test.ts`
+- `api/create-payment-intent.ts`
+- `api/stripe-webhook.ts`
+- `api/stripe-webhook.handler.test.ts`
+- `src/components/Cart/CheckoutPage.tsx`
+- `src/lib/validation.ts`
+- `src/lib/validation.js`
+- `.env.example`
+
 ### Review Findings
 
-- [ ] [Review][Blocker] Current checkout does not send customer name or real shipping address to `create-payment-intent`; `orders.customer_name` is unset and `shipping_address_json` is a placeholder. 4-5 cannot satisfy required email content until that is fixed.
-- [ ] [Review][Blocker] Email idempotency cannot be first-paid-branch-only if inventory/payment retry paths can re-enter after `paid`. Add durable notification state (prefer 4-7 first) so owner email can be sent once and backfilled when missing.
-- [ ] [Review][Patch] `/admin/orders/:id` is not routed today. Soften the AC to stable future URL or implement a real order route before claiming the link works.
-- [ ] [Review][Patch] Add Resend sender/domain readiness checks and documentation so the first production order does not discover an unverified `from` address.
-- [ ] [Review][Sequence] Do not start until 4-3's paid-order review findings are resolved.
+- [x] [Review][Blocker] Current checkout does not send customer name or real shipping address to `create-payment-intent`; `orders.customer_name` is unset and `shipping_address_json` is a placeholder. 4-5 cannot satisfy required email content until that is fixed.
+- [x] [Review][Blocker] Email idempotency cannot be first-paid-branch-only if inventory/payment retry paths can re-enter after `paid`. Add durable notification state (prefer 4-7 first) so owner email can be sent once and backfilled when missing.
+- [x] [Review][Patch] `/admin/orders/:id` is not routed today. Soften the AC to stable future URL or implement a real order route before claiming the link works.
+- [x] [Review][Patch] Add Resend sender/domain readiness checks and documentation so the first production order does not discover an unverified `from` address.
+- [x] [Review][Sequence] Do not start until 4-3's paid-order review findings are resolved.
+
+- [x] [Review][Decision] Concurrent or overlapping webhook deliveries can both read `owner_order_paid_notified_at` as null and invoke Resend before either update commits, risking duplicate owner emails. **Resolved (2026-04-26 follow-up):** atomic claim `NULL` → `owner_order_paid_notified_at = IN_FLIGHT` sentinel in one `UPDATE` (serializes on row); `Idempotency-Key: owner-order-paid/{orderId}` on Resend; stale in-flight reset after 10m; `release` on send/validation fail.
+- [x] [Review][Patch] Add an HTTP timeout (`AbortController` or equivalent) for the Resend `fetch` in `api/_lib/transactionalEmail.ts` so a hung provider does not block the webhook handler indefinitely. **Fixed:** 20s default; optional `timeoutMs` on `sendViaResendApi`.
+- [x] [Review][Patch] If Resend returns success but the follow-up `orders` update to set `owner_order_paid_notified_at` fails, a later retry can send a second email. **Fixed:** log includes `idempotencyKey` and guidance; Vitest for finalize failure; in-flight + Resend idempotency limits double-send on retry. Full `notification_logs` still deferred to 4-7.
+- [x] [Review][Defer] Deeper `notification_logs` + `provider_message_id` (Epic 4-7) — deferred, pre-existing; `owner_order_paid_notified_at` and logs are the current equivalent.
+
+### Change Log
+
+- 2026-04-26 — Story 4-5: owner paid-order email via Resend (`RESEND_FROM`, `OWNER_NOTIFICATION_EMAIL`), durable `owner_order_paid_notified_at`, checkout structured address + name, Vitest coverage.
+- 2026-04-26 — Code review follow-up: in-flight claim + Resend `Idempotency-Key`, 20s Resend `fetch` timeout, regression test and log detail when persist after send fails.
 
 ## Story completion status
 
-**ready-for-dev with review gate** — Story context exists, but dev should not start until the blockers in Review Findings are resolved.
+**done** — Code review findings for concurrency, transport timeout, and post-send persist failure were addressed; `npm test` and full Vitest run pass.
 
 ### Saved questions (optional follow-ups)
 

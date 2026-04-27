@@ -9,6 +9,7 @@ import {
 } from "./_lib/createPaymentIntentBody";
 import { ENV, isSupabaseOrderPersistenceConfigured } from "./_lib/env";
 import { log } from "./_lib/logger";
+import { isUnsendableCustomerEmail } from "./_lib/customerOrderConfirmation";
 import { orderItemRowsFromQuote, PENDING_CHECKOUT_SHIPPING_JSON } from "./_lib/orderSnapshots";
 import { getSupabaseAdmin } from "./_lib/supabaseAdmin";
 
@@ -101,8 +102,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const orderConfirmationKey = randomBytes(24).toString("hex");
 
     const emailRaw = (data.email ?? "").trim().slice(0, 256);
-    const customerEmail =
-      emailRaw.length > 0 ? emailRaw : "pending@checkout.zephyr.local";
+    if (!emailRaw || isUnsendableCustomerEmail(emailRaw)) {
+      log.warn("create-payment-intent: valid customer email required");
+      return res.status(400).json({ error: "A valid email is required to complete checkout." });
+    }
+    const customerEmail = emailRaw;
 
     const lineKey = catalogRows
       .map((l) => ({ sku: l.sku, q: l.qty }))
@@ -126,10 +130,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: "Payment setup failed. Please try again." });
     }
 
+    const customerName = data.customer_name?.trim().slice(0, 200) || null;
+    const shippingJson = data.shipping_address ?? PENDING_CHECKOUT_SHIPPING_JSON;
+
     const orderInsert = {
       order_number: orderNumber,
       order_confirmation_key: orderConfirmationKey,
       customer_email: customerEmail,
+      customer_name: customerName,
       payment_status: "pending_payment" as const,
       fulfillment_status: "processing" as const,
       subtotal_cents: quote.subtotal_cents,
@@ -138,7 +146,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       discount_cents: 0,
       total_cents: quote.total_cents,
       currency: quote.currency,
-      shipping_address_json: PENDING_CHECKOUT_SHIPPING_JSON,
+      shipping_address_json: shippingJson,
       stripe_payment_intent_id: null as string | null,
     };
 

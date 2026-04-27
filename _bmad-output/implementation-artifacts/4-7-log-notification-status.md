@@ -1,6 +1,6 @@
 # Story 4.7: Log notification status
 
-Status: ready-for-dev
+Status: done
 
 ## Review Gate (must resolve before dev)
 
@@ -32,22 +32,22 @@ so that **FR-NOT-001 / FR-NOT-002** (“failure is logged and retryable”), **N
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Schema (AC: 1, 2)**  
-  - [ ] Add Supabase migration: enums + `notification_logs` + FK to `orders` + indexes sensible for Epic 5 list queries (e.g. `(order_id, created_at desc)`).  
-  - [ ] Align with PRD §12.7; add `ON DELETE SET NULL` or `RESTRICT` for `order_id` per product preference (document choice).
-  - [ ] Confirm final status enum labels before migration (`queued` / `sent` / `failed` vs any PRD-preferred alternatives such as `pending` or `retrying`).
-  - [ ] Decide uniqueness/history semantics: one logical row per `(order_id, template, channel)` updated across attempts, or multiple rows preserving every provider attempt.
+- [x] **Task 1 — Schema (AC: 1, 2)**  
+  - [x] Add Supabase migration: enums + `notification_logs` + FK to `orders` + indexes sensible for Epic 5 list queries (e.g. `(order_id, created_at desc)`).  
+  - [x] Align with PRD §12.7; add `ON DELETE SET NULL` or `RESTRICT` for `order_id` per product preference (document choice).
+  - [x] Confirm final status enum labels before migration (`queued` / `sent` / `failed` vs any PRD-preferred alternatives such as `pending` or `retrying`).
+  - [x] Decide uniqueness/history semantics: one logical row per `(order_id, template, channel)` updated across attempts, or multiple rows preserving every provider attempt.
 
-- [ ] **Task 2 — Server helper (AC: 3, 4)**  
-  - [ ] Add `api/_lib/notificationLog.ts` (or equivalent): `insertQueued`, `markSent`, `markFailed` (or single transactional update pattern).  
-  - [ ] Use existing `supabaseAdmin` client; **never** expose service role to the browser.
+- [x] **Task 2 — Server helper (AC: 3, 4)**  
+  - [x] Add `api/_lib/notificationLog.ts` (or equivalent): `insertQueued`, `markSent`, `markFailed` (or single transactional update pattern).  
+  - [x] Use existing `supabaseAdmin` client; **never** expose service role to the browser.
 
-- [ ] **Task 3 — Wire send paths (AC: 3)**  
-  - [ ] If **[4-5](sprint-status.yaml)** / **[4-6](sprint-status.yaml)** are **not** implemented yet: land **Task 1+2** and a documented integration contract for idempotent notification decisions. Prefer this story **before** 4-5/4-6, not as an optional follow-up.
-  - [ ] If 4-5/4-6 **exist**: wrap each Resend/SendGrid (or chosen provider) send with **queued → terminal** updates; failures must **not** fail the webhook HTTP response for order persistence (fire-and-forget or `catch` + `markFailed`).
+- [x] **Task 3 — Wire send paths (AC: 3)**  
+  - [x] If **[4-5](sprint-status.yaml)** / **[4-6](sprint-status.yaml)** are **not** implemented yet: land **Task 1+2** and a documented integration contract for idempotent notification decisions. Prefer this story **before** 4-5/4-6, not as an optional follow-up.
+  - [x] If 4-5/4-6 **exist**: wrap each Resend/SendGrid (or chosen provider) send with **queued → terminal** updates; failures must **not** fail the webhook HTTP response for order persistence (fire-and-forget or `catch` + `markFailed`).
 
-- [ ] **Task 4 — Tests (AC: 5)**  
-  - [ ] `api/_lib/notificationLog.test.ts` with mocked `admin.from(...).insert/update`.
+- [x] **Task 4 — Tests (AC: 5)**  
+  - [x] `api/_lib/notificationLog.test.ts` with mocked `admin.from(...).insert/update`.
 
 ## Dev Notes
 
@@ -103,23 +103,55 @@ so that **FR-NOT-001 / FR-NOT-002** (“failure is logged and retryable”), **N
 
 ### Agent Model Used
 
-_(filled by dev agent)_
+Composer (Cursor agent)
 
 ### Debug Log References
 
 ### Completion Notes List
 
+- Landed `notification_logs` migration with `notification_channel` / `notification_status` enums (`email|sms|push`, `queued|sent|failed`), FK `order_id` → `orders` **ON DELETE SET NULL**, index `(order_id, created_at DESC)`, RLS enabled with no anon/auth policies (service role only).
+- **History semantics:** append-only attempts — each send path may insert a new row; no unique constraint on `(order_id, template, channel)` so retries and repeated attempts remain auditable.
+- Added `api/_lib/notificationLog.ts` (`insertNotificationLog`, `markNotificationLogSent`, `markNotificationLogFailed`) and wired **owner** + **customer** Resend paths to `queued` → `sent`/`failed`, including pre-provider validation failures as terminal `failed` rows.
+- Extended `sendViaResendApi` to parse Resend `id` into `messageId` for `provider_message_id`.
+- Pino correlation: `notification_log_id` + `order_id` / `order_number` on queue/success/error paths (no email bodies in logs).
+- AC6: no new env vars — `.env.example` unchanged.
+- Full Vitest suite green (`npm test -- --run`).
+
 ### File List
+
+- `supabase/migrations/20260428160000_notification_logs.sql`
+- `api/_lib/notificationLog.ts`
+- `api/_lib/notificationLog.test.ts`
+- `api/_lib/transactionalEmail.ts`
+- `api/_lib/ownerOrderNotification.ts`
+- `api/_lib/ownerOrderNotification.test.ts`
+- `api/_lib/customerOrderConfirmation.ts`
+- `api/_lib/customerOrderConfirmation.test.ts`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+### Change Log
+
+- 2026-04-26 — Story 4-7: `notification_logs` schema, server helpers, Resend path wiring, Vitest coverage for logging helper and append-only behavior.
 
 ### Review Findings
 
-- [ ] [Review][Sequence] Land durable notification state before 4-5/4-6 real sends so webhook retries can recover missed emails after `paid`.
-- [ ] [Review][Decision] Resolve enum labels before migration; changing Postgres enum labels later is painful.
-- [ ] [Review][Decision] Decide one logical row per notification vs append-only attempt history before coding helpers and indexes.
+- [x] [Review][Sequence] Land durable notification state before 4-5/4-6 real sends so webhook retries can recover missed emails after `paid`.
+- [x] [Review][Decision] Resolve enum labels before migration; changing Postgres enum labels later is painful.
+- [x] [Review][Decision] Decide one logical row per notification vs append-only attempt history before coding helpers and indexes.
+
+### Review Findings (adversarial code review, 2026-04-26)
+
+- [x] [Review][Decision] Queued `notification_logs` insert may fail, but the Resend call still runs — In `api/_lib/ownerOrderNotification.ts` and `api/_lib/customerOrderConfirmation.ts`, `insertNotificationLog` with `status: "queued"` can return `{ ok: false }` (e.g. DB/RLS failure), yet `sendViaResendApi` is still invoked. That can deliver mail without a matching `queued` row, so AC3’s “insert `queued` before the provider” is not always satisfied, even though the order remains paid (NFR-REL-003). You need a product choice before patching.
+  - **Resolution (2026-04-26):** Strict AC3: if the `queued` insert fails, do not call the provider. Owner: `releaseOwnerNotifyInFlight` so the next `payment_intent.succeeded` / webhook delivery can re-claim and retry. Customer: return with `customer_confirmation_sent_at` still `null` so a later run can try again. Added Vitest cases for both paths.
+
+- [x] [Review][Patch] `markNotificationLogSent` / `markNotificationLogFailed` can report success when no row was updated — PostgREST returns `error: null` when an `UPDATE` matches zero rows. A wrong `id` or a row that is not `status = queued` can still return `true` and hide state bugs. Harden with an explicit row count or a returning `select` and treat zero rows as failure. `api/_lib/notificationLog.ts` (roughly the `markNotificationLogSent` and `markNotificationLogFailed` functions).
+  - **Resolution (2026-04-26):** `mark*` helpers now use `.select("id")` after the filtered `update` and return `false` with a structured log if no row was updated. If Resend already succeeded but `markNotificationLogSent` returns `false`, owner/customer still finalize the order idempotency markers and log an error to avoid double-email retries (different from the pre-provider path).
+
+- [x] [Review][Defer] `notificationLog.test.ts` update mock is not a full chain — The Vitest double for `update` may not model `.eq("id").eq("status", "queued")` the way the real client does, so a breaking API shape could slip through. `api/_lib/notificationLog.test.ts` (mock `fromHandler`). Deferred as test-harness quality, not a production defect by itself.
 
 ## Story completion status
 
-- **ready-for-dev with review gate** — Story context exists, but dev should resolve the decisions in Review Findings before implementation.
+- **done** — Code review 2026-04-26: decision + patch items resolved in code; defer item remains in `deferred-work.md`.
 
 _Saved questions (optional):_
 
