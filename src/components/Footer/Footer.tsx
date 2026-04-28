@@ -1,8 +1,7 @@
 // src/components/Footer/Footer.tsx
 
-import { faFacebookF, faInstagram, faTwitter, faYoutube } from '@fortawesome/free-brands-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React from 'react';
+import { Link } from 'react-router-dom';
 import SubscriptionForm from '../SubscriptionForm/SubscriptionForm';
 import './Footer.css';
 
@@ -10,13 +9,16 @@ const Footer: React.FC = () => {
   return (
     <footer>
       <div className="footer-container">
-        {/* Promotions Column */}
+        {/* Promotions Column — links go to contact until real destinations exist */}
         <div className="footer-column">
           <h4>Promotions</h4>
           <ul>
-            <li><a href="#">Gift Cards</a></li>
-            <li><a href="#">Stores</a></li>
-            <li><a href="#">Afterpay</a></li>
+            <li>
+              <Link to="/contact">Gift cards &amp; offers</Link>
+            </li>
+            <li>
+              <Link to="/contact">Store information</Link>
+            </li>
           </ul>
         </div>
 
@@ -24,9 +26,18 @@ const Footer: React.FC = () => {
         <div className="footer-column">
           <h4>Help</h4>
           <ul>
-            <li><a href="#">Customer Service</a></li>
-            <li><a href="#">FAQs</a></li>
-            <li><a href="#">Returns</a></li>
+            <li>
+              <Link to="/contact">Customer service</Link>
+            </li>
+            <li>
+              <Link to="/contact">FAQs</Link>
+            </li>
+            <li>
+              <Link to="/policies/returns">Returns</Link>
+            </li>
+            <li>
+              <Link to="/policies/shipping">Shipping</Link>
+            </li>
           </ul>
         </div>
 
@@ -34,15 +45,24 @@ const Footer: React.FC = () => {
         <div className="footer-column">
           <h4>About</h4>
           <ul>
-            <li><a href="#">About Us</a></li>
-            <li><a href="#">Careers</a></li>
-            <li><a href="#">Privacy Policy</a></li>
+            <li>
+              <Link to="/contact">About us</Link>
+            </li>
+            <li>
+              <Link to="/contact">Careers inquiries</Link>
+            </li>
+            <li>
+              <Link to="/policies/privacy">Privacy policy</Link>
+            </li>
+            <li>
+              <Link to="/policies/terms">Terms of use</Link>
+            </li>
           </ul>
         </div>
 
         {/* Stay Connected Column */}
         <div className="footer-column">
-          <h4>Stay Connected</h4>
+          <h4>Stay connected</h4>
           <p>Subscribe to our newsletter for the latest updates.</p>
           <SubscriptionForm
             className="footer-subscription-form"
@@ -51,26 +71,20 @@ const Footer: React.FC = () => {
             successMessage="Thank you for subscribing!"
             errorMessage="Please enter a valid email."
           />
-          <div className="social-icons">
-            <a href="#" aria-label="Facebook">
-              <FontAwesomeIcon icon={faFacebookF} />
-            </a>
-            <a href="#" aria-label="Instagram">
-              <FontAwesomeIcon icon={faInstagram} />
-            </a>
-            <a href="#" aria-label="Twitter">
-              <FontAwesomeIcon icon={faTwitter} />
-            </a>
-            <a href="#" aria-label="YouTube">
-              <FontAwesomeIcon icon={faYoutube} />
-            </a>
-          </div>
+          <p className="footer-social-note" role="note">
+            Social profile links are not configured yet. Use the contact page for direct support.
+          </p>
         </div>
       </div>
 
       {/* Footer Bottom */}
       <div className="footer-bottom">
         <p>© 2024 Zephyr Lux. All rights reserved.</p>
+        <p className="footer-policy-links">
+          <Link to="/policies">Policies</Link>
+          <span aria-hidden="true"> · </span>
+          <Link to="/contact">Contact</Link>
+        </p>
       </div>
     </footer>
   );

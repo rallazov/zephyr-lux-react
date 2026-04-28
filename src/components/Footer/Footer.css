@@ -41,6 +41,28 @@
   color: #ff0000;
 }
 
+.footer-social-note {
+  font-size: 0.85rem;
+  color: #aaaaaa;
+  margin-top: 1rem;
+  max-width: 260px;
+  line-height: 1.4;
+}
+
+.footer-policy-links {
+  margin: 0.5rem 0 0;
+  font-size: 0.9rem;
+}
+
+.footer-policy-links a {
+  color: #cccccc;
+  text-decoration: underline;
+}
+
+.footer-policy-links a:hover {
+  color: #ff0000;
+}
+
 form {
   display: flex;
   align-items: center;

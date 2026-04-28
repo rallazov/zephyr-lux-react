@@ -16,12 +16,20 @@ export type HeroProps = {
   image?: string;
   title?: React.ReactNode;
   description?: string;
+  primaryTo?: string;
+  primaryLabel?: string;
+  secondaryTo?: string;
+  secondaryLabel?: string;
 };
 
 export default function Hero({
   image = DEFAULT_IMAGE,
   title = DEFAULT_TITLE,
   description = DEFAULT_DESCRIPTION,
+  primaryTo = "/products",
+  primaryLabel = "Shop Now",
+  secondaryTo = "/products",
+  secondaryLabel = "View Collection",
 }: HeroProps) {
   return (
     <section className="relative h-80 w-full overflow-hidden">
@@ -39,11 +47,15 @@ export default function Hero({
           <h1 className="text-3xl md:text-5xl font-bold mb-4">{title}</h1>
           <p className="text-sm md:text-lg text-white/90 mb-6">{description}</p>
           <div className="flex flex-wrap gap-3">
-            <Link to="/products">
-              <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md">Shop Now</button>
+            <Link to={primaryTo}>
+              <button type="button" className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md">
+                {primaryLabel}
+              </button>
             </Link>
-            <Link to="/products">
-              <button className="bg-white/10 border border-white/20 text-white px-6 py-2 rounded-md">View Collection</button>
+            <Link to={secondaryTo}>
+              <button type="button" className="bg-white/10 border border-white/20 text-white px-6 py-2 rounded-md">
+                {secondaryLabel}
+              </button>
             </Link>
           </div>
         </div>

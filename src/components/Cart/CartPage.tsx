@@ -1,7 +1,7 @@
 import { faCheckCircle, faLock, faUndoAlt } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React, { useContext, useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { normalizeLineSku } from "../../cart/lineKey";
 import {
   isCartOkForCheckout,
@@ -14,6 +14,7 @@ import type { CatalogListItem } from "../../catalog/types";
 import { useCartQuote } from "../../hooks/useCartQuote";
 import type { CartLineQuote } from "../../lib/cartQuoteTypes";
 import { formatCents } from "../../lib/money";
+import { formatPageTitleWithBrand, usePageMeta } from "../../seo/meta";
 
 function lineKey(item: { id: number; sku?: string }): string {
   return `${item.id}::${normalizeLineSku(item.sku)}`;
@@ -41,8 +42,15 @@ const CartPage: React.FC = () => {
     "Spend $50 more to qualify for free shipping!"
   );
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const checkoutCanceled = searchParams.get("checkout") === "canceled";
+
+  usePageMeta({
+    title: formatPageTitleWithBrand("Your bag"),
+    description: "Review items in your Zephyr Lux bag before checkout.",
+    canonicalPath: location.pathname || "/cart",
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -113,7 +121,55 @@ const CartPage: React.FC = () => {
     return m;
   }, [quote, cartItems]);
 
+  const cartLineRows = useMemo(() => {
+    return cartItems.map((item, itemIndex) => {
+      const key = lineKey(item);
+      const v = validationByKey.get(key);
+      const lineQ = lineQuoteByCartIndex.get(itemIndex);
+      const unit = v?.displayUnitPrice != null ? v.displayUnitPrice : item.price;
+      const lineTotal = unit * item.quantity;
+      const skuForQuote = normalizeLineSku(item.sku);
+      const awaitingCatalogPrice = quoteLoading && !lineQ && skuForQuote !== "";
+      const unitDisplay = lineQ
+        ? formatCents(lineQ.unit_cents)
+        : awaitingCatalogPrice
+          ? "…"
+          : `$${unit.toFixed(2)}`;
+      const lineTotalDisplay = lineQ
+        ? formatCents(lineQ.line_cents)
+        : awaitingCatalogPrice
+          ? "…"
+          : `$${lineTotal.toFixed(2)}`;
+      const plusDisabled = incrementDisabled(v);
+      const skuNorm = normalizeLineSku(item.sku);
+      const variantLabel =
+        skuNorm !== ""
+          ? `SKU ${skuNorm}`
+          : item.variant_id
+            ? `Variant ${String(item.variant_id).slice(0, 8)}…`
+            : null;
+      return {
+        key,
+        item,
+        itemIndex,
+        v,
+        lineQ,
+        unitDisplay,
+        lineTotalDisplay,
+        plusDisabled,
+        variantLabel,
+      };
+    });
+  }, [cartItems, validationByKey, lineQuoteByCartIndex, quoteLoading]);
+
   const progressSubtotalDollars = quote ? quote.subtotal_cents / 100 : subtotal;
+
+  const subtotalDisplay =
+    quote
+      ? formatCents(quote.subtotal_cents)
+      : quoteLoading
+        ? "…"
+        : `$${subtotal.toFixed(2)}`;
 
   useEffect(() => {
     const remaining = 50 - progressSubtotalDollars;
@@ -132,7 +188,9 @@ const CartPage: React.FC = () => {
         {/* Header content */}
       </header>
 
-      <main className="pt-52 max-w-6xl mx-auto p-4">
+      <main
+        className={`pt-52 max-w-6xl mx-auto p-4 ${cartItems.length > 0 ? "pb-28 md:pb-4" : ""}`}
+      >
         {checkoutCanceled && (
           <div
             role="status"
@@ -222,7 +280,117 @@ const CartPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="overflow-x-auto">
+            <p className="md:hidden text-center text-xs text-gray-500 mb-3" role="note">
+              Your running subtotal and checkout are pinned to the bottom on small screens — scroll up to
+              change items.
+            </p>
+
+            <div className="md:hidden space-y-4">
+              {cartLineRows.map(
+                ({
+                  key,
+                  item,
+                  v,
+                  lineQ,
+                  unitDisplay,
+                  lineTotalDisplay,
+                  plusDisabled,
+                  variantLabel,
+                }) => (
+                  <article
+                    key={key}
+                    data-testid={`cart-line-mobile-${key}`}
+                    className="rounded-lg border border-gray-600 bg-black p-4 shadow"
+                    aria-describedby={v && v.issues.length > 0 ? `issues-m-${key}` : undefined}
+                  >
+                    <div className="flex gap-3 min-w-0">
+                      <img
+                        src={item.image || "/assets/img/Listing.jpeg"}
+                        alt=""
+                        className="h-16 w-16 shrink-0 object-contain border border-gray-600 rounded bg-white"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-sm text-white break-words">{item.name}</p>
+                        {variantLabel ? (
+                          <p className="text-xs text-gray-400 mt-1 break-all">{variantLabel}</p>
+                        ) : null}
+                        <p className="text-xs text-gray-500 mt-1">Estimated delivery: 3–5 days</p>
+                        {v && v.issues.length > 0 ? (
+                          <ul
+                            id={`issues-m-${key}`}
+                            className="text-red-400 text-sm mt-2 list-disc list-inside"
+                          >
+                            {v.issues.map((issue) => (
+                              <li key={issue.code}>{issue.message}</li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-gray-500 text-xs">Price</p>
+                        <p className="font-semibold text-white tabular-nums">
+                          {lineQ ? (
+                            <span className="block text-xs text-gray-500 font-normal" aria-hidden>
+                              Catalog
+                            </span>
+                          ) : null}
+                          {unitDisplay}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-gray-500 text-xs">Line total</p>
+                        <p className="font-bold text-white tabular-nums">{lineTotalDisplay}</p>
+                      </div>
+                    </div>
+                    <div
+                      className="mt-4 flex flex-wrap items-center justify-between gap-3"
+                      role="group"
+                      aria-label={`Quantity for ${item.name}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => removeFromCart(item.id, item.sku)}
+                          className="min-h-11 min-w-11 shrink-0 rounded bg-gray-700 text-white text-lg leading-none hover:bg-gray-500"
+                          aria-label={`Decrease quantity for ${item.name}`}
+                        >
+                          −
+                        </button>
+                        <span className="min-w-[2ch] text-center font-semibold text-white" aria-live="polite">
+                          {item.quantity}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => addToCart(item)}
+                          disabled={plusDisabled}
+                          className="min-h-11 min-w-11 shrink-0 rounded bg-gray-700 text-white text-lg leading-none hover:bg-gray-500 disabled:opacity-40 disabled:cursor-not-allowed"
+                          aria-label={`Increase quantity for ${item.name}`}
+                        >
+                          +
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeFromCart(item.id, item.sku)}
+                        className="min-h-11 rounded bg-red-600 px-4 text-sm font-medium text-white hover:bg-red-500"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    {v &&
+                    v.issues.length === 0 &&
+                    v.maxQuantity != null &&
+                    item.quantity >= v.maxQuantity ? (
+                      <p className="text-amber-400 text-xs mt-2">Maximum {v.maxQuantity} available.</p>
+                    ) : null}
+                  </article>
+                ),
+              )}
+            </div>
+
+            <div className="hidden md:block overflow-x-auto">
               <table className="min-w-full table-auto border-collapse">
                 <thead>
                   <tr className="bg-black text-white uppercase text-sm border-b border-gray-700">
@@ -234,28 +402,17 @@ const CartPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-black">
-                  {cartItems.map((item, itemIndex) => {
-                    const key = lineKey(item);
-                    const v = validationByKey.get(key);
-                    const lineQ = lineQuoteByCartIndex.get(itemIndex);
-                    const unit =
-                      v?.displayUnitPrice != null ? v.displayUnitPrice : item.price;
-                    const lineTotal = unit * item.quantity;
-                    const skuForQuote = normalizeLineSku(item.sku);
-                    const awaitingCatalogPrice =
-                      quoteLoading && !lineQ && skuForQuote !== "";
-                    const unitDisplay = lineQ
-                      ? formatCents(lineQ.unit_cents)
-                      : awaitingCatalogPrice
-                        ? "…"
-                        : `$${unit.toFixed(2)}`;
-                    const lineTotalDisplay = lineQ
-                      ? formatCents(lineQ.line_cents)
-                      : awaitingCatalogPrice
-                        ? "…"
-                        : `$${lineTotal.toFixed(2)}`;
-                    const plusDisabled = incrementDisabled(v);
-                    return (
+                  {cartLineRows.map(
+                    ({
+                      key,
+                      item,
+                      v,
+                      lineQ,
+                      unitDisplay,
+                      lineTotalDisplay,
+                      plusDisabled,
+                      variantLabel,
+                    }) => (
                       <tr
                         key={key}
                         className="border-b border-gray-700 hover:bg-gray-800"
@@ -263,27 +420,30 @@ const CartPage: React.FC = () => {
                           v && v.issues.length > 0 ? `issues-${key}` : undefined
                         }
                       >
-                        <td className="py-4 px-6 flex flex-col sm:flex-row gap-4 items-center">
-                          <img
-                            src={item.image || "/assets/img/Listing.jpeg"}
-                            alt=""
-                            className="w-16 h-16 object-contain border border-gray-600 rounded bg-white sm:w-20 sm:h-20"
-                          />
-                          <div className="text-center sm:text-left">
-                            <p className="font-medium text-sm text-white">{item.name}</p>
-                            <p className="text-sm text-gray-400">
-                              Estimated delivery: 3-5 days
-                            </p>
-                            {v && v.issues.length > 0 && (
-                              <ul
-                                id={`issues-${key}`}
-                                className="text-red-400 text-sm mt-2 list-disc list-inside text-left"
-                              >
-                                {v.issues.map((issue) => (
-                                  <li key={issue.code}>{issue.message}</li>
-                                ))}
-                              </ul>
-                            )}
+                        <td className="py-4 px-6">
+                          <div className="flex flex-col sm:flex-row gap-4 items-center">
+                            <img
+                              src={item.image || "/assets/img/Listing.jpeg"}
+                              alt=""
+                              className="w-16 h-16 object-contain border border-gray-600 rounded bg-white sm:w-20 sm:h-20"
+                            />
+                            <div className="text-center sm:text-left min-w-0">
+                              <p className="font-medium text-sm text-white break-words">{item.name}</p>
+                              {variantLabel ? (
+                                <p className="text-xs text-gray-400 mt-1 break-all">{variantLabel}</p>
+                              ) : null}
+                              <p className="text-sm text-gray-400">Estimated delivery: 3-5 days</p>
+                              {v && v.issues.length > 0 && (
+                                <ul
+                                  id={`issues-${key}`}
+                                  className="text-red-400 text-sm mt-2 list-disc list-inside text-left"
+                                >
+                                  {v.issues.map((issue) => (
+                                    <li key={issue.code}>{issue.message}</li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td className="py-4 px-6 text-center font-semibold text-white">
@@ -309,10 +469,10 @@ const CartPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => removeFromCart(item.id, item.sku)}
-                              className="bg-gray-700 text-white px-2 py-1 rounded hover:bg-gray-500"
+                              className="min-h-11 min-w-11 rounded bg-gray-700 text-white hover:bg-gray-500"
                               aria-label={`Decrease quantity for ${item.name}`}
                             >
-                              -
+                              −
                             </button>
                             <span className="font-semibold text-white" aria-live="polite">
                               {item.quantity}
@@ -321,7 +481,7 @@ const CartPage: React.FC = () => {
                               type="button"
                               onClick={() => addToCart(item)}
                               disabled={plusDisabled}
-                              className="bg-gray-700 text-white px-2 py-1 rounded hover:bg-gray-500 disabled:opacity-40 disabled:cursor-not-allowed"
+                              className="min-h-11 min-w-11 rounded bg-gray-700 text-white hover:bg-gray-500 disabled:opacity-40 disabled:cursor-not-allowed"
                               aria-label={`Increase quantity for ${item.name}`}
                             >
                               +
@@ -345,24 +505,21 @@ const CartPage: React.FC = () => {
                             onClick={() => {
                               removeFromCart(item.id, item.sku);
                             }}
-                            className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                            className="min-h-11 rounded bg-red-500 px-4 text-white hover:bg-red-600"
                           >
                             Remove
                           </button>
                         </td>
                       </tr>
-                    );
-                  })}
+                    ),
+                  )}
                 </tbody>
               </table>
+            </div>
+
               <div className="mt-6 bg-black p-4 rounded shadow border border-gray-600">
                 <p className="text-lg font-semibold text-white">
-                  Subtotal:{" "}
-                  {quote
-                    ? formatCents(quote.subtotal_cents)
-                    : quoteLoading
-                      ? "…"
-                      : `$${subtotal.toFixed(2)}`}
+                  Subtotal: {subtotalDisplay}
                 </p>
                 <p className="text-sm text-gray-400">
                   {quote
@@ -371,25 +528,25 @@ const CartPage: React.FC = () => {
                 </p>
               </div>
 
-              <div className="mt-6 flex justify-between items-center bg-black p-4 rounded shadow border border-gray-600">
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center bg-black p-4 rounded shadow border border-gray-600">
                 <input
                   type="text"
                   placeholder="Enter coupon code"
-                  className="w-2/3 p-2 border border-gray-600 rounded bg-gray-800 text-white"
+                  className="w-full sm:flex-1 min-w-0 p-2 min-h-11 border border-gray-600 rounded bg-gray-800 text-white"
                 />
                 <button
                   type="button"
-                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                  className="min-h-11 shrink-0 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
                 >
                   Apply Coupon
                 </button>
               </div>
 
-              <div className="mt-6 flex justify-between">
+              <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between sm:items-center">
                 <button
                   type="button"
                   onClick={() => navigate("/products")}
-                  className="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-600"
+                  className="min-h-11 w-full sm:w-auto bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-600"
                 >
                   Continue Shopping
                 </button>
@@ -399,13 +556,13 @@ const CartPage: React.FC = () => {
                     navigate("/checkout", { state: { subtotal, items: cartItems } })
                   }
                   disabled={!checkoutAllowed}
-                  className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="hidden md:inline-flex min-h-11 items-center justify-center bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Proceed to Checkout
                 </button>
               </div>
 
-              <div className="mt-6 flex justify-center gap-4">
+              <div className="mt-6 flex flex-wrap justify-center gap-4 text-sm">
                 <div className="flex items-center">
                   <FontAwesomeIcon
                     icon={faLock}
@@ -432,6 +589,27 @@ const CartPage: React.FC = () => {
                   />
                   <span className="text-gray-500">Satisfaction Guaranteed</span>
                 </div>
+              </div>
+
+            <div
+              className="md:hidden fixed bottom-0 left-0 right-0 z-20 border-t border-gray-700 bg-black/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_24px_rgba(0,0,0,0.45)]"
+              data-testid="cart-mobile-checkout-bar"
+            >
+              <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-wide text-gray-500">Subtotal</p>
+                  <p className="text-base font-semibold text-white tabular-nums truncate">{subtotalDisplay}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate("/checkout", { state: { subtotal, items: cartItems } })
+                  }
+                  disabled={!checkoutAllowed}
+                  className="min-h-12 shrink-0 rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Checkout
+                </button>
               </div>
             </div>
           </div>

@@ -16,4 +16,10 @@ export type CatalogListItem = {
 export type CatalogProductDetail = {
   product: Product;
   storefrontProductId: number;
+  /** `product_images` rows with `variant_id` null, ordered by `is_primary` desc then `sort_order` asc. */
+  galleryImages: string[];
+  /** Unique image URLs for PDP browsing (product-level first, then variant-specific). */
+  displayGalleryUrls: string[];
+  /** Primary storage path per SKU from variant-attached `product_images` rows only (Supabase). */
+  variantPrimaryImageBySku: Partial<Record<string, string>>;
 };
