@@ -25,7 +25,7 @@
 #   - Dev moves story to 'review', then runs code-review
 
 generated: 2026-04-26T00:00:00Z
-last_updated: 2026-04-27T17:20:00Z
+last_updated: 2026-04-27T12:00:00Z
 project: zephyr-lux-react
 project_key: zlx
 tracking_system: file-system
@@ -86,22 +86,23 @@ development_status:
   5-7-internal-notes-order-timeline: done
   epic-5-retrospective: optional
 
-  epic-6: backlog
-  6-1-real-homepage-category-routes: backlog
-  6-2-policy-pages-footer-links: backlog
-  6-3-product-page-gallery-variant-ux: backlog
-  6-4-mobile-cart-checkout-admin-layouts: backlog
-  6-5-metadata-product-structured-data: backlog
-  6-6-basic-analytics-events: backlog
+  epic-6: in-progress
+  6-1-real-homepage-category-routes: review
+  6-2-policy-pages-footer-links: done
+  6-3-product-page-gallery-variant-ux: review
+  6-4-mobile-cart-checkout-admin-layouts: in-progress
+  6-5-metadata-product-structured-data: review
+  6-6-basic-analytics-events: review
   epic-6-retrospective: optional
 
-  epic-7: backlog
-  7-1-order-lookup-form: backlog
-  7-2-secure-lookup-link: backlog
-  7-3-customer-order-status-page: backlog
-  7-4-show-tracking-when-shipped: backlog
+  epic-7: in-progress
+  7-1-order-lookup-form: ready-for-dev
+  7-2-secure-lookup-link: ready-for-dev
+  7-3-customer-order-status-page: ready-for-dev
+  7-4-show-tracking-when-shipped: ready-for-dev
   epic-7-retrospective: optional
 
+  epic-6-7-implementation-follow-ups: review
   epic-8: backlog
   8-1-subscription-capable-products: backlog
   8-2-stripe-subscription-checkout: backlog
