@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { safeHttpUrlForHref } from "../../src/domain/commerce/safeHttpUrl";
 import { isUnsendableCustomerEmail, supportLineForEmail } from "./customerOrderConfirmation";
 import { ENV } from "./env";
 import { log } from "./logger";
@@ -27,17 +28,6 @@ function escapeHtml(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
-}
-
-/** Returns normalized http(s) href or null (no `javascript:` / opaque `href` injection). */
-function safeHttpUrlForHref(raw: string): string | null {
-  try {
-    const u = new URL(raw);
-    if (u.protocol !== "http:" && u.protocol !== "https:") return null;
-    return u.href;
-  } catch {
-    return null;
-  }
 }
 
 export type ShipmentTrackingFields = {

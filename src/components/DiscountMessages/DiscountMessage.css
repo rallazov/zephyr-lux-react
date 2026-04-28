@@ -3,7 +3,7 @@
     text-align: center;
     color: #ffffff;
     margin: 2rem 0;
-    padding-top: 100px;
+    padding-top: 0;
   }
   
   .discount-message h2 {
@@ -67,11 +67,11 @@
   }
   
   .cta-buttons .btn:hover {
-    color: #cc0000;
+    color: var(--zlx-link-hover);
   }
   
   .cta-buttons .btn:active {
-    background-color: #8b0000;
+    background-color: var(--zlx-action-hover);
     transform: scale(0.95);
   }
 

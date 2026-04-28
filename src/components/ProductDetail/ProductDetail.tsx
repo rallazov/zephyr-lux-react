@@ -53,9 +53,9 @@ function PlainTextBlocks({ text }: { text: string }) {
     return null;
   }
   return (
-    <div className="prose prose-stone prose-sm max-w-none">
+    <div className="prose prose-invert prose-sm max-w-none prose-p:text-neutral-300 prose-strong:text-neutral-200">
       {blocks.map((b, i) => (
-        <p key={i} className="whitespace-pre-wrap text-stone-700">
+        <p key={i} className="whitespace-pre-wrap">
           {b}
         </p>
       ))}
@@ -102,8 +102,11 @@ const ProductDetail: React.FC = () => {
     void load();
   }, [slug]);
 
+  const analyticsProductId = row?.product.id;
+  const productSlug = row?.product.slug;
+
   useEffect(() => {
-    if (!slug || !row?.product) return;
+    if (!slug || !productSlug) return;
     const storageKey = `analytics_product_view:${slug}:${locationNavKey}`;
     try {
       if (sessionStorage.getItem(storageKey)) return;
@@ -111,15 +114,14 @@ const ProductDetail: React.FC = () => {
     } catch {
       /* ignore */
     }
-    const productId = row.product.id;
     dispatchAnalyticsEvent({
       name: ANALYTICS_EVENTS.product_view,
       payload: {
         slug,
-        ...(productId ? { product_id: productId } : {}),
+        ...(analyticsProductId ? { product_id: analyticsProductId } : {}),
       },
     });
-  }, [slug, row, locationNavKey]);
+  }, [slug, analyticsProductId, locationNavKey, productSlug]);
 
   const product = row?.product;
 
@@ -352,7 +354,7 @@ const ProductDetail: React.FC = () => {
 
   if (loading) {
     return (
-      <div role="status" aria-live="polite" style={{ padding: 16 }}>
+      <div className="p-6 text-neutral-300" role="status" aria-live="polite">
         Loading…
       </div>
     );
@@ -365,11 +367,15 @@ const ProductDetail: React.FC = () => {
           isNotFound ? "product-detail-not-found" : "product-detail-load-error"
         }
         role="alert"
-        style={{ padding: 16 }}
+        className="p-6 text-neutral-100"
       >
-        <h1>{isNotFound ? "Product not found" : "Something went wrong"}</h1>
-        <p>{error}</p>
-        <Link to="/products">Back to products</Link>
+        <h1 className="text-xl font-semibold text-white mb-2">
+          {isNotFound ? "Product not found" : "Something went wrong"}
+        </h1>
+        <p className="text-neutral-400 mb-4">{error}</p>
+        <Link to="/products" className="text-amber-200 underline underline-offset-4 hover:text-amber-100">
+          Back to products
+        </Link>
       </div>
     );
   }
@@ -408,7 +414,7 @@ const ProductDetail: React.FC = () => {
   return (
     <div
       data-testid="pdp"
-      className="grid grid-cols-1 gap-6 p-4 lg:grid-cols-2 lg:gap-10 lg:p-8 max-w-6xl mx-auto"
+      className="grid grid-cols-1 gap-6 p-4 text-neutral-200 lg:grid-cols-2 lg:gap-10 lg:p-8 max-w-6xl mx-auto bg-black min-h-[50vh]"
     >
       <div>
         <ProductImageGallery
@@ -419,37 +425,34 @@ const ProductDetail: React.FC = () => {
         />
       </div>
       <div className="flex flex-col min-w-0">
-        <h1 className="text-2xl font-semibold tracking-tight text-stone-900 mb-2">
+        <h1 className="mb-2 text-2xl font-semibold tracking-tight text-neutral-50">
           {product.title}
         </h1>
         {selectedVariant && (
-          <p data-testid="pdp-selected-price" className="font-semibold text-lg mb-2">
+          <p data-testid="pdp-selected-price" className="mb-2 text-lg font-semibold text-white">
             ${(selectedVariant.price_cents / 100).toFixed(2)}
           </p>
         )}
         {showPriceRange && (
-          <p data-testid="pdp-price-range" className="font-semibold text-lg mb-2">
+          <p data-testid="pdp-price-range" className="mb-2 text-lg font-semibold text-white">
             ${(pMin / 100).toFixed(2)}&nbsp;–&nbsp;${(pMax / 100).toFixed(2)}
           </p>
         )}
         {showSelectCopy && purchasable.length > 0 && (
-          <p
-            data-testid="pdp-price-select"
-            className="text-stone-600 text-sm mb-2"
-          >
+          <p data-testid="pdp-price-select" className="mb-2 text-sm text-neutral-400">
             ${(pMin / 100).toFixed(2)} — select options to confirm price.
           </p>
         )}
 
         {selectedVariant && (
-          <p data-testid="pdp-stock-message" className="text-stone-800 text-sm mb-3">
+          <p data-testid="pdp-stock-message" className="mb-3 text-sm text-neutral-300">
             {selectedVariant.inventory_quantity === 0
               ? "Out of stock for this color and size."
               : lowStockMessage(selectedVariant) ?? "In stock."}
           </p>
         )}
         {purchasable.length === 0 && (
-          <p data-testid="pdp-oos" className="text-stone-800 text-sm mb-3">
+          <p data-testid="pdp-oos" className="mb-3 text-sm text-amber-200/95">
             Unavailable. No purchasable variants.
           </p>
         )}
@@ -464,18 +467,22 @@ const ProductDetail: React.FC = () => {
         />
 
         {product.fabric_type ? (
-          <p className="text-stone-600 text-sm mt-3 mb-4">{product.fabric_type}</p>
+          <p className="mt-3 mb-4 text-sm text-neutral-400">{product.fabric_type}</p>
         ) : (
           <div className="mb-4" />
         )}
 
-        <div className="flex flex-col gap-2 mb-8">
+        <div className="mb-8 flex flex-col gap-2">
           <button
             type="button"
             data-testid="pdp-add-to-cart"
             disabled={cta.disabled}
             onClick={addHandler}
-            className="product-item-button"
+            className={
+              cta.disabled
+                ? "w-full min-h-12 cursor-not-allowed rounded-md border border-neutral-600 bg-neutral-900/90 px-4 py-3 text-sm font-semibold text-neutral-500"
+                : "w-full min-h-12 rounded-md border border-transparent bg-zlx-action px-4 py-3 text-sm font-semibold text-zlx-action-text shadow-sm shadow-black/30 transition hover:bg-zlx-action-hover"
+            }
             aria-describedby="pdp-add-hint"
             aria-label={
               cta.disabled
@@ -491,19 +498,25 @@ const ProductDetail: React.FC = () => {
         </div>
 
         <section
-          className="border-t border-stone-200 pt-6 text-sm text-stone-600 space-y-2"
+          className="space-y-2 border-t border-neutral-700 pt-6 text-sm text-neutral-300"
           aria-labelledby="pdp-trust-heading"
         >
-          <h2 id="pdp-trust-heading" className="text-base font-medium text-stone-900">
+          <h2 id="pdp-trust-heading" className="text-base font-medium text-neutral-50">
             Shipping &amp; returns
           </h2>
-          <p>
+          <p className="leading-relaxed">
             Standard processing is typically 1–2 business days. Read our{" "}
-            <Link to="/policies/shipping" className="underline text-stone-900 font-medium">
+            <Link
+              to="/policies/shipping"
+              className="font-medium text-amber-200 underline decoration-amber-200/45 underline-offset-4 hover:text-amber-100"
+            >
               shipping policy
             </Link>{" "}
             and{" "}
-            <Link to="/policies/returns" className="underline text-stone-900 font-medium">
+            <Link
+              to="/policies/returns"
+              className="font-medium text-amber-200 underline decoration-amber-200/45 underline-offset-4 hover:text-amber-100"
+            >
               returns policy
             </Link>
             .
@@ -514,7 +527,7 @@ const ProductDetail: React.FC = () => {
           <section className="mt-8" aria-labelledby="pdp-desc-heading">
             <h2
               id="pdp-desc-heading"
-              className="text-base font-medium text-stone-900 mb-3"
+              className="mb-3 text-base font-medium text-neutral-50"
             >
               Details
             </h2>
@@ -526,7 +539,7 @@ const ProductDetail: React.FC = () => {
           <section className="mt-8" aria-labelledby="pdp-care-heading">
             <h2
               id="pdp-care-heading"
-              className="text-base font-medium text-stone-900 mb-3"
+              className="mb-3 text-base font-medium text-neutral-50"
             >
               Care
             </h2>

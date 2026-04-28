@@ -1,6 +1,6 @@
 # Story 6.1: Real homepage & category/collection routes
 
-Status: review
+Status: done
 
 <!-- Ultimate context engine analysis completed - comprehensive developer guide created -->
 
@@ -136,6 +136,7 @@ Composer (Cursor agent)
 - Seed: **`data/products.json`** sets **`category`: `"underwear"`** on boxer briefs so **`/underwear`** lists real product in static mode.
 - Smoke: homepage matcher **`/Premium essentials/i`**; added **`/underwear`**; policy routes assert **`heading`** to avoid footer duplicate text matches.
 - Small TS hygiene for **`npm run build`**: `Product` import path in **`supabase-map.ts`**, **`pdpImage.test.ts`** duplicate spread key, **`ProductDetail`** `location.key` via typed narrow for analytics dedupe.
+- **Scope note (code review, 2026-04-28):** The `App.tsx` router change set includes routes beyond strict 6-1 scope (e.g. `/policies/*`, `/contact`, admin, order lookup) shipped in the same batch for integration convenience. **No rollback required**; prefer **story-scoped PRs** going forward for review hygiene.
 
 ### File List
 
@@ -163,18 +164,22 @@ Composer (Cursor agent)
 
 ### Change Log
 
+- 2026-04-28 — Post-review patches: Unicode simple case-fold overrides (İ, ß, final sigma, Kelvin, Å) before `toLocaleLowerCase('und')`; branded `HomePage` loading shell (`Hero` + collection section `aria-busy`); `CollectionPage` reset + cancel stale requests on `categoryKey` change; `ProductDetail` `product_view` effect deps narrowed Primitives (`productSlug`, `analyticsProductId`).
+- 2026-04-28 — Code review: documented intentional widened `AppRoutes` batch (policies, contact, admin, order-status) per team choice **document only**; no code change.
 - 2026-04-27 — Story 6-1: Real homepage; catalog-backed collection routes; shared `COLLECTION_ROUTES`; `listProductsByCategory`; category normalization + tests; smoke updates; build/test unblockers (`supabase-map`, `pdpImage.test`, `ProductDetail` location key).
 
 ### Review Findings
 
-- [ ] [Review][Decision] Story scope vs. combined routing (`App.tsx` policy/contact) — Dependencies say policy/footer follow in **Story 6-2+**; the diff nevertheless registers `/policies/*` and `/contact` in storefront routes alongside homepage/collections. Decide whether this batch merge is intentional (single PR convenience) vs. scope hygiene (split `/policies` + `/contact` into the 6-2 change set).
+- [x] [Review][Decision] Story scope vs. combined routing (`App.tsx` policy/contact) — **Resolved (2026-04-28): document only.** Keep current code; note in Completion Notes + Change Log that `/policies/*`, `/contact`, admin, and related routes shipped in the same batch as 6-1 for integration convenience; prefer story-scoped PRs later.
 
-- [ ] [Review][Patch] Unicode casefold parity for category buckets — Story Dev Notes prescribe NFC then **Unicode casefold** semantics for catalog matching; [`src/catalog/categoryNormalize.ts`](../../src/catalog/categoryNormalize.ts) uses `trim` + NFC + `toLocaleLowerCase('und')`, which differs from canonical case folding for some multilingual strings.
+- [x] [Review][Patch] Unicode casefold parity for category buckets — Addressed (2026-04-28): [`categoryNormalize.ts`](../../src/catalog/categoryNormalize.ts) applies Unicode **simple** case-fold overrides where they differ from plain lowercasing, then `toLocaleLowerCase('und')`; tests for İ / ß.
 
-- [ ] [Review][Patch] Homepage loading shell vs. branded homepage — [`HomePage`](../../src/components/Home/HomePage.tsx) renders a bare “Loading…” `<main>` while the catalog hydrates instead of skeleton or Zephyr-branded markup, which weakens FR-SF-003 first paint polish under slow networks.
+- [x] [Review][Patch] Homepage loading shell vs. branded homepage — Addressed (2026-04-28): loading path reuses [`Hero`](../../src/components/Hero/Hero.tsx) with Zephyr Lux / Premium essentials title and collection chips section with `aria-busy` / `aria-live`.
 
-- [ ] [Review][Patch] Navbar “disabled” chrome controls search/account placeholders — Buttons use [`aria-disabled="true"`](../../src/components/Navbar/Navbar.tsx) without `disabled`; they remain keyboard-focusable with no usable action.
+- [x] [Review][Patch] Navbar search/account placeholders — Addressed in current branch: [`Navbar.tsx`](../../src/components/Navbar/Navbar.tsx) uses native `<button type="button" disabled>` plus `aria-label` (“coming soon”); no longer `aria-disabled` on focusable links.
 
-- [ ] [Review][Patch] Analytics effect dependency churn — [`ProductDetail`](../../src/components/ProductDetail/ProductDetail.tsx) `useEffect` for `product_view` depends on `[slug, row, locationNavKey]`; `row` identity may thrash unnecessarily and fire duplicate telemetry even when semantic product state is unchanged—narrow deps to primitives you actually read (`row?.product.id`, etc.).
+- [x] [Review][Patch] Analytics effect dependency churn — Addressed (2026-04-28): [`ProductDetail.tsx`](../../src/components/ProductDetail/ProductDetail.tsx) `product_view` effect depends on `[slug, analyticsProductId, locationNavKey, productSlug]` instead of `row` object identity.
+
+- [x] [Review][Patch] Collection route transitions can show stale products — Addressed (2026-04-28): [`CollectionPage.tsx`](../../src/components/Collection/CollectionPage.tsx) sets loading, clears products, and uses an effect cleanup flag so in-flight loads do not apply after `categoryKey` changes or unmount.
 
 - [x] [Review][Defer] Supabase `listProductsByCategory` always loads all active rows then filters locally — aligns with Story Dev Agent Record (“single round trip, no per-product N+1”) but will not scale indefinitely; revisit with a Postgres-side category filter once catalog cardinality grows materially. [`defer` rationale: pre-existing MVP trade documented in-record.]

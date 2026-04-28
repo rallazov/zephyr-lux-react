@@ -117,7 +117,9 @@ const InnerCheckoutForm: React.FC<{
                 type="submit"
                 id="checkout-submit-pay"
                 disabled={!formValid || !readyToPay || processing}
-                className={`w-full min-h-12 scroll-mt-32 rounded px-4 py-3 font-bold text-lg ${processing ? "bg-gray-600" : "bg-green-500 hover:bg-green-600"}`}
+                className={`w-full min-h-12 scroll-mt-32 rounded px-4 py-3 font-bold text-lg text-zlx-action-text ${
+                  processing ? "bg-neutral-600 text-neutral-200" : "bg-zlx-action hover:bg-zlx-action-hover"
+                }`}
             >
                 {processing ? "Processing..." : "Pay Now"}
             </button>
@@ -561,7 +563,7 @@ const CheckoutPage = () => {
                     <p className="text-gray-300 mb-4">
                         We could not verify your cart against the catalog. Return to your bag and try again.
                     </p>
-                    <Link to="/cart" className="text-green-400 underline font-semibold">
+                    <Link to="/cart" className="font-semibold text-neutral-200 underline decoration-neutral-500 underline-offset-4 hover:text-white">
                         Return to bag
                     </Link>
                 </main>
@@ -595,7 +597,7 @@ const CheckoutPage = () => {
                     </ul>
                     <Link
                         to="/cart"
-                        className="inline-flex min-h-12 items-center justify-center bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-500"
+                        className="inline-flex min-h-12 items-center justify-center rounded-lg border border-neutral-500 bg-neutral-900 px-6 py-3 font-semibold text-neutral-100 hover:bg-neutral-800"
                     >
                         Return to bag
                     </Link>
@@ -644,7 +646,7 @@ const CheckoutPage = () => {
                 {checkoutCanceled && (
                     <div
                         role="status"
-                        className="mb-4 p-3 rounded border border-amber-600 bg-amber-950 text-amber-100 text-sm"
+                        className="mb-4 p-3 rounded border border-red-900 bg-neutral-950 text-neutral-200 text-sm"
                     >
                         Checkout was canceled — your bag is still saved. You can
                         return to it anytime.
@@ -653,7 +655,7 @@ const CheckoutPage = () => {
                 <div className="mb-4">
                     <Link
                         to="/cart"
-                        className="text-amber-300 underline text-sm"
+                        className="text-sm text-neutral-300 underline decoration-neutral-600 underline-offset-4 hover:text-white"
                     >
                         ← Back to bag
                     </Link>
@@ -667,7 +669,7 @@ const CheckoutPage = () => {
                             <button
                                 type="button"
                                 onClick={refetchCartQuote}
-                                className="text-amber-300 underline text-sm"
+                                className="text-sm text-amber-300 underline decoration-amber-700/70 underline-offset-4 hover:text-amber-100"
                             >
                                 Retry
                             </button>
@@ -852,7 +854,9 @@ const CheckoutPage = () => {
                                 !quote ||
                                 Boolean(cartQuoteError)
                             }
-                            className={`w-full min-h-12 scroll-mt-32 rounded px-4 py-3 font-bold text-lg ${processing ? "bg-gray-600" : "bg-green-500 hover:bg-green-600"}`}
+                            className={`w-full min-h-12 scroll-mt-32 rounded px-4 py-3 font-bold text-lg text-zlx-action-text ${
+                              processing ? "bg-neutral-600 text-neutral-200" : "bg-zlx-action hover:bg-zlx-action-hover"
+                            }`}
                         >
                             {processing ? "Processing..." : "Pay Now"}
                         </button>
@@ -861,7 +865,7 @@ const CheckoutPage = () => {
                     clientSecret && stripePromise && quote ? (
                         <>
                             {!contactInSync && formValid && (
-                                <p className="text-amber-200 text-sm mb-3" role="status">
+                                <p className="text-neutral-200 text-sm mb-3" role="status">
                                     Syncing your details with the payment form — wait a moment, then use Pay
                                     Now.
                                 </p>

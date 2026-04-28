@@ -2,7 +2,6 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: 16px;
-  padding-top: 110px; /* offset fixed navbar height */
 }
 
 .product-item {
@@ -11,15 +10,18 @@
   border-radius: 5px;
 }
   
-  div .product-item-button{
+  div .product-item-button {
     padding: 10px;
-    background-color: #28a745;
-    color: white;
-    border: 1px solid #ddd;
+    background-color: var(--zlx-action);
+    color: var(--zlx-action-text);
+    border: 1px solid #525252;
     border-radius: 5px;
     cursor: pointer;
   }
 
+  div .product-item-button:hover:not([disabled]) {
+    background-color: var(--zlx-action-hover);
+  }
 
   .product-item img {
     width: 100%;

@@ -145,13 +145,13 @@ const OrderConfirmation: React.FC = () => {
         <ul className="list-disc pl-5 text-gray-300 space-y-2 mb-8">
           <li>Check your email for a confirmation or receipt from Stripe or Zephyr Lux.</li>
           <li>
-            <Link to="/cart" className="text-amber-300 underline">
+            <Link to="/cart" className="text-neutral-200 underline decoration-neutral-500 underline-offset-4 hover:text-white">
               Return to your bag
             </Link>{" "}
             — your items are still saved if you did not complete checkout.
           </li>
           <li>
-            <a className="text-amber-300 underline" href={SUPPORT_MAIL}>
+            <a className="text-neutral-200 underline decoration-neutral-500 underline-offset-4 hover:text-white" href={SUPPORT_MAIL}>
               Email support
             </a>{" "}
             if you need help.
@@ -173,7 +173,7 @@ const OrderConfirmation: React.FC = () => {
     return (
       <div className="min-h-screen bg-black text-white px-4 py-16 max-w-2xl mx-auto">
         <h1 className="text-2xl font-bold mb-2">Order confirmed</h1>
-        <p className="text-amber-200 font-medium mb-2" role="status">
+        <p className="text-neutral-200 font-medium mb-2" role="status">
           Order number: {paidOrder.order_number}
         </p>
         <p className="text-gray-200 mb-1">
@@ -211,7 +211,7 @@ const OrderConfirmation: React.FC = () => {
           Your payment is recorded in our system. You’ll receive a confirmation
           email when fulfillment updates are available.
         </p>
-        <Link to="/products" className="text-amber-300 underline">
+        <Link to="/products" className="font-medium text-neutral-200 underline decoration-neutral-500 underline-offset-4 hover:text-white">
           Continue shopping
         </Link>
       </div>
@@ -253,7 +253,7 @@ const OrderConfirmation: React.FC = () => {
             Back to bag
           </Link>
           <a
-            className="inline-block text-center border border-amber-700 text-amber-200 rounded px-4 py-2"
+            className="inline-block text-center rounded border border-neutral-500 px-4 py-2 text-neutral-100 hover:bg-neutral-900"
             href={SUPPORT_MAIL}
           >
             Email support
@@ -317,7 +317,7 @@ const OrderConfirmation: React.FC = () => {
         we also try to load your store order number from our records once the
         webhook has run.
       </p>
-      <Link to="/products" className="text-amber-300 underline">
+      <Link to="/products" className="font-medium text-neutral-200 underline decoration-neutral-500 underline-offset-4 hover:text-white">
         Continue shopping
       </Link>
     </div>

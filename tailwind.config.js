@@ -9,6 +9,15 @@ export default {
       colors: {
         primary: "#1E40AF", // Example: Custom primary color
         secondary: "#9333EA", // Example: Custom secondary color
+        zlx: {
+          action: "var(--zlx-action)",
+          "action-hover": "var(--zlx-action-hover)",
+          "action-text": "var(--zlx-action-text)",
+          danger: "var(--zlx-danger)",
+          "danger-hover": "var(--zlx-danger-hover)",
+          progress: "var(--zlx-progress)",
+          "progress-hover": "var(--zlx-progress-hover)",
+        },
       },
       fontFamily: {
         sans: ["Inter", "sans-serif"], // Example: Add custom font families

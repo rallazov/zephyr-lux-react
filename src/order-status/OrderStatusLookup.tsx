@@ -63,7 +63,7 @@ const OrderStatusLookup: React.FC = () => {
     <main className="min-h-[70vh] bg-stone-950 text-stone-50">
       <section className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-16">
         <div className="flex flex-col justify-center">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-amber-200">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-neutral-400">
             Guest order help
           </p>
           <h1 className="mt-3 text-3xl font-semibold leading-tight sm:text-4xl">
@@ -75,7 +75,7 @@ const OrderStatusLookup: React.FC = () => {
           </p>
           <p className="mt-6 max-w-xl text-sm leading-6 text-stone-400">
             Need help right away?{" "}
-            <a className="font-medium text-amber-200 underline-offset-4 hover:underline" href={SUPPORT_MAIL}>
+            <a className="font-medium text-neutral-300 underline-offset-4 hover:text-amber-200 hover:underline" href={SUPPORT_MAIL}>
               Email support
             </a>
             .
@@ -95,7 +95,7 @@ const OrderStatusLookup: React.FC = () => {
               </label>
               <input
                 autoComplete="email"
-                className="mt-2 block min-h-12 w-full rounded-md border border-stone-600 bg-stone-950 px-4 py-3 text-base text-stone-50 outline-none transition focus:border-amber-300 focus:ring-2 focus:ring-amber-300/30"
+                className="mt-2 block min-h-12 w-full rounded-md border border-stone-600 bg-stone-950 px-4 py-3 text-base text-stone-50 outline-none transition focus:border-amber-500/80 focus:ring-2 focus:ring-amber-500/25"
                 id="order-status-email"
                 inputMode="email"
                 name="email"
@@ -125,7 +125,7 @@ const OrderStatusLookup: React.FC = () => {
               <input
                 autoCapitalize="characters"
                 autoComplete="off"
-                className="mt-2 block min-h-12 w-full rounded-md border border-stone-600 bg-stone-950 px-4 py-3 font-mono text-base uppercase text-stone-50 outline-none transition focus:border-amber-300 focus:ring-2 focus:ring-amber-300/30"
+                className="mt-2 block min-h-12 w-full rounded-md border border-stone-600 bg-stone-950 px-4 py-3 font-mono text-base uppercase text-stone-50 outline-none transition focus:border-amber-500/80 focus:ring-2 focus:ring-amber-500/25"
                 id="order-status-order-number"
                 inputMode="text"
                 name="order_number"
@@ -149,7 +149,7 @@ const OrderStatusLookup: React.FC = () => {
           </div>
 
           <button
-            className="mt-6 min-h-12 w-full rounded-md bg-amber-200 px-5 py-3 text-base font-semibold text-stone-950 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:bg-stone-600 disabled:text-stone-300"
+            className="mt-6 min-h-12 w-full rounded-md bg-zlx-action px-5 py-3 text-base font-semibold text-zlx-action-text transition hover:bg-zlx-action-hover disabled:cursor-not-allowed disabled:bg-stone-600 disabled:text-stone-300"
             disabled={submitState === "submitting"}
             type="submit"
           >
@@ -162,7 +162,7 @@ const OrderStatusLookup: React.FC = () => {
             </p>
           )}
           {submitState === "success" && (
-            <p className="mt-4 rounded-md border border-emerald-500/40 bg-emerald-950/50 px-4 py-3 text-sm text-emerald-100" role="status">
+            <p className="mt-4 rounded-md border border-neutral-600 bg-neutral-900 px-4 py-3 text-sm text-neutral-200" role="status">
               {ORDER_LOOKUP_NEUTRAL_MESSAGE}
             </p>
           )}

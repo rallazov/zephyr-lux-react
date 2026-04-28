@@ -15,22 +15,28 @@ export default function HomePage() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     const run = async () => {
       try {
         setLoadError(null);
         const adapter = getDefaultCatalogAdapter();
         const list = await adapter.listProducts();
-        setProducts(list);
+        if (!cancelled) setProducts(list);
       } catch (error) {
         console.error("HomePage catalog load:", error);
-        setLoadError(
-          "We couldn't load the catalog right now. You can still browse collections below."
-        );
+        if (!cancelled) {
+          setLoadError(
+            "We couldn't load the catalog right now. You can still browse collections below."
+          );
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     void run();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const featuredCollection = useMemo(() => {
@@ -49,9 +55,11 @@ export default function HomePage() {
   const heroDescription =
     loadError
       ? "Discover thoughtfully crafted comfort. Explore collections below or open the full catalog."
-      : products.length === 0
-        ? "We're preparing our assortment — explore collections below or browse all products when listings go live."
-        : "Discover thoughtfully crafted comfort — elevated basics for everyday confidence.";
+      : loading
+        ? "Loading the catalog… Explore collections below or open the full catalog."
+        : products.length === 0
+          ? "We're preparing our assortment — explore collections below or browse all products when listings go live."
+          : "Discover thoughtfully crafted comfort — elevated basics for everyday confidence.";
 
   usePageMeta({
     title: `${SITE_BRAND} — Premium essentials`,
@@ -63,8 +71,31 @@ export default function HomePage() {
 
   if (loading && !loadError) {
     return (
-      <main style={{ padding: 24 }}>
-        <p>Loading…</p>
+      <main>
+        <Hero
+          title={
+            <>
+              Zephyr Lux
+              <br />
+              <span className="text-red-400">Premium essentials</span>
+            </>
+          }
+          description="Loading the catalog…"
+          primaryTo="/products"
+          primaryLabel="Shop all products"
+          secondaryTo={COLLECTION_ROUTES[0]?.path ?? "/products"}
+          secondaryLabel={`Shop ${COLLECTION_ROUTES[0]?.navLabel ?? "collection"}`}
+        />
+        <section
+          style={{ padding: "24px 16px 48px", maxWidth: 720, margin: "0 auto" }}
+          aria-busy="true"
+          aria-live="polite"
+        >
+          <h2 className="text-xl font-semibold text-neutral-100 mb-3">
+            Browse by collection
+          </h2>
+          <p className="text-neutral-400 text-sm">Preparing links…</p>
+        </section>
       </main>
     );
   }
@@ -76,7 +107,7 @@ export default function HomePage() {
           <>
             Zephyr Lux
             <br />
-            <span className="text-indigo-400">Premium essentials</span>
+            <span className="text-red-400">Premium essentials</span>
           </>
         }
         description={heroDescription}
@@ -93,7 +124,7 @@ export default function HomePage() {
       <section
         style={{ padding: "24px 16px 48px", maxWidth: 720, margin: "0 auto" }}
       >
-        <h2 className="text-xl font-semibold text-gray-900 mb-3">
+        <h2 className="text-xl font-semibold text-neutral-100 mb-3">
           Browse by collection
         </h2>
         <ul
@@ -110,14 +141,7 @@ export default function HomePage() {
             <li key={c.path}>
               <Link
                 to={c.path}
-                style={{
-                  display: "inline-block",
-                  padding: "8px 14px",
-                  borderRadius: 6,
-                  border: "1px solid #e5e7eb",
-                  color: "#111",
-                  textDecoration: "none",
-                }}
+                className="inline-block rounded-md border border-neutral-600 px-3.5 py-2 text-neutral-100 no-underline transition-colors hover:border-amber-500/70 hover:text-amber-100"
               >
                 {c.navLabel}
               </Link>

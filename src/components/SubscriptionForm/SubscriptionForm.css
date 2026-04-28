@@ -26,7 +26,6 @@
   order: 1;
   /* Ensure button is placed first */
   background-color: #ff0000;
-  /* Keep the original button color */
   color: white;
   padding: 0.8rem 2rem;
   border: none;
@@ -43,8 +42,7 @@
 
 /* Hover effect for the button */
 .subscription-form button:hover {
-  background-color: #8B0000;
-  /* Slightly different hover color */
+  background-color: #cc0000;
 }
 
 /* Style for the input field, which appears to the right of the button */
@@ -61,12 +59,12 @@
 }
 
 .subscription-form input.error-input {
-  border-color: #e74c3c;
+  border-color: var(--zlx-danger);
 }
 
 /* Error message styling */
 .error-message {
-  color: #e74c3c;
+  color: #ff6666;
   font-weight: bold;
   margin-top: 0.5rem;
 }
@@ -76,7 +74,7 @@
 }
 
 .subscription-success h3 {
-  color: #4CAF50;
+  color: #e5e5e5;
 }
 
 @media (max-width: 768px) {

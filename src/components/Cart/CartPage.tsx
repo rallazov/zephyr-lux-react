@@ -194,7 +194,7 @@ const CartPage: React.FC = () => {
         {checkoutCanceled && (
           <div
             role="status"
-            className="mb-6 p-3 rounded border border-amber-600 bg-amber-950 text-amber-100 text-sm max-w-2xl mx-auto text-center"
+            className="mb-6 p-3 rounded border border-red-900 bg-neutral-950 text-neutral-200 text-sm max-w-2xl mx-auto text-center"
           >
             Checkout was canceled — your bag is still saved.
           </div>
@@ -218,13 +218,13 @@ const CartPage: React.FC = () => {
             {reconcileNotice && (
               <div
                 role="status"
-                className="mb-4 p-3 rounded border border-amber-600 bg-amber-950 text-amber-100 text-sm"
+                className="mb-4 p-3 rounded border border-red-900 bg-neutral-950 text-neutral-200 text-sm"
               >
                 <p className="mb-2">{reconcileNotice}</p>
                 <button
                   type="button"
                   onClick={clearReconcileNotice}
-                  className="text-amber-200 underline text-xs"
+                  className="text-neutral-400 underline text-xs hover:text-neutral-300"
                 >
                   Dismiss
                 </button>
@@ -251,13 +251,13 @@ const CartPage: React.FC = () => {
             {quoteError && (
               <div
                 role="alert"
-                className="mb-4 p-3 rounded border border-amber-600 bg-amber-950 text-amber-100 text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
+                className="mb-4 p-3 rounded border border-red-900 bg-neutral-950 text-neutral-200 text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
               >
                 <span>{quoteError}</span>
                 <button
                   type="button"
                   onClick={refetchQuote}
-                  className="text-amber-200 underline text-sm"
+                  className="text-amber-300 underline text-sm hover:text-amber-200"
                 >
                   Retry
                 </button>
@@ -269,12 +269,12 @@ const CartPage: React.FC = () => {
               </p>
             )}
             <div className="mb-4 bg-black p-3 rounded shadow border border-gray-600">
-              <p className="text-center text-sm font-bold text-green-400">
+              <p className="text-center text-sm font-bold text-neutral-200">
                 {progressMessage}
               </p>
               <div className="relative h-2 bg-gray-800 rounded mt-2">
                 <div
-                  className="absolute top-0 left-0 h-full bg-green-500 rounded"
+                  className="absolute top-0 left-0 h-full rounded bg-zlx-progress"
                   style={{ width: `${Math.min((progressSubtotalDollars / 50) * 100, 100)}%` }}
                 />
               </div>
@@ -374,7 +374,7 @@ const CartPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => removeFromCart(item.id, item.sku)}
-                        className="min-h-11 rounded bg-red-600 px-4 text-sm font-medium text-white hover:bg-red-500"
+                        className="min-h-11 rounded bg-zlx-danger px-4 text-sm font-medium text-white hover:bg-zlx-danger-hover"
                       >
                         Remove
                       </button>
@@ -383,7 +383,7 @@ const CartPage: React.FC = () => {
                     v.issues.length === 0 &&
                     v.maxQuantity != null &&
                     item.quantity >= v.maxQuantity ? (
-                      <p className="text-amber-400 text-xs mt-2">Maximum {v.maxQuantity} available.</p>
+                      <p className="text-neutral-400 text-xs mt-2">Maximum {v.maxQuantity} available.</p>
                     ) : null}
                   </article>
                 ),
@@ -491,7 +491,7 @@ const CartPage: React.FC = () => {
                             v.issues.length === 0 &&
                             v.maxQuantity != null &&
                             item.quantity >= v.maxQuantity && (
-                              <p className="text-amber-400 text-xs mt-1 max-w-[12rem] mx-auto">
+                              <p className="text-neutral-400 text-xs mt-1 max-w-[12rem] mx-auto">
                                 Maximum {v.maxQuantity} available.
                               </p>
                             )}
@@ -505,7 +505,7 @@ const CartPage: React.FC = () => {
                             onClick={() => {
                               removeFromCart(item.id, item.sku);
                             }}
-                            className="min-h-11 rounded bg-red-500 px-4 text-white hover:bg-red-600"
+                            className="min-h-11 rounded bg-zlx-danger px-4 text-white hover:bg-zlx-danger-hover"
                           >
                             Remove
                           </button>
@@ -536,7 +536,7 @@ const CartPage: React.FC = () => {
                 />
                 <button
                   type="button"
-                  className="min-h-11 shrink-0 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                  className="min-h-11 shrink-0 rounded border border-neutral-500 bg-neutral-800 px-4 py-2 text-sm font-medium text-neutral-100 hover:bg-neutral-700"
                 >
                   Apply Coupon
                 </button>
@@ -556,7 +556,7 @@ const CartPage: React.FC = () => {
                     navigate("/checkout", { state: { subtotal, items: cartItems } })
                   }
                   disabled={!checkoutAllowed}
-                  className="hidden md:inline-flex min-h-11 items-center justify-center bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="hidden md:inline-flex min-h-11 items-center justify-center rounded bg-zlx-action px-6 py-2 font-semibold text-zlx-action-text hover:bg-zlx-action-hover disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Proceed to Checkout
                 </button>
@@ -606,7 +606,7 @@ const CartPage: React.FC = () => {
                     navigate("/checkout", { state: { subtotal, items: cartItems } })
                   }
                   disabled={!checkoutAllowed}
-                  className="min-h-12 shrink-0 rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="min-h-12 shrink-0 rounded-lg bg-zlx-action px-4 py-2 text-sm font-semibold text-zlx-action-text hover:bg-zlx-action-hover disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Checkout
                 </button>

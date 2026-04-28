@@ -36,7 +36,7 @@ const ProductList: React.FC = () => {
 
   if (loading && !loadError) {
     return (
-      <div className="product-list">
+      <div className="product-list bg-black text-neutral-100">
         <h1>Product List</h1>
         <div style={{ padding: 16 }}>Loading…</div>
       </div>
@@ -44,7 +44,7 @@ const ProductList: React.FC = () => {
   }
 
   return (
-    <div className="product-list">
+    <div className="product-list bg-black text-neutral-100">
       <h1>Product List</h1>
       {loadError && (
         <p style={{ color: "#b00020", marginBottom: 16 }} role="alert">
@@ -53,12 +53,12 @@ const ProductList: React.FC = () => {
       )}
       {!loadError && products.length === 0 && (
         <div style={{ padding: "24px 0", maxWidth: 420 }}>
-          <p style={{ marginBottom: 16, color: "#333" }}>
+          <p style={{ marginBottom: 16, color: "#d4d4d4" }}>
             There are no products available right now.
           </p>
           <Link
             to="/"
-            style={{ color: "#1a1a1a", textDecoration: "underline" }}
+            style={{ color: "#ffffff", textDecoration: "underline" }}
           >
             Return home
           </Link>
