@@ -18,6 +18,15 @@ export const fulfillmentStatusSchema = z.enum([
   "canceled",
 ]);
 
+/** PRD §12.6 / `shipments.status` — parcel-level lifecycle (≠ `orders.fulfillment_status`). */
+export const shipmentPipelineStatusSchema = z.enum([
+  "pending",
+  "packed",
+  "shipped",
+  "delivered",
+  "returned",
+]);
+
 export const productStatusSchema = z.enum(["draft", "active", "archived"]);
 
 export const productVariantStatusSchema = z.enum([
@@ -46,6 +55,7 @@ export const iso4217CurrencySchema = z
 
 export type PaymentStatus = z.infer<typeof paymentStatusSchema>;
 export type FulfillmentStatus = z.infer<typeof fulfillmentStatusSchema>;
+export type ShipmentPipelineStatus = z.infer<typeof shipmentPipelineStatusSchema>;
 export type ProductStatus = z.infer<typeof productStatusSchema>;
 export type ProductVariantStatus = z.infer<typeof productVariantStatusSchema>;
 export type PaymentEventIngestStatus = z.infer<

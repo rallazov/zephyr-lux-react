@@ -1,5 +1,36 @@
 # Deferred work (from reviews and triage)
 
+## Deferred from: code review of 5-7-internal-notes-order-timeline.md (2026-04-27)
+
+- **Stale Vitest totals in Story 5-7 Dev Agent Record** (“256 tests”) — reconcile with CI when convenient; harmless until numbers mislead onboarding.
+
+## Deferred from: code review of 5-6-customer-shipment-notification.md (2026-04-27)
+
+- **`loadShipmentTracking` failure vs empty shipment** — Customers may see “tracking not yet available” when the real cause is a **`shipments`** read error; distinguish or reword when operational clarity matters.
+- **`admin-order-fulfillment` vs `admin-shipment` handler consistency** — OPTIONS status codes, bearer parsing helpers, and Supabase “configured” checks differ; unify when tightening admin API polish.
+
+## Deferred from: code review of 5-4-order-fulfillment-status-transitions.md (2026-04-27)
+
+- **RPC error mapping relies on substring match** (`api/admin-order-fulfillment.ts`) — Acceptable while Postgres exception text is stable; harden if messages change.
+- **`verifyAdminJwt` / handler: no distinction between invalid token and non-admin** — Both become `403`; refine when clients need `401` for expired sessions.
+- **`GRANT EXECUTE` to `postgres` on `apply_fulfillment_transition`** — Validate against project’s migration norms (`service_role`-only vs maintenance role).
+
+## Deferred from: code review of 5-3-admin-order-detail.md (2026-04-27)
+
+- **Written AC7/AC11 vs merged implementation** — Review follow-up **3** (defer split): keep combined detail + shipment + `order_events` in `AdminOrderDetail` for now; update story/AC wording or split components when epic boundaries must match the written spec again.
+- **`AdminOrderDetail` size and mixed concerns** — Read-only order detail (5-3) shares one module with shipment save (5-5) and `order_events` reads (5-4); defer extraction/split when epic boundaries or reuse demand it.
+- **Raw PostgREST errors on admin order load** — Surfacing `error.message` directly is fine for MVP operators; soften or classify errors when customer-facing admin polish is in scope.
+
+## Deferred from: code review of 5-2-admin-order-list.md (2026-04-27)
+
+- **`notification_logs` secondary fetch errors are swallowed (AdminOrderList.tsx)** — Supabase failures clear failed-badge state silently; revisit with non-blocking telemetry or a subtle “signals unavailable” affordance when operator UX needs stronger guarantees than fail-closed.
+- **`TEMPLATE_OWNER_ORDER_PAID` duplicated with `notificationLog.ts`** — Acceptable MVP with unit test guarding the string match; unify via a thin shared barrel when the repo adopts a `@shared`/`domain-notification` extraction.
+
+## Deferred from: code review of 5-1-supabase-admin-auth.md (2026-04-27)
+
+- **`RequireAdmin.test.tsx`: `session` mocked as `{} as Session`** — Weak typing hides missing fields or shape regressions when Supabase `Session` evolves; tighten when mocks next change.
+- **No Postgres-backed RLS test for Story 5-1 migrations** — Unit tests satisfy AC 5 mocks-only guidance; optional future Supabase test harness policy smoke when CI spins local DB.
+
 ## Deferred from: code review of 4-7-log-notification-status.md (2026-04-26)
 
 - **`notificationLog.test` mock shape vs real PostgREST chain** — The Vitest double for `notification_logs` may not assert the full `update().eq("id").eq("status", "queued")` shape; consider tightening the mock or an integration test when the API layer next changes. Pre-existing test-quality gap noted in 4-7 review.

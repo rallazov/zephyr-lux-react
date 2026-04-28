@@ -43,6 +43,16 @@ describe("storefront route smoke (App.tsx router tree)", () => {
     expect(await screen.findByRole("heading", { name: /admin sign in/i })).toBeInTheDocument();
   });
 
+  it("unauthenticated /admin/orders shows sign-in experience (5-2)", async () => {
+    renderRoute("/admin/orders");
+    expect(await screen.findByRole("heading", { name: /admin sign in/i })).toBeInTheDocument();
+  });
+
+  it("unauthenticated /admin/orders/:id shows sign-in experience", async () => {
+    renderRoute("/admin/orders/00000000-0000-4000-8000-000000000001");
+    expect(await screen.findByRole("heading", { name: /admin sign in/i })).toBeInTheDocument();
+  });
+
   it("product detail with bogus slug shows not-found (adapter-backed)", async () => {
     renderRoute("/product/__no_such_slug_zlx__");
     expect(await screen.findByTestId("storefront-layout")).toBeInTheDocument();
