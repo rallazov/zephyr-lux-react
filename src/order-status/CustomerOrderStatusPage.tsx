@@ -63,7 +63,7 @@ const CustomerOrderStatusPage: React.FC = () => {
       <section className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
         <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase text-amber-200">
+            <p className="text-sm font-semibold uppercase text-neutral-400">
               Secure order link
             </p>
             <h1 className="mt-2 text-3xl font-semibold leading-tight sm:text-4xl">
@@ -71,7 +71,7 @@ const CustomerOrderStatusPage: React.FC = () => {
             </h1>
           </div>
           <a
-            className="text-sm font-medium text-amber-200 underline-offset-4 hover:underline"
+            className="text-sm font-medium text-neutral-300 underline-offset-4 hover:text-red-400 hover:underline"
             href={SUPPORT_MAIL}
           >
             Email support
@@ -96,13 +96,13 @@ const CustomerOrderStatusPage: React.FC = () => {
             </p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <Link
-                className="inline-flex min-h-11 items-center justify-center rounded-md bg-amber-200 px-4 py-2 text-sm font-semibold text-stone-950 hover:bg-amber-100"
+                className="inline-flex min-h-11 items-center justify-center rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500"
                 to="/order-status"
               >
                 Request a new link
               </Link>
               <a
-                className="inline-flex min-h-11 items-center justify-center rounded-md border border-stone-600 px-4 py-2 text-sm font-semibold text-stone-100 hover:border-amber-200"
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-stone-600 px-4 py-2 text-sm font-semibold text-stone-100 hover:border-red-500"
                 href={SUPPORT_MAIL}
               >
                 Email support
@@ -156,9 +156,9 @@ function OrderStatusReady({ view }: { view: CustomerOrderStatusViewModel }) {
                 className={[
                   "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold sm:mb-3",
                   step.state === "complete"
-                    ? "border-emerald-300 bg-emerald-300 text-stone-950"
+                    ? "border-neutral-400 bg-neutral-300 text-stone-950"
                     : step.state === "current"
-                      ? "border-amber-200 bg-amber-200 text-stone-950"
+                      ? "border-red-500 bg-red-600 text-white"
                       : "border-stone-600 text-stone-500",
                 ].join(" ")}
               >
@@ -263,7 +263,7 @@ function OrderStatusReady({ view }: { view: CustomerOrderStatusViewModel }) {
               <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                 {view.tracking.trackHref && (
                   <a
-                    className="inline-flex min-h-11 w-full min-w-0 items-center justify-center rounded-md bg-amber-200 px-4 py-2 text-sm font-semibold text-stone-950 hover:bg-amber-100 sm:w-auto"
+                    className="inline-flex min-h-11 w-full min-w-0 items-center justify-center rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500 sm:w-auto"
                     href={view.tracking.trackHref}
                     rel="noreferrer noopener"
                     target="_blank"
@@ -287,7 +287,7 @@ function OrderStatusReady({ view }: { view: CustomerOrderStatusViewModel }) {
         {view.timeline.length > 0 ? (
           <ol className="mt-4 space-y-3">
             {view.timeline.map((event) => (
-              <li key={event.key} className="border-l border-amber-200 pl-4">
+              <li key={event.key} className="border-l border-neutral-600 pl-4">
                 <p className="text-sm font-medium text-stone-50">{event.label}</p>
                 <p className="mt-1 text-xs text-stone-500">{event.createdAt}</p>
               </li>

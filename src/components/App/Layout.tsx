@@ -35,7 +35,9 @@ const Layout = () => {
   return (
     <div className="App" data-testid="storefront-layout">
       <Header />
-      <Outlet />
+      <main className="storefront-outlet">
+        <Outlet />
+      </main>
       <Footer />
     </div>
   );

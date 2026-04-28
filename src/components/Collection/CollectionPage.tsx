@@ -60,7 +60,7 @@ export default function CollectionPage({ collection }: Props) {
         secondaryLabel="Home"
       />
       <div className="product-list" style={{ padding: "0 16px 48px" }}>
-        <h2 style={{ marginBottom: 16 }}>{collection.navLabel}</h2>
+        <h2 className="text-neutral-100" style={{ marginBottom: 16 }}>{collection.navLabel}</h2>
         {loading && !loadError && <div style={{ padding: 16 }}>Loading…</div>}
         {loadError && (
           <p style={{ color: "#b00020" }} role="alert">
@@ -69,13 +69,13 @@ export default function CollectionPage({ collection }: Props) {
         )}
         {!loadError && products.length === 0 && (
           <div style={{ padding: "24px 0", maxWidth: 420 }}>
-            <p style={{ marginBottom: 16, color: "#333" }}>
+            <p style={{ marginBottom: 16, color: "#d4d4d4" }}>
               Nothing in this collection yet. Explore all styles or try another
               category.
             </p>
             <Link
               to="/products"
-              style={{ color: "#1a1a1a", textDecoration: "underline" }}
+              style={{ color: "#ffffff", textDecoration: "underline" }}
             >
               Browse all products
             </Link>

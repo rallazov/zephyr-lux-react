@@ -61,12 +61,12 @@
 }
 
 .subscription-form input.error-input {
-  border-color: #e74c3c;
+  border-color: #ff0000;
 }
 
 /* Error message styling */
 .error-message {
-  color: #e74c3c;
+  color: #ff6666;
   font-weight: bold;
   margin-top: 0.5rem;
 }
@@ -76,7 +76,7 @@
 }
 
 .subscription-success h3 {
-  color: #4CAF50;
+  color: #e5e5e5;
 }
 
 @media (max-width: 768px) {

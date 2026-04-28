@@ -1,5 +1,9 @@
 # Deferred work (from reviews and triage)
 
+## Exploratory UI QA (process; 2026-04-27)
+
+- **Charter & logging:** [exploratory-ui-qa-charter.md](exploratory-ui-qa-charter.md) (feel-and-touch first), [exploratory-ui-qa-findings.md](exploratory-ui-qa-findings.md) (issue log), [exploratory-ui-qa-e2e-handoff.md](exploratory-ui-qa-e2e-handoff.md) (after triage → `bmad-qa-generate-e2e-tests`).
+
 ## Deferred from: code review of 7-4-show-tracking-when-shipped.md (2026-04-27)
 
 - **Shipment email plaintext vs HTML for `tracking_url`** — `buildCustomerShipmentEmail` only applies `safeHttpUrlForHref` for HTML links; the text body can still repeat a raw `tracking_url` line. Optional hardening if plaintext clients should mirror status-page URL-safety semantics.

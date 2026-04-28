@@ -77,7 +77,7 @@ export default function HomePage() {
             <>
               Zephyr Lux
               <br />
-              <span className="text-indigo-400">Premium essentials</span>
+              <span className="text-red-400">Premium essentials</span>
             </>
           }
           description="Loading the catalog…"
@@ -91,10 +91,10 @@ export default function HomePage() {
           aria-busy="true"
           aria-live="polite"
         >
-          <h2 className="text-xl font-semibold text-gray-900 mb-3">
+          <h2 className="text-xl font-semibold text-neutral-100 mb-3">
             Browse by collection
           </h2>
-          <p className="text-gray-600 text-sm">Preparing links…</p>
+          <p className="text-neutral-400 text-sm">Preparing links…</p>
         </section>
       </main>
     );
@@ -107,7 +107,7 @@ export default function HomePage() {
           <>
             Zephyr Lux
             <br />
-            <span className="text-indigo-400">Premium essentials</span>
+            <span className="text-red-400">Premium essentials</span>
           </>
         }
         description={heroDescription}
@@ -124,7 +124,7 @@ export default function HomePage() {
       <section
         style={{ padding: "24px 16px 48px", maxWidth: 720, margin: "0 auto" }}
       >
-        <h2 className="text-xl font-semibold text-gray-900 mb-3">
+        <h2 className="text-xl font-semibold text-neutral-100 mb-3">
           Browse by collection
         </h2>
         <ul
@@ -141,14 +141,7 @@ export default function HomePage() {
             <li key={c.path}>
               <Link
                 to={c.path}
-                style={{
-                  display: "inline-block",
-                  padding: "8px 14px",
-                  borderRadius: 6,
-                  border: "1px solid #e5e7eb",
-                  color: "#111",
-                  textDecoration: "none",
-                }}
+                className="inline-block rounded-md border border-neutral-600 px-3.5 py-2 text-neutral-100 no-underline transition-colors hover:border-red-500 hover:text-red-400"
               >
                 {c.navLabel}
               </Link>

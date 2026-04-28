@@ -1,6 +1,9 @@
-import { cleanup } from "@testing-library/react";
+import { cleanup, configure } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach } from "vitest";
+
+/** GitHub-hosted runners occasionally exceed RTL’s old 1s default on async catalog/PDP mounts. */
+configure({ asyncUtilTimeout: 5000 });
 
 afterEach(() => {
   cleanup();

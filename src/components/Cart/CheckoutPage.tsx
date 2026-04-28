@@ -117,7 +117,7 @@ const InnerCheckoutForm: React.FC<{
                 type="submit"
                 id="checkout-submit-pay"
                 disabled={!formValid || !readyToPay || processing}
-                className={`w-full min-h-12 scroll-mt-32 rounded px-4 py-3 font-bold text-lg ${processing ? "bg-gray-600" : "bg-green-500 hover:bg-green-600"}`}
+                className={`w-full min-h-12 scroll-mt-32 rounded px-4 py-3 font-bold text-lg ${processing ? "bg-neutral-600" : "bg-red-600 hover:bg-red-500"}`}
             >
                 {processing ? "Processing..." : "Pay Now"}
             </button>
@@ -561,7 +561,7 @@ const CheckoutPage = () => {
                     <p className="text-gray-300 mb-4">
                         We could not verify your cart against the catalog. Return to your bag and try again.
                     </p>
-                    <Link to="/cart" className="text-green-400 underline font-semibold">
+                    <Link to="/cart" className="text-red-300 underline font-semibold">
                         Return to bag
                     </Link>
                 </main>
@@ -595,7 +595,7 @@ const CheckoutPage = () => {
                     </ul>
                     <Link
                         to="/cart"
-                        className="inline-flex min-h-12 items-center justify-center bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-500"
+                        className="inline-flex min-h-12 items-center justify-center bg-red-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-500"
                     >
                         Return to bag
                     </Link>
@@ -644,7 +644,7 @@ const CheckoutPage = () => {
                 {checkoutCanceled && (
                     <div
                         role="status"
-                        className="mb-4 p-3 rounded border border-amber-600 bg-amber-950 text-amber-100 text-sm"
+                        className="mb-4 p-3 rounded border border-red-900 bg-neutral-950 text-neutral-200 text-sm"
                     >
                         Checkout was canceled — your bag is still saved. You can
                         return to it anytime.
@@ -653,7 +653,7 @@ const CheckoutPage = () => {
                 <div className="mb-4">
                     <Link
                         to="/cart"
-                        className="text-amber-300 underline text-sm"
+                        className="text-red-300 underline text-sm"
                     >
                         ← Back to bag
                     </Link>
@@ -667,7 +667,7 @@ const CheckoutPage = () => {
                             <button
                                 type="button"
                                 onClick={refetchCartQuote}
-                                className="text-amber-300 underline text-sm"
+                                className="text-red-300 underline text-sm"
                             >
                                 Retry
                             </button>
@@ -852,7 +852,7 @@ const CheckoutPage = () => {
                                 !quote ||
                                 Boolean(cartQuoteError)
                             }
-                            className={`w-full min-h-12 scroll-mt-32 rounded px-4 py-3 font-bold text-lg ${processing ? "bg-gray-600" : "bg-green-500 hover:bg-green-600"}`}
+                            className={`w-full min-h-12 scroll-mt-32 rounded px-4 py-3 font-bold text-lg ${processing ? "bg-neutral-600" : "bg-red-600 hover:bg-red-500"}`}
                         >
                             {processing ? "Processing..." : "Pay Now"}
                         </button>
@@ -861,7 +861,7 @@ const CheckoutPage = () => {
                     clientSecret && stripePromise && quote ? (
                         <>
                             {!contactInSync && formValid && (
-                                <p className="text-amber-200 text-sm mb-3" role="status">
+                                <p className="text-neutral-200 text-sm mb-3" role="status">
                                     Syncing your details with the payment form — wait a moment, then use Pay
                                     Now.
                                 </p>

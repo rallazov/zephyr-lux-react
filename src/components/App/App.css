@@ -1,3 +1,18 @@
+/* Space below fixed `.navbar` (see Navbar.css) so page content is not covered */
+:root {
+  --storefront-nav-offset: 5.5rem;
+}
+
+@media (min-width: 769px) {
+  :root {
+    --storefront-nav-offset: 7.75rem;
+  }
+}
+
+html {
+  scroll-padding-top: var(--storefront-nav-offset);
+}
+
 /* Ensure the App container takes up the full width and height of the screen */
 .App {
   width: 100vw; /* Take full viewport width */
@@ -6,6 +21,13 @@
   flex-direction: column; /* Ensure the content flows in a column */
   justify-content: space-between; /* Spread content vertically */
   background-color: #000000; /* Add a background color if needed */
+}
+
+.storefront-outlet {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  padding-top: var(--storefront-nav-offset);
 }
 img {
   display: block;

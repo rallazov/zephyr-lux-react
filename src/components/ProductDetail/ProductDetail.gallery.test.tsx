@@ -73,9 +73,8 @@ describe("ProductDetail gallery / hero parity", () => {
       target: { value: "S" },
     });
 
-    const main = await screen.findByTestId("pdp-gallery-main");
     await waitFor(() => {
-      expect(main).toHaveAttribute("src", "/primary-s.jpg");
+      expect(screen.getByTestId("pdp-gallery-main")).toHaveAttribute("src", "/primary-s.jpg");
     });
 
     fireEvent.change(screen.getByTestId("pdp-select-size"), {
@@ -83,7 +82,7 @@ describe("ProductDetail gallery / hero parity", () => {
     });
 
     await waitFor(() => {
-      expect(main).toHaveAttribute("src", "/primary-m.jpg");
+      expect(screen.getByTestId("pdp-gallery-main")).toHaveAttribute("src", "/primary-m.jpg");
     });
   });
 });

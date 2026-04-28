@@ -2,7 +2,6 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: 16px;
-  padding-top: 110px; /* offset fixed navbar height */
 }
 
 .product-item {
@@ -13,9 +12,9 @@
   
   div .product-item-button{
     padding: 10px;
-    background-color: #28a745;
+    background-color: #cc0000;
     color: white;
-    border: 1px solid #ddd;
+    border: 1px solid #444444;
     border-radius: 5px;
     cursor: pointer;
   }
