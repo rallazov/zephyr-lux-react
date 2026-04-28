@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { z } from "zod";
-import { QuoteError, quoteCartLines } from "./_lib/catalog";
+import { isQuoteError, quoteCartLines } from "./_lib/catalog";
 import { ENV } from "./_lib/env";
 import { log } from "./_lib/logger";
 
@@ -42,7 +42,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const q = quoteCartLines(items);
     return res.status(200).json(q);
   } catch (e) {
-    if (e instanceof QuoteError) {
+    if (isQuoteError(e)) {
       if (e.code === "UNKNOWN_SKU") {
         return res.status(400).json({ code: e.code, error: e.message });
       }

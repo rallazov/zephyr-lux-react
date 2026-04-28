@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
-import { quoteCartLines, QuoteError } from "./_lib/catalog";
+import { isQuoteError, quoteCartLines } from "./_lib/catalog";
 import {
   createPaymentIntentBodySchema,
   lineItemsToCatalogRows,
@@ -73,7 +73,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         catalogRows.map((r) => ({ sku: r.sku, quantity: r.qty })),
       );
     } catch (err) {
-      if (err instanceof QuoteError) {
+      if (isQuoteError(err)) {
         log.warn({ err, code: err.code }, "create-payment-intent: quote error");
         return res.status(400).json({
           error:
