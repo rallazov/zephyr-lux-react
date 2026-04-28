@@ -7,6 +7,8 @@ export const ENV = {
   SUPABASE_URL: process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "",
   /** Service role — server only; never expose to Vite. */
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
+  /** Anon key — server-only for JWT verification (`auth.getUser`); same value as VITE_SUPABASE_ANON_KEY. */
+  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || "",
   RESEND_API_KEY: process.env.RESEND_API_KEY || "",
   /** Verified sender in Resend (e.g. orders@mail.yourdomain.com). Server-only. */
   RESEND_FROM: process.env.RESEND_FROM || "",
@@ -17,6 +19,13 @@ export const ENV = {
   STORE_BACKEND: process.env.STORE_BACKEND || "auto", // auto | blob | local
   VERCEL_BLOB_RW_TOKEN: process.env.VERCEL_BLOB_READ_WRITE_TOKEN || "",
   LOG_LEVEL: process.env.LOG_LEVEL || "info",
+  /**
+   * When true, `api/admin-order-fulfillment` may send the customer “shipped” notification (Story 5-6).
+   * Default unset/false keeps Story 5-4 fulfillment-only until email is explicitly enabled in deploy.
+   */
+  ENABLE_CUSTOMER_SHIPMENT_NOTIFICATION: ["1", "true", "yes"].includes(
+    (process.env.ENABLE_CUSTOMER_SHIPMENT_NOTIFICATION || "").trim().toLowerCase(),
+  ),
 };
 
 export function isSupabaseOrderPersistenceConfigured(): boolean {

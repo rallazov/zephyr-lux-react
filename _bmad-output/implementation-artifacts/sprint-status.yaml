@@ -25,7 +25,7 @@
 #   - Dev moves story to 'review', then runs code-review
 
 generated: 2026-04-26T00:00:00Z
-last_updated: 2026-04-26T22:00:00Z
+last_updated: 2026-04-27T17:20:00Z
 project: zephyr-lux-react
 project_key: zlx
 tracking_system: file-system
@@ -70,14 +70,20 @@ development_status:
   4-7-log-notification-status: done
   epic-4-retrospective: optional
 
-  epic-5: backlog
-  5-1-supabase-admin-auth: backlog
-  5-2-admin-order-list: backlog
-  5-3-admin-order-detail: backlog
-  5-4-order-fulfillment-status-transitions: backlog
-  5-5-carrier-tracking-fields: backlog
-  5-6-customer-shipment-notification: backlog
-  5-7-internal-notes-order-timeline: backlog
+  epic-5: in-progress
+  # Recommended sequence (dependencies — all use ready-for-dev; order matters for implementation):
+  #   5-1 = sole owner of admin SELECT RLS on orders / order_items / notification_logs (do not duplicate in 5-2/5-3).
+  #   5-2 → 5-3 = list then detail UI on those policies.
+  #   5-4 = fulfillment API + order_events; atomic status + event per mutating transition.
+  #   5-5 = shipments table + server API writes (not browser-only) so 5-6 can hook on server.
+  #   5-6 = customer shipment email from that server path after first shipped + idempotency marker.
+  5-1-supabase-admin-auth: done
+  5-2-admin-order-list: done
+  5-3-admin-order-detail: done
+  5-4-order-fulfillment-status-transitions: done
+  5-5-carrier-tracking-fields: done
+  5-6-customer-shipment-notification: done
+  5-7-internal-notes-order-timeline: done
   epic-5-retrospective: optional
 
   epic-6: backlog

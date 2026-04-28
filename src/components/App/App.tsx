@@ -3,6 +3,8 @@ import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router-d
 import { AuthProvider } from "../../auth/AuthContext";
 import AdminLayout from "../../admin/AdminLayout";
 import AdminLogin from "../../admin/AdminLogin";
+import AdminOrderDetail from "../../admin/AdminOrderDetail";
+import AdminOrderList from "../../admin/AdminOrderList";
 import AdminProductForm from "../../admin/AdminProductForm";
 import AdminProductList from "../../admin/AdminProductList";
 import RequireAdmin from "../../admin/RequireAdmin";
@@ -65,6 +67,8 @@ export function AppRoutes() {
                 <Route path="products" element={<AdminProductList />} />
                 <Route path="products/new" element={<AdminProductForm />} />
                 <Route path="products/:id" element={<AdminProductForm />} />
+                <Route path="orders" element={<AdminOrderList />} />
+                <Route path="orders/:id" element={<AdminOrderDetail />} />
               </Route>
             </Route>
             <Route element={<Layout />}>

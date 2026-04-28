@@ -5,6 +5,7 @@ export type NotificationChannel = "email" | "sms" | "push";
 
 export const NOTIFICATION_TEMPLATE_OWNER_ORDER_PAID = "owner_order_paid" as const;
 export const NOTIFICATION_TEMPLATE_CUSTOMER_ORDER_CONFIRMATION = "customer_order_confirmation" as const;
+export const NOTIFICATION_TEMPLATE_CUSTOMER_SHIPMENT = "customer_shipment" as const;
 
 export type NotificationLogInsert = {
   order_id: string | null;

@@ -19,6 +19,14 @@ export default function AdminLayout() {
             {configured && user ? (
               <nav className="flex gap-3 text-sm">
                 <NavLink
+                  to="/admin/orders"
+                  className={({ isActive }) =>
+                    isActive ? "text-blue-700 font-medium" : "text-slate-600 hover:text-slate-900"
+                  }
+                >
+                  Orders
+                </NavLink>
+                <NavLink
                   to="/admin/products"
                   className={({ isActive }) =>
                     isActive

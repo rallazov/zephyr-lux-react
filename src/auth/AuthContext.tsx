@@ -57,7 +57,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         password,
       });
-      return { error: error ? (error as Error) : null };
+      if (error) {
+        return { error: error as Error };
+      }
+      // Refresh JWT so Dashboard app_metadata.role updates apply without a full reload.
+      // Do not fail sign-in if refresh fails — credentials succeeded; user may still sign out/sign in per docs.
+      await supabase.auth.refreshSession();
+      return { error: null };
     },
     [supabase]
   );
