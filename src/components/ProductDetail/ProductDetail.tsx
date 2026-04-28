@@ -102,8 +102,11 @@ const ProductDetail: React.FC = () => {
     void load();
   }, [slug]);
 
+  const analyticsProductId = row?.product.id;
+  const productSlug = row?.product.slug;
+
   useEffect(() => {
-    if (!slug || !row?.product) return;
+    if (!slug || !productSlug) return;
     const storageKey = `analytics_product_view:${slug}:${locationNavKey}`;
     try {
       if (sessionStorage.getItem(storageKey)) return;
@@ -111,15 +114,14 @@ const ProductDetail: React.FC = () => {
     } catch {
       /* ignore */
     }
-    const productId = row.product.id;
     dispatchAnalyticsEvent({
       name: ANALYTICS_EVENTS.product_view,
       payload: {
         slug,
-        ...(productId ? { product_id: productId } : {}),
+        ...(analyticsProductId ? { product_id: analyticsProductId } : {}),
       },
     });
-  }, [slug, row, locationNavKey]);
+  }, [slug, analyticsProductId, locationNavKey, productSlug]);
 
   const product = row?.product;
 

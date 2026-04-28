@@ -1,5 +1,9 @@
 # Deferred work (from reviews and triage)
 
+## Deferred from: code review of 7-4-show-tracking-when-shipped.md (2026-04-27)
+
+- **Shipment email plaintext vs HTML for `tracking_url`** — `buildCustomerShipmentEmail` only applies `safeHttpUrlForHref` for HTML links; the text body can still repeat a raw `tracking_url` line. Optional hardening if plaintext clients should mirror status-page URL-safety semantics.
+
 ## Deferred from: code review of 7-2-secure-lookup-link.md (2026-04-27)
 
 - **Shared schema location** — `api/order-lookup-request` imports lookup validation from `src/order-status/orderLookupRequest`; consider a `shared/` or `api/_lib` module if API vs web boundaries harden later.

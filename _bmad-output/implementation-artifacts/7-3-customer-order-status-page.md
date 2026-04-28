@@ -1,6 +1,6 @@
 # Story 7.3: Customer order status page
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Ultimate context engine analysis completed - comprehensive developer guide created -->
@@ -43,27 +43,27 @@ so that **I can see whether my order is paid, processing, packed, shipped, or de
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 - Public status route (AC: 1, 5)**  
-  - [ ] Add a route/component for the tokenized status page under `src/order-status/`.
-  - [ ] Keep `/order-status` as the lookup request page from Story 7-1 and add the tokenized child/path chosen in Story 7-2.
-  - [ ] Add route smoke coverage for the tokenized route without requiring a real API response.
+- [x] **Task 1 - Public status route (AC: 1, 5)**  
+  - [x] Add a route/component for the tokenized status page under `src/order-status/`.
+  - [x] Keep `/order-status` as the lookup request page from Story 7-1 and add the tokenized child/path chosen in Story 7-2.
+  - [x] Add route smoke coverage for the tokenized route without requiring a real API response.
 
-- [ ] **Task 2 - Status API (AC: 2-4, 6)**  
-  - [ ] Add `api/customer-order-status.ts` (or a clearly named equivalent).
-  - [ ] Hash incoming token and query `order_lookup_tokens` by `token_hash` + `expires_at > now()`.
-  - [ ] Load order header and `order_items` via service role.
-  - [ ] Load `order_events` only through a safe allow-list; exclude `internal_note`.
-  - [ ] Optionally update `last_accessed_at`.
+- [x] **Task 2 - Status API (AC: 2-4, 6)**  
+  - [x] Add `api/customer-order-status.ts` (or a clearly named equivalent).
+  - [x] Hash incoming token and query `order_lookup_tokens` by `token_hash` + `expires_at > now()`.
+  - [x] Load order header and `order_items` via service role.
+  - [x] Load `order_events` only through a safe allow-list; exclude `internal_note`.
+  - [x] Optionally update `last_accessed_at`.
 
-- [ ] **Task 3 - View model and UI (AC: 3, 5)**  
-  - [ ] Add a typed response/view model helper under `src/order-status/`.
-  - [ ] Reuse [`formatCents`](../../src/lib/money.ts) for totals.
-  - [ ] Map raw statuses through customer-friendly labels while preserving exact enum values in data tests.
+- [x] **Task 3 - View model and UI (AC: 3, 5)**  
+  - [x] Add a typed response/view model helper under `src/order-status/`.
+  - [x] Reuse [`formatCents`](../../src/lib/money.ts) for totals.
+  - [x] Map raw statuses through customer-friendly labels while preserving exact enum values in data tests.
 
-- [ ] **Task 4 - Tests (AC: 7)**  
-  - [ ] API handler tests with mocked Supabase admin client.
-  - [ ] Pure serializer tests proving restricted fields and `internal_note` never appear.
-  - [ ] Component tests for loading, invalid, valid, and safe timeline display.
+- [x] **Task 4 - Tests (AC: 7)**  
+  - [x] API handler tests with mocked Supabase admin client.
+  - [x] Pure serializer tests proving restricted fields and `internal_note` never appear.
+  - [x] Component tests for loading, invalid, valid, and safe timeline display.
 
 ## Dev Notes
 
@@ -114,19 +114,58 @@ This is the first customer-facing read path for persisted orders after checkout 
 
 ### Agent Model Used
 
--
+- GPT-5 (Codex)
 
 ### Debug Log References
 
+- `npm test -- api/_lib/customerOrderStatus.test.ts api/customer-order-status.test.ts src/order-status/customerOrderStatusViewModel.test.ts src/order-status/CustomerOrderStatusPage.test.tsx src/routes.smoke.test.tsx`
+- `npm run build`
+- `npm test`
+- `npx eslint api/customer-order-status.ts api/_lib/customerOrderStatus.ts api/customer-order-status.test.ts api/_lib/customerOrderStatus.test.ts src/order-status/CustomerOrderStatusPage.tsx src/order-status/customerOrderStatusViewModel.ts src/order-status/CustomerOrderStatusPage.test.tsx src/order-status/customerOrderStatusViewModel.test.ts src/components/App/App.tsx src/routes.smoke.test.tsx`
+
 ### Completion Notes List
 
+- Added `GET /api/customer-order-status?token=...` with service-role-only token hash lookup, expiry check, linked order/item/event reads, and `last_accessed_at` refresh.
+- Added a customer-safe API serializer that masks email, excludes Stripe IDs/customer IDs/internal notes/raw shipping JSON/admin metadata, and allow-lists public fulfillment timeline events.
+- Added `/order-status/:token` storefront route and status page with loading, invalid/expired link handling, compact order header, progress, line items, total, timeline, and support fallback.
+- Added focused API, serializer, view-model, component, and router smoke coverage.
+
 ### File List
+
+- `api/customer-order-status.ts`
+- `api/customer-order-status.test.ts`
+- `api/_lib/customerOrderStatus.ts`
+- `api/_lib/customerOrderStatus.test.ts`
+- `src/order-status/CustomerOrderStatusPage.tsx`
+- `src/order-status/CustomerOrderStatusPage.test.tsx`
+- `src/order-status/customerOrderStatusViewModel.ts`
+- `src/order-status/customerOrderStatusViewModel.test.ts`
+- `src/components/App/App.tsx`
+- `src/routes.smoke.test.tsx`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/implementation-artifacts/7-3-customer-order-status-page.md`
 
 ## Change Log
 
 - 2026-04-28 - Story created (bmad-create-story). Target: PRD E7-S3; token-protected customer order status page.
+- 2026-04-28 - Implemented customer-safe status API, tokenized storefront page, view model, route smoke, and focused tests; sprint status updated to review.
+- 2026-04-27 - Applied code review patches: `Cache-Control: no-store` on all customer-order-status responses; timeline JSON omits `order_events.message` (metadata-only); canceled fulfillment UX uses a single milestone; `last_accessed_at` refresh runs only after a successful 200 payload build; tests updated (focused slice).
+
+## Review Findings
+
+- [x] [Review][Patch] **Tokenized status responses are cacheable** [`api/customer-order-status.ts`](../../api/customer-order-status.ts#L24) — `GET /api/customer-order-status?token=...` returns bearer-token protected customer order data without `Cache-Control: no-store`. Add no-store cache headers on the status endpoint responses (including error paths) and cover it in the handler test so browsers/proxies do not retain private order snapshots.
+
+- [x] [Review][Patch] **Timeline API exposes raw DB event messages** [`api/_lib/customerOrderStatus.ts`](../../api/_lib/customerOrderStatus.ts#L31) — the serializer allow-lists `event_type`, but still selects and returns `order_events.message`. Today the client ignores that field, but the API payload can leak future owner/system wording. Build customer-facing timeline entries only from allow-listed event type plus safe `metadata.from` / `metadata.to`, and omit `message` from the select, response type, and tests.
+
+- [x] [Review][Patch] **Canceled orders show a misleading fulfillment ladder** [`src/order-status/customerOrderStatusViewModel.ts`](../../src/order-status/customerOrderStatusViewModel.ts) — `FULFILLMENT_PROGRESS` omits `canceled`, so `indexOf` yields `-1` and every ladder step renders as “upcoming” while the headline uses `customerFulfillmentLabel("canceled")` (“Canceled”). Treat canceled as its own UX path (single message or suppressed ladder).
+
+- [x] [Review][Patch] **`last_accessed_at` updated before confirming a full successful read** [`api/_lib/customerOrderStatus.ts`](../../api/_lib/customerOrderStatus.ts#L246-L250) — the token row is updated immediately after resolving the lookup token but before `/orders`, `shipments`, `order_items`, and `order_events` complete; a failure on those reads returns 500 after “touching” the token’s last-accessed semantics. Prefer updating last accessed only once the handler is committing a 200 response (order + items/events consistent).
+
+### Review Validation
+
+- `npm test -- api/_lib/customerOrderStatus.test.ts api/customer-order-status.test.ts src/order-status/customerOrderStatusViewModel.test.ts src/order-status/CustomerOrderStatusPage.test.tsx src/routes.smoke.test.tsx` — passed (55 tests; React Router future-flag and Browserslist freshness warnings only).
 
 ## Story completion status
 
-Status: **ready-for-dev**  
-Ultimate context engine analysis completed - comprehensive developer guide created.
+Status: **done**  
+All review patch items above were applied and re-validated on 2026-04-27.

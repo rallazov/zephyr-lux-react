@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider } from "./auth/AuthContext";
 import { AppRoutes } from "./components/App/App";
 import { CART_LOCAL_STORAGE_KEY } from "./cart/storage";
@@ -30,6 +30,7 @@ describe("storefront route smoke (App.tsx router tree)", () => {
   });
   afterEach(() => {
     localStorage.removeItem(CART_LOCAL_STORAGE_KEY);
+    vi.unstubAllGlobals();
   });
 
   it("admin login route mounts without storefront layout", async () => {
@@ -89,6 +90,21 @@ describe("storefront route smoke (App.tsx router tree)", () => {
     renderRoute("/policies/__no_such_policy__");
     expect(await screen.findByTestId("storefront-layout")).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: /^Policies$/i })).toBeInTheDocument();
+  });
+
+  it("tokenized order status route mounts without direct browser data access", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        json: vi.fn(),
+      }),
+    );
+
+    renderRoute(`/order-status/${"a".repeat(43)}`);
+
+    expect(await screen.findByTestId("storefront-layout")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /^Order status$/i })).toBeInTheDocument();
   });
 
   it.each(cases)("mounts %s without uncaught render failure", async (path, textMatcher) => {

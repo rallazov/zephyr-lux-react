@@ -14,7 +14,7 @@ describe("normalizeCategoryKey", () => {
     expect(normalizeCategoryKey("\t\n")).toBeNull();
   });
 
-  it("trims and NFC-normalizes then lowercases with root locale", () => {
+  it("trims and NFC-normalizes then case-folds with root locale lowercasing", () => {
     expect(normalizeCategoryKey("  Women  ")).toBe("women");
     const composed = "caf\u00e9";
     const decomposed = "cafe\u0301";
@@ -23,6 +23,11 @@ describe("normalizeCategoryKey", () => {
 
   it("Unicode case mapping (basic Latin)", () => {
     expect(normalizeCategoryKey("UNDERWEAR")).toBe("underwear");
+  });
+
+  it("applies Unicode simple case fold where it differs from lowercase (İ, ß)", () => {
+    expect(normalizeCategoryKey("\u0130stanbul")).toBe("istanbul");
+    expect(normalizeCategoryKey("Stra\u00dfe")).toBe("strasse");
   });
 });
 

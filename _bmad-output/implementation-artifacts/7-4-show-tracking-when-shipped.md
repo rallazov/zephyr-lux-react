@@ -1,6 +1,6 @@
 # Story 7.4: Show tracking when shipped
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Ultimate context engine analysis completed - comprehensive developer guide created -->
@@ -42,25 +42,35 @@ so that **I can follow delivery progress without contacting support**.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 - Extend status API serializer (AC: 1, 2, 4)**  
-  - [ ] Update the Story 7-3 API to load the unique `shipments` row by `order_id`.
-  - [ ] Gate returned tracking by order fulfillment status (`shipped` / `delivered`) and shipment availability.
-  - [ ] Return a narrow `tracking` object, not raw shipment rows.
+- [x] **Task 1 - Extend status API serializer (AC: 1, 2, 4)**  
+  - [x] Update the Story 7-3 API to load the unique `shipments` row by `order_id`.
+  - [x] Gate returned tracking by order fulfillment status (`shipped` / `delivered`) and shipment availability.
+  - [x] Return a narrow `tracking` object, not raw shipment rows.
 
-- [ ] **Task 2 - URL safety and derivation (AC: 3, 6)**  
-  - [ ] Reuse [`deriveTrackingUrlFromCarrier`](../../src/domain/commerce/trackingUrl.ts) if a manual URL is missing.
-  - [ ] Add/centralize an `isSafeHttpUrl` helper if one does not already exist in a reusable place. `customerShipmentNotification.ts` has a local safe URL helper; consider extracting rather than duplicating.
-  - [ ] Never render `javascript:`, `data:`, or malformed URLs as links.
+- [x] **Task 2 - URL safety and derivation (AC: 3, 6)**  
+  - [x] Reuse [`deriveTrackingUrlFromCarrier`](../../src/domain/commerce/trackingUrl.ts) if a manual URL is missing.
+  - [x] Add/centralize an `isSafeHttpUrl` helper if one does not already exist in a reusable place. `customerShipmentNotification.ts` has a local safe URL helper; consider extracting rather than duplicating.
+  - [x] Never render `javascript:`, `data:`, or malformed URLs as links.
 
-- [ ] **Task 3 - Status page UI (AC: 2, 5)**  
-  - [ ] Add a tracking section/card/block to the customer order status page.
-  - [ ] Show shipped/delivered date labels with customer-friendly formatting.
-  - [ ] Preserve existing order header, item list, and safe timeline layout from Story 7-3.
+- [x] **Task 3 - Status page UI (AC: 2, 5)**  
+  - [x] Add a tracking section/card/block to the customer order status page.
+  - [x] Show shipped/delivered date labels with customer-friendly formatting.
+  - [x] Preserve existing order header, item list, and safe timeline layout from Story 7-3.
 
-- [ ] **Task 4 - Tests (AC: 7)**  
-  - [ ] API serializer tests for tracking gates and safe response shape.
-  - [ ] Pure URL helper tests if extracting URL safety.
-  - [ ] Component/view-model tests for tracking hidden/empty/populated states.
+- [x] **Task 4 - Tests (AC: 7)**  
+  - [x] API serializer tests for tracking gates and safe response shape.
+  - [x] Pure URL helper tests if extracting URL safety.
+  - [x] Component/view-model tests for tracking hidden/empty/populated states.
+
+### Review Findings
+
+- [x] [Review][Decision] Carrier-derived URL when stored `tracking_url` is unsafe — **Resolved (option 1):** derive when the stored URL is not safe `http`/`https`; hide junk URL text when a safe `trackHref` exists (PO + architect, 2026-04-27).
+
+- [x] [Review][Patch] Null or normalize unsafe `tracking_url` in API serializer [`api/_lib/customerOrderStatus.ts` (~serializeShipmentTracking)] — **Fixed:** `serializeShipmentTracking` uses `safeHttpUrlForHref`; unsafe values serialize as `null`; tests added.
+
+- [x] [Review][Patch] Fulfillment progress circles show no label/icon [`src/order-status/CustomerOrderStatusPage.tsx` (~165–166)] — **Fixed:** steps show ✓ when complete and step index otherwise.
+
+- [x] [Review][Defer] Plaintext shipment email still echoes raw `tracking_url` [`api/_lib/customerShipmentNotification.ts` (textLines)] — HTML path uses `safeHttpUrlForHref`; plaintext `Track your package:` line predates 7-4 and can still include unsafe URLs in the text part only. Revisit if parity with status-page semantics matters for plain-text MUAs. — deferred, pre-existing
 
 ## Dev Notes
 
@@ -117,13 +127,35 @@ Story 7-3 answers "what is happening with my order?" This story answers "where i
 
 ### Completion Notes List
 
+- Implemented `shipments` read in `resolveCustomerOrderStatus` (service role, same token boundary as Story 7-3); `tracking` JSON only when `fulfillment_status` is `shipped` or `delivered` and a shipment row exists, with Epic 5 fields only.
+- Centralized URL safety in `src/domain/commerce/safeHttpUrl.ts` (`safeHttpUrlForHref`, `isSafeHttpUrl`); reused in shipment email and order status view model. View model derives carrier URLs when the stored URL is missing or not safe `http`/`https`; API serializer drops unsafe `tracking_url` values to `null`; unsafe strings are only shown as plain text when no safe link exists.
+- Customer order status page: new “Tracking” block (items → tracking → timeline), responsive layout, pending copy when shipment row has no usable detail; fulfillment progress markers show ✓ / step numbers.
+
+### Review follow-up (2026-04-27)
+
+- Code review: option 1 for carrier derivation when stored URL is unsafe; API `tracking_url` sanitization; progress step labels in `CustomerOrderStatusPage`.
+
 ### File List
+
+- `api/_lib/customerOrderStatus.ts`
+- `api/_lib/customerShipmentNotification.ts`
+- `api/_lib/customerOrderStatus.test.ts`
+- `api/customer-order-status.test.ts`
+- `src/domain/commerce/safeHttpUrl.ts`
+- `src/domain/commerce/safeHttpUrl.test.ts`
+- `src/order-status/customerOrderStatusViewModel.ts`
+- `src/order-status/customerOrderStatusViewModel.test.ts`
+- `src/order-status/CustomerOrderStatusPage.tsx`
+- `src/order-status/CustomerOrderStatusPage.test.tsx`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
 
 ## Change Log
 
 - 2026-04-28 - Story created (bmad-create-story). Target: PRD E7-S4; tracking display on customer status page.
+- 2026-04-27 - Implemented tracking API + UI, shared safe URL helper, tests; status → review.
+- 2026-04-27 - Post-review: sanitize `tracking_url` in status API; derive carrier URL when stored URL unsafe; progress UI markers; story → done.
 
 ## Story completion status
 
-Status: **ready-for-dev**  
+Status: **done**  
 Ultimate context engine analysis completed - comprehensive developer guide created.

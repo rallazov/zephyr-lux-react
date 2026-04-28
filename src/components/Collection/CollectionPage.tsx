@@ -23,20 +23,28 @@ export default function CollectionPage({ collection }: Props) {
   });
 
   useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setProducts([]);
+    setLoadError(null);
     const run = async () => {
       try {
-        setLoadError(null);
         const adapter = getDefaultCatalogAdapter();
         const list = await adapter.listProductsByCategory(collection.categoryKey);
-        setProducts(list);
+        if (!cancelled) setProducts(list);
       } catch (error) {
         console.error("CollectionPage catalog load:", error);
-        setLoadError("Could not load products. Please try again later.");
+        if (!cancelled) {
+          setLoadError("Could not load products. Please try again later.");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     void run();
+    return () => {
+      cancelled = true;
+    };
   }, [collection.categoryKey]);
 
   return (
