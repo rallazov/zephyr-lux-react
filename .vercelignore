@@ -1,0 +1,3 @@
+# Vitest suites under api/ must not be uploaded: each top-level file in api/ becomes a
+# Serverless Function (Hobby plan max 12). Shared code stays in api/_lib/ (ignored as routes).
+api/**/*.test.ts
