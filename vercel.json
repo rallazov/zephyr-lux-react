@@ -1,9 +1,0 @@
-{
-  "functions": {
-    "api/*.ts": {
-      "includeFiles": "data/products.json",
-      "memory": 512,
-      "maxDuration": 10
-    }
-  }
-}
