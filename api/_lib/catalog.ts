@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { parseStaticCatalogData } from "../../src/catalog/parse";
 import type { Product, ProductVariant } from "../../src/domain/commerce";
@@ -13,14 +14,23 @@ export const TAX_BPS = 700;
 
 const CATALOG_DISK_PATH = path.join(process.cwd(), "data", "products.json");
 
+function readCatalogJson(): unknown {
+  try {
+    return JSON.parse(fs.readFileSync(CATALOG_DISK_PATH, "utf-8")) as unknown;
+  } catch {
+    const requireJson = createRequire(import.meta.url);
+    return requireJson("../../data/products.json") as unknown;
+  }
+}
+
 function loadCatalogData() {
   if (_cache) return _cache;
   let json: unknown;
   try {
-    json = JSON.parse(fs.readFileSync(CATALOG_DISK_PATH, "utf-8")) as unknown;
+    json = readCatalogJson();
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    throw new Error(`Catalog file read/JSON parse failed (${CATALOG_DISK_PATH}): ${msg}`);
+    throw new Error(`Catalog load failed (${CATALOG_DISK_PATH} or bundled): ${msg}`);
   }
   let products: Product[];
   try {
