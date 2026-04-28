@@ -50,14 +50,14 @@ const VariantSelector: React.FC<Props> = (props) => {
       <legend className="sr-only">Size and color</legend>
       {layout.showSize && (
         <div>
-          <label htmlFor={sizeId} className="block text-sm font-medium mb-1">
+          <label htmlFor={sizeId} className="mb-1 block text-sm font-medium text-neutral-300">
             Size
           </label>
           <select
             id={sizeId}
             name="size"
             data-testid="pdp-select-size"
-            className="border border-stone-300 rounded-md px-2 py-2 min-w-[140px] bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2"
+            className="min-w-[140px] rounded-md border border-neutral-600 bg-neutral-950 px-3 py-2.5 text-sm text-neutral-100 [color-scheme:dark] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 focus-visible:ring-offset-0 focus-visible:ring-offset-black"
             value={selectedSize ?? ""}
             onChange={(e) =>
               onSizeChange(e.target.value === "" ? null : e.target.value)
@@ -75,11 +75,11 @@ const VariantSelector: React.FC<Props> = (props) => {
 
       {layout.showColor && (
         <div>
-          <label htmlFor={colorId} className="block text-sm font-medium mb-1">
+          <label htmlFor={colorId} className="mb-1 block text-sm font-medium text-neutral-300">
             Color
           </label>
           {colorBlocked ? (
-            <p id={colorHintId} className="text-xs text-stone-500 mb-1">
+            <p id={colorHintId} className="mb-1 text-xs text-neutral-500">
               Select a size to see available colors.
             </p>
           ) : null}
@@ -87,7 +87,11 @@ const VariantSelector: React.FC<Props> = (props) => {
             id={colorId}
             name="color"
             data-testid="pdp-select-color"
-            className="border border-stone-300 rounded-md px-2 py-2 min-w-[140px] bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            className={`min-w-[140px] rounded-md border px-3 py-2.5 text-sm [color-scheme:dark] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 focus-visible:ring-offset-0 focus-visible:ring-offset-black ${
+              colorBlocked
+                ? "cursor-not-allowed border-neutral-700 bg-neutral-900 text-neutral-400 disabled:opacity-90"
+                : "cursor-pointer border-neutral-600 bg-neutral-950 text-neutral-100"
+            }`}
             value={selectedColor ?? ""}
             disabled={colorBlocked}
             onChange={(e) =>

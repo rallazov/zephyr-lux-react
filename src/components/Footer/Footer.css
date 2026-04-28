@@ -38,7 +38,7 @@
 }
 
 .footer-column ul li a:hover {
-  color: #ff0000;
+  color: var(--zlx-link-hover);
 }
 
 .footer-social-note {
@@ -60,7 +60,7 @@
 }
 
 .footer-policy-links a:hover {
-  color: #ff0000;
+  color: var(--zlx-link-hover);
 }
 
 form {
@@ -117,7 +117,7 @@ form button:hover {
 }
 
 .social-icons a:hover {
-  color: #ff0000; /* Red on hover */
+  color: var(--zlx-link-hover);
 }
 
 /* For smaller screens */

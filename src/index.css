@@ -12,6 +12,17 @@
   color: rgba(255, 255, 255, 0.92);
   background-color: #000000;
 
+  /* Semantic UI (storefront): forward actions vs danger vs reward meter */
+  --zlx-action: #f4f4f5;
+  --zlx-action-hover: #e4e4e7;
+  --zlx-action-text: #18181b;
+  --zlx-danger: #dc2626;
+  --zlx-danger-hover: #ef4444;
+  /* Positive incentive (free shipping, goal progress)—not caution amber */
+  --zlx-progress: #059669;
+  --zlx-progress-hover: #047857;
+  --zlx-link-hover: #f87171;
+
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -24,7 +35,7 @@ a {
   text-decoration: inherit;
 }
 a:hover {
-  color: #ff0000;
+  color: var(--zlx-link-hover);
 }
 
 body {
@@ -53,7 +64,7 @@ button {
   transition: border-color 0.25s;
 }
 button:hover {
-  border-color: #ff0000;
+  border-color: #525252;
 }
 button:focus,
 button:focus-visible {

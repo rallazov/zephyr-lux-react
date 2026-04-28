@@ -141,7 +141,7 @@ export default function HomePage() {
             <li key={c.path}>
               <Link
                 to={c.path}
-                className="inline-block rounded-md border border-neutral-600 px-3.5 py-2 text-neutral-100 no-underline transition-colors hover:border-red-500 hover:text-red-400"
+                className="inline-block rounded-md border border-neutral-600 px-3.5 py-2 text-neutral-100 no-underline transition-colors hover:border-amber-500/70 hover:text-amber-100"
               >
                 {c.navLabel}
               </Link>

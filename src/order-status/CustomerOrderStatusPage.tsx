@@ -71,7 +71,7 @@ const CustomerOrderStatusPage: React.FC = () => {
             </h1>
           </div>
           <a
-            className="text-sm font-medium text-neutral-300 underline-offset-4 hover:text-red-400 hover:underline"
+            className="text-sm font-medium text-neutral-300 underline-offset-4 hover:text-amber-200 hover:underline"
             href={SUPPORT_MAIL}
           >
             Email support
@@ -96,13 +96,13 @@ const CustomerOrderStatusPage: React.FC = () => {
             </p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <Link
-                className="inline-flex min-h-11 items-center justify-center rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500"
+                className="inline-flex min-h-11 items-center justify-center rounded-md bg-zlx-action px-4 py-2 text-sm font-semibold text-zlx-action-text hover:bg-zlx-action-hover"
                 to="/order-status"
               >
                 Request a new link
               </Link>
               <a
-                className="inline-flex min-h-11 items-center justify-center rounded-md border border-stone-600 px-4 py-2 text-sm font-semibold text-stone-100 hover:border-red-500"
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-stone-600 px-4 py-2 text-sm font-semibold text-stone-100 hover:border-stone-400"
                 href={SUPPORT_MAIL}
               >
                 Email support
@@ -155,11 +155,11 @@ function OrderStatusReady({ view }: { view: CustomerOrderStatusViewModel }) {
                 aria-hidden="true"
                 className={[
                   "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold sm:mb-3",
-                  step.state === "complete"
-                    ? "border-neutral-400 bg-neutral-300 text-stone-950"
-                    : step.state === "current"
-                      ? "border-red-500 bg-red-600 text-white"
-                      : "border-stone-600 text-stone-500",
+                    step.state === "complete"
+                      ? "border-neutral-400 bg-neutral-300 text-stone-950"
+                      : step.state === "current"
+                        ? "border-amber-500 bg-amber-600 text-white"
+                        : "border-stone-600 text-stone-500",
                 ].join(" ")}
               >
                 {step.state === "complete" ? "✓" : index + 1}
@@ -263,7 +263,7 @@ function OrderStatusReady({ view }: { view: CustomerOrderStatusViewModel }) {
               <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                 {view.tracking.trackHref && (
                   <a
-                    className="inline-flex min-h-11 w-full min-w-0 items-center justify-center rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500 sm:w-auto"
+                    className="inline-flex min-h-11 w-full min-w-0 items-center justify-center rounded-md bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600 sm:w-auto"
                     href={view.tracking.trackHref}
                     rel="noreferrer noopener"
                     target="_blank"

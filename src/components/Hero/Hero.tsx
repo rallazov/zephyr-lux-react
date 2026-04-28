@@ -48,7 +48,10 @@ export default function Hero({
           <p className="text-sm md:text-lg text-white/90 mb-6">{description}</p>
           <div className="flex flex-wrap gap-3">
             <Link to={primaryTo}>
-              <button type="button" className="bg-red-600 hover:bg-red-500 text-white px-6 py-2 rounded-md">
+              <button
+                type="button"
+                className="rounded-md bg-zlx-action px-6 py-2 font-semibold text-zlx-action-text hover:bg-zlx-action-hover"
+              >
                 {primaryLabel}
               </button>
             </Link>

@@ -75,7 +75,7 @@ const OrderStatusLookup: React.FC = () => {
           </p>
           <p className="mt-6 max-w-xl text-sm leading-6 text-stone-400">
             Need help right away?{" "}
-            <a className="font-medium text-neutral-300 underline-offset-4 hover:text-red-400 hover:underline" href={SUPPORT_MAIL}>
+            <a className="font-medium text-neutral-300 underline-offset-4 hover:text-amber-200 hover:underline" href={SUPPORT_MAIL}>
               Email support
             </a>
             .
@@ -95,7 +95,7 @@ const OrderStatusLookup: React.FC = () => {
               </label>
               <input
                 autoComplete="email"
-                className="mt-2 block min-h-12 w-full rounded-md border border-stone-600 bg-stone-950 px-4 py-3 text-base text-stone-50 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-500/30"
+                className="mt-2 block min-h-12 w-full rounded-md border border-stone-600 bg-stone-950 px-4 py-3 text-base text-stone-50 outline-none transition focus:border-amber-500/80 focus:ring-2 focus:ring-amber-500/25"
                 id="order-status-email"
                 inputMode="email"
                 name="email"
@@ -125,7 +125,7 @@ const OrderStatusLookup: React.FC = () => {
               <input
                 autoCapitalize="characters"
                 autoComplete="off"
-                className="mt-2 block min-h-12 w-full rounded-md border border-stone-600 bg-stone-950 px-4 py-3 font-mono text-base uppercase text-stone-50 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-500/30"
+                className="mt-2 block min-h-12 w-full rounded-md border border-stone-600 bg-stone-950 px-4 py-3 font-mono text-base uppercase text-stone-50 outline-none transition focus:border-amber-500/80 focus:ring-2 focus:ring-amber-500/25"
                 id="order-status-order-number"
                 inputMode="text"
                 name="order_number"
@@ -149,7 +149,7 @@ const OrderStatusLookup: React.FC = () => {
           </div>
 
           <button
-            className="mt-6 min-h-12 w-full rounded-md bg-red-600 px-5 py-3 text-base font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:bg-stone-600 disabled:text-stone-300"
+            className="mt-6 min-h-12 w-full rounded-md bg-zlx-action px-5 py-3 text-base font-semibold text-zlx-action-text transition hover:bg-zlx-action-hover disabled:cursor-not-allowed disabled:bg-stone-600 disabled:text-stone-300"
             disabled={submitState === "submitting"}
             type="submit"
           >

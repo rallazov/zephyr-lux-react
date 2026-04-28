@@ -67,11 +67,11 @@
   }
   
   .cta-buttons .btn:hover {
-    color: #cc0000;
+    color: var(--zlx-link-hover);
   }
   
   .cta-buttons .btn:active {
-    background-color: #8b0000;
+    background-color: var(--zlx-action-hover);
     transform: scale(0.95);
   }
 
