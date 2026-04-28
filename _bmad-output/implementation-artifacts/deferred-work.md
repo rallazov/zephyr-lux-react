@@ -1,5 +1,16 @@
 # Deferred work (from reviews and triage)
 
+## Deferred from: code review of 7-2-secure-lookup-link.md (2026-04-27)
+
+- **Shared schema location** — `api/order-lookup-request` imports lookup validation from `src/order-status/orderLookupRequest`; consider a `shared/` or `api/_lib` module if API vs web boundaries harden later.
+- **Token deep link routing** — Register `/order-status/:token` (or equivalent) when Story **7-3** delivers the customer order status page so emailed links resolve without falling through to 404.
+- **Lookup POST rate limits** — Add IP/session throttling or edge protection if brute-force noise becomes observable; neutral responses alone are intentional but not volumetric defenses.
+
+## Deferred from: code review of 6-4-mobile-cart-checkout-admin-layouts.md (2026-04-27)
+
+- **Cart/checkout responsive layout beyond minimal AC5 test** — Automated coverage is `AdminLayout.test.tsx` only; expanding to `CartPage` / `CheckoutPage` remains optional when viewport-stable tests are worth the CI cost.
+- **Duplicate destination links on mobile admin order cards** — Order number and “View order details” both navigate to the same `/admin/orders/:id`; consolidate or visually de-emphasize redundancy if screen-reader noise becomes a report.
+
 ## Deferred from: code review of 6-5-metadata-product-structured-data.md (2026-04-27)
 
 - **`CollectionPage` missing from unified review diff artifact** — The generated `6-5-code-review-scoped.diff` did not include `git diff --no-index` for `CollectionPage.tsx`; the file in the workspace does call `usePageMeta`. Treat as tooling gap; widen the generator next time if story file list includes untracked paths.

@@ -1,6 +1,6 @@
 # Story 7.1: Order lookup form
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Ultimate context engine analysis completed - comprehensive developer guide created -->
@@ -39,23 +39,27 @@ so that **I can request secure access to my order status without creating an acc
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 - Route and page shell (AC: 1, 5)**  
-  - [ ] Add a customer-facing `OrderStatusLookup` page/component under a storefront-appropriate folder such as `src/order-status/` or `src/components/OrderStatus/`.
-  - [ ] Register `/order-status` in [`AppRoutes`](../../src/components/App/App.tsx) under [`Layout`](../../src/components/App/Layout.tsx), not under `/admin`.
-  - [ ] Add route smoke coverage in [`src/routes.smoke.test.tsx`](../../src/routes.smoke.test.tsx).
+- [x] **Task 1 - Route and page shell (AC: 1, 5)**  
+  - [x] Add a customer-facing `OrderStatusLookup` page/component under a storefront-appropriate folder such as `src/order-status/` or `src/components/OrderStatus/`.
+  - [x] Register `/order-status` in [`AppRoutes`](../../src/components/App/App.tsx) under [`Layout`](../../src/components/App/Layout.tsx), not under `/admin`.
+  - [x] Add route smoke coverage in [`src/routes.smoke.test.tsx`](../../src/routes.smoke.test.tsx).
 
-- [ ] **Task 2 - Form validation and normalization (AC: 2)**  
-  - [ ] Add a small pure helper/schema for `{ email, order_number }` so both UI and API tests can reuse it.
-  - [ ] Enforce trimmed email, normalized uppercase order number, length limits, and `ZLX-\d{8}-\d{4}` shape.
+- [x] **Task 2 - Form validation and normalization (AC: 2)**  
+  - [x] Add a small pure helper/schema for `{ email, order_number }` so both UI and API tests can reuse it.
+  - [x] Enforce trimmed email, normalized uppercase order number, length limits, and `ZLX-\d{8}-\d{4}` shape.
 
-- [ ] **Task 3 - Submit contract (AC: 3, 4)**  
-  - [ ] Submit to `POST /api/order-lookup-request` with `Content-Type: application/json`.
-  - [ ] If the API route is introduced here as a shell, it must validate shape and return the same neutral 200/202 response for valid payloads; Story 7-2 fills in matching + email delivery.
-  - [ ] Avoid client-side Supabase reads and avoid exposing raw error internals.
+- [x] **Task 3 - Submit contract (AC: 3, 4)**  
+  - [x] Submit to `POST /api/order-lookup-request` with `Content-Type: application/json`.
+  - [x] If the API route is introduced here as a shell, it must validate shape and return the same neutral 200/202 response for valid payloads; Story 7-2 fills in matching + email delivery.
+  - [x] Avoid client-side Supabase reads and avoid exposing raw error internals.
 
-- [ ] **Task 4 - Tests (AC: 6)**  
-  - [ ] Add helper tests for normalization and invalid cases.
-  - [ ] Add component tests for empty fields, invalid order number, loading state, neutral success, and network failure.
+- [x] **Task 4 - Tests (AC: 6)**  
+  - [x] Add helper tests for normalization and invalid cases.
+  - [x] Add component tests for empty fields, invalid order number, loading state, neutral success, and network failure.
+
+### Review Findings
+
+- [x] [Review][Patch] `sprint-status.yaml` `last_updated` was not advanced when story 7-1 moved to review — Fixed 2026-04-28: advanced sprint status timestamp during review completion. [`_bmad-output/implementation-artifacts/sprint-status.yaml`:28]
 
 ## Dev Notes
 
@@ -109,19 +113,42 @@ Recent commits are Epic 4/5 payment, notification, and admin fulfillment work. E
 
 ### Agent Model Used
 
--
+- GPT-5 (Codex)
 
 ### Debug Log References
 
+- `npx vitest run src/order-status/orderLookupRequest.test.ts src/order-status/OrderStatusLookup.test.tsx api/order-lookup-request.test.ts src/routes.smoke.test.tsx`
+- `npm run build`
+- `npm test`
+- `npm run lint` (blocked by pre-existing unrelated lint errors in `api/_lib/store.ts`, `src/cart/reconcile.ts`, and `src/components/SubscriptionForm/SubscriptionForm.tsx`)
+- `npx eslint api/order-lookup-request.ts api/order-lookup-request.test.ts src/order-status/OrderStatusLookup.tsx src/order-status/OrderStatusLookup.test.tsx src/order-status/orderLookupRequest.ts src/order-status/orderLookupRequest.test.ts src/components/App/App.tsx src/routes.smoke.test.tsx`
+
 ### Completion Notes List
 
+- Added `/order-status` under the storefront layout with labeled email and order-number fields, large touch targets, support fallback copy, busy/success/error states, and neutral enumeration-safe success messaging.
+- Added shared Zod validation for `{ email, order_number }`, trimming email and normalizing order numbers to uppercase before enforcing the existing `orderNumberSchema` shape.
+- Added `POST /api/order-lookup-request` shell that validates payloads and returns neutral `202` success for valid-looking requests; Story 7-2 can replace the shell with matching and email delivery.
+- Confirmed the form does not use browser Supabase clients or reveal order status, line items, tracking, or not-found state.
+
 ### File List
+
+- `api/order-lookup-request.ts`
+- `api/order-lookup-request.test.ts`
+- `src/components/App/App.tsx`
+- `src/order-status/OrderStatusLookup.tsx`
+- `src/order-status/OrderStatusLookup.test.tsx`
+- `src/order-status/orderLookupRequest.ts`
+- `src/order-status/orderLookupRequest.test.ts`
+- `src/routes.smoke.test.tsx`
+- `_bmad-output/implementation-artifacts/7-1-order-lookup-form.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
 
 ## Change Log
 
 - 2026-04-28 - Story created (bmad-create-story). Target: PRD E7-S1; Epic 7 lookup request surface.
+- 2026-04-28 - Implemented order lookup request form, validation helper, neutral API shell, and tests (bmad-dev-story).
 
 ## Story completion status
 
-Status: **ready-for-dev**  
+Status: **done**  
 Ultimate context engine analysis completed - comprehensive developer guide created.

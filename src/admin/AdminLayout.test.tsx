@@ -30,6 +30,6 @@ describe("AdminLayout (mobile-friendly chrome)", () => {
     expect(nav).toHaveClass("overflow-x-auto");
 
     const ordersLink = screen.getByRole("link", { name: "Orders" });
-    expect(ordersLink.className).toMatch(/min-h-11/);
+    expect(ordersLink).toHaveClass("min-h-11");
   });
 });

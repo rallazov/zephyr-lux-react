@@ -1,6 +1,6 @@
 # Story 7.2: Secure lookup link
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Ultimate context engine analysis completed - comprehensive developer guide created -->
@@ -43,26 +43,32 @@ so that **only someone with access to that inbox can open the customer order sta
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 - Token table migration (AC: 2, 5)**  
-  - [ ] Add `supabase/migrations/*_order_lookup_tokens.sql`.
-  - [ ] Include FK to `orders(id)`, unique `token_hash`, `expires_at` index, RLS enabled with default deny, and comments documenting raw-token storage prohibition.
-  - [ ] Consider cleanup-friendly indexes (`expires_at`, `order_id, created_at DESC`).
+- [x] **Task 1 - Token table migration (AC: 2, 5)**  
+  - [x] Add `supabase/migrations/*_order_lookup_tokens.sql`.
+  - [x] Include FK to `orders(id)`, unique `token_hash`, `expires_at` index, RLS enabled with default deny, and comments documenting raw-token storage prohibition.
+  - [x] Consider cleanup-friendly indexes (`expires_at`, `order_id, created_at DESC`).
 
-- [ ] **Task 2 - Request handler lookup + token generation (AC: 1-3, 5)**  
-  - [ ] Complete `api/order-lookup-request.ts` or create it if Story 7-1 only built the UI.
-  - [ ] Validate the normalized payload with the shared schema from 7-1.
-  - [ ] Query `orders` by normalized order number and case-insensitive email using service role.
-  - [ ] Generate and hash token only for matching paid orders.
-  - [ ] Return neutral success for all valid payload outcomes.
+- [x] **Task 2 - Request handler lookup + token generation (AC: 1-3, 5)**  
+  - [x] Complete `api/order-lookup-request.ts` or create it if Story 7-1 only built the UI.
+  - [x] Validate the normalized payload with the shared schema from 7-1.
+  - [x] Query `orders` by normalized order number and case-insensitive email using service role.
+  - [x] Generate and hash token only for matching paid orders.
+  - [x] Return neutral success for all valid payload outcomes.
 
-- [ ] **Task 3 - Email composition and notification logs (AC: 4)**  
-  - [ ] Add a small builder/helper under `api/_lib/customerOrderLookupLink.ts` or similar.
-  - [ ] Reuse `sendViaResendApi`, `supportLineForEmail`, and `notificationLog` helpers.
-  - [ ] Include expiry copy in both text and HTML bodies.
+- [x] **Task 3 - Email composition and notification logs (AC: 4)**  
+  - [x] Add a small builder/helper under `api/_lib/customerOrderLookupLink.ts` or similar.
+  - [x] Reuse `sendViaResendApi`, `supportLineForEmail`, and `notificationLog` helpers.
+  - [x] Include expiry copy in both text and HTML bodies.
 
-- [ ] **Task 4 - Tests (AC: 7)**  
-  - [ ] Add handler tests with mocked Supabase chains and mocked email transport.
-  - [ ] Add pure helper tests for token hashing, link construction, and email body safety.
+- [x] **Task 4 - Tests (AC: 7)**  
+  - [x] Add handler tests with mocked Supabase chains and mocked email transport.
+  - [x] Add pure helper tests for token hashing, link construction, and email body safety.
+
+### Review Findings
+
+- [x] [Review][Defer] **`api` importing shared validation from `src/order-status/orderLookupRequest.ts`** — [`api/order-lookup-request.ts`](../../api/order-lookup-request.ts) couples the API bundle to storefront source for Zod normalization; workable for Epic 7, but refactor to `shared/` or `api/_lib` would clarify boundaries (`7-2-secure-lookup-link.md` review 2026-04-27).
+- [x] [Review][Defer] **`/order-status/<token>` deep link vs router** — Emails use [`buildOrderStatusLookupUrl`](../../api/_lib/customerOrderLookupLink.ts) with path `/order-status/<opaque>` per AC3; [`App.tsx`](../../src/components/App/App.tsx) currently registers only the static `/order-status` form route. Token consumption belongs to **7-3-customer-order-status-page**; until then, following the email link may fall through to the app shell 404 unless a stub route exists.
+- [x] [Review][Defer] **No server-side rate limiting on `POST /api/order-lookup-request`** — Enumeration and abuse are partially mitigated by neutral responses and send suppression, but IP/user throttling is out of scope for this story; track for a hardening pass if traffic warrants.
 
 ## Dev Notes
 
@@ -114,19 +120,41 @@ This story is the security hinge for Epic 7. Email + order number should request
 
 ### Agent Model Used
 
--
+- GPT-5 (Codex)
 
 ### Debug Log References
 
+- `npm test -- api/_lib/customerOrderLookupLink.test.ts api/order-lookup-request.test.ts`
+- `npm test -- src/order-status/orderLookupRequest.test.ts src/order-status/OrderStatusLookup.test.tsx api/order-lookup-request.test.ts api/_lib/customerOrderLookupLink.test.ts`
+- `npm run build`
+- `npx eslint api/order-lookup-request.ts api/order-lookup-request.test.ts api/_lib/customerOrderLookupLink.ts api/_lib/customerOrderLookupLink.test.ts`
+- `npm test`
+- `npm run lint` (blocked by pre-existing unrelated lint errors in `api/_lib/store.ts`, `src/cart/reconcile.ts`, `src/components/SubscriptionForm/SubscriptionForm.tsx`; warnings in `src/auth/AuthContext.tsx`, `src/context/CartContext.tsx`)
+
 ### Completion Notes List
 
+- Implemented `order_lookup_tokens` migration (FK, unique `token_hash`, `expires_at` + `order_id, created_at` indexes, RLS enabled, no anon/auth policies).
+- `api/order-lookup-request.ts` uses `getSupabaseAdmin()`, shared 7-1 zod schema, neutral 202 for valid payloads; loads order by `order_number`, compares `customer_email` case-insensitively, only persists token + sends for `payment_status === 'paid'`; skips duplicate emails when an unexpired token exists from the last 5 minutes; deletes token row if email cannot be sent so retries are possible.
+- Added `api/_lib/customerOrderLookupLink.ts` (SHA-256 hash, `/order-status/<opaque>` URL, transactional email, `notification_logs` queued/sent/failed with template `customer_order_lookup_link`; failed path when Resend env missing or send fails).
+- Tests: pure helpers, handler enumeration cases, integration tests for hash vs email link vs Resend, missing-Resend failed log.
+
 ### File List
+
+- `supabase/migrations/20260430140000_order_lookup_tokens.sql`
+- `api/order-lookup-request.ts`
+- `api/order-lookup-request.test.ts`
+- `api/_lib/customerOrderLookupLink.ts`
+- `api/_lib/customerOrderLookupLink.test.ts`
+- `api/_lib/customerOrderLookupLink.flow.test.ts`
+- `api/_lib/customerOrderLookupLink.missingResend.test.ts`
+- `api/_lib/notificationLog.ts`
 
 ## Change Log
 
 - 2026-04-28 - Story created (bmad-create-story). Target: PRD E7-S2; secure emailed status link.
+- 2026-04-28 - Implemented lookup token persistence, hashed secure links, transactional email + notification_logs, suppression and tests; sprint status updated to review.
 
 ## Story completion status
 
-Status: **ready-for-dev**  
-Ultimate context engine analysis completed - comprehensive developer guide created.
+Status: **done**  
+Code review completed 2026-04-27; implementation meets acceptance criteria; deferred items above are follow-ups, not blockers.
