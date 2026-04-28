@@ -2,6 +2,7 @@ import { faSearch, faShoppingCart, faUser } from '@fortawesome/free-solid-svg-ic
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { COLLECTION_ROUTES } from '../../catalog/collections';
 import { useCart } from '../../context/CartContext';
 import './Navbar.css';
 
@@ -40,26 +41,35 @@ const Navbar: React.FC = () => {
         <i className="fas fa-bars"></i>
       </span>
       <ul className={`nav-links ${isMenuOpen ? 'open' : ''}`}>
-        <li><Link to="/women">Women</Link></li>
-        <li><Link to="/men">Men</Link></li>
-        <li><Link to="/underwear">Underwear</Link></li>
-        <li><Link to="/kids">Kids</Link></li>
+        {COLLECTION_ROUTES.map((c) => (
+          <li key={c.path}>
+            <Link to={c.path}>{c.navLabel}</Link>
+          </li>
+        ))}
         <li><Link to="/">Home</Link></li>
-        <li><Link to="/sale">Sale</Link></li>
+        <li><Link to="/products">Shop</Link></li>
       </ul>
       <div className="nav-icons">
-        <Link to="#" aria-label="Search">
+        <button
+          type="button"
+          className="nav-icon-btn"
+          disabled
+          aria-label="Search (coming soon)"
+        >
           <FontAwesomeIcon icon={faSearch} />
-        </Link>
-        <Link to="#" aria-label="Account">
+        </button>
+        <button
+          type="button"
+          className="nav-icon-btn"
+          disabled
+          aria-label="Account (coming soon)"
+        >
           <FontAwesomeIcon icon={faUser} />
-        </Link>
+        </button>
         <Link to="/cart" aria-label="Cart">
           <div className="cart-container">
             <FontAwesomeIcon icon={faShoppingCart} />
-            {cartCount > 0 && (
-              <span className="cart-count">{cartCount}</span> // Display count only if > 0
-            )}
+            {cartCount > 0 && <span className="cart-count">{cartCount}</span>}
           </div>
         </Link>
       </div>
