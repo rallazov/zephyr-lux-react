@@ -1,6 +1,13 @@
 {
   "functions": {
-    "api/stripe-webhook.ts": { "memory": 512, "maxDuration": 10 }
+    "api/*.ts": {
+      "includeFiles": "data/products.json"
+    },
+    "api/stripe-webhook.ts": {
+      "includeFiles": "data/products.json",
+      "memory": 512,
+      "maxDuration": 10
+    }
   }
 }
 
