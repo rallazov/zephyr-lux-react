@@ -263,7 +263,7 @@ export default function AdminProductForm() {
   return (
     <form
       onSubmit={onSave}
-      className="space-y-8"
+      className="space-y-8 max-w-full min-w-0 overflow-x-hidden"
       data-testid="admin-product-form"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">

@@ -18,6 +18,8 @@ import {
 } from "../cart/storage";
 import type { CatalogListItem } from "../catalog/types";
 import { getDefaultCatalogAdapter } from "../catalog/factory";
+import { ANALYTICS_EVENTS } from "../analytics/events";
+import { dispatchAnalyticsEvent } from "../analytics/sink";
 import { sameCartLine, normalizeLineSku } from "../cart/lineKey";
 
 /** @alias StorefrontCartLine — persisted storefront cart row */
@@ -97,6 +99,8 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
   }, [hydrateCartFromCatalog]);
 
   const addToCart = (product: CartItem) => {
+    const skuNorm = normalizeLineSku(product.sku);
+    const slugTrim = product.product_slug?.trim() ?? "";
     setCartItems((prevCartItems) => {
       const existingItem = prevCartItems.find((item) =>
         sameCartLine(item, product)
@@ -118,6 +122,16 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
           product_slug: product.product_slug?.trim() || undefined,
         },
       ];
+    });
+    queueMicrotask(() => {
+      dispatchAnalyticsEvent({
+        name: ANALYTICS_EVENTS.add_to_cart,
+        payload: {
+          sku: skuNorm || "",
+          product_slug: slugTrim,
+          quantity: 1,
+        },
+      });
     });
   };
 

@@ -1,0 +1,3839 @@
+diff --git a/.env.example b/.env.example
+new file mode 100644
+index 0000000..de03730
+--- /dev/null
++++ b/.env.example
+@@ -0,0 +1,130 @@
++# =============================================================================
++# Zephyr Lux — environment variables (canonical reference)
++# =============================================================================
++# Copy values into `.env.local` (gitignored) for Vite, and set the same names in
++# the Vercel project (or your shell) for `vercel dev` + deployed API routes.
++#
++# Security (FR-PAY-001, NFR-SEC-002): Never put STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
++# VERCEL_BLOB_READ_WRITE_TOKEN, RESEND_API_KEY, or any Supabase service role key in a
++# VITE_* variable or client code. Only Stripe publishable keys (pk_...) belong in
++# VITE_STRIPE_PUBLIC_KEY.
++# =============================================================================
++
++# --- Server (Vercel / Node / `vercel dev`) — read in api/_lib/env.ts ---------
++# `VERCEL_BLOB_READ_WRITE_TOKEN` is mapped to `ENV.VERCEL_BLOB_RW_TOKEN` in code.
++#
++# SUPABASE_URL: required for Epic 4 checkout + webhooks (pending orders, payment_events, paid order reads).
++# Use the same project URL as VITE_SUPABASE_URL if you already set it for the catalog.
++#SUPABASE_URL=https://your-project.supabase.co
++#
++# SUPABASE_SERVICE_ROLE_KEY: required with SUPABASE_URL for api/create-payment-intent, api/stripe-webhook,
++# and api/order-by-payment-intent. Server only — never in VITE_* or the browser.
++#SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
++#
++# SUPABASE_ANON_KEY: optional server alias for the public anon key; used by api/admin-order-fulfillment
++# to verify admin JWTs (same value as VITE_SUPABASE_ANON_KEY). If unset, the handler falls back to VITE_SUPABASE_ANON_KEY in local `.env`.
++#SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
++#
++# ENABLE_CUSTOMER_SHIPMENT_NOTIFICATION: optional. `true` / `1` / `yes` turns on customer “shipped” email from api/admin-order-fulfillment (Story 5-6; needs Resend + templates). Omit or false for fulfillment-only (5-4 default).
++#ENABLE_CUSTOMER_SHIPMENT_NOTIFICATION=true
++
++# NODE_ENV: optional. Default: "development". Used for store backend auto-selection.
++#NODE_ENV=development
++
++# FRONTEND_URL: optional. Server-side CORS for PaymentIntent API, redirects, and transactional links
++# in email handlers (Epic 4+, Epic 7 order lookup emails). Match the storefront origin customers use.
++# Use the SAME canonical hostname as `VITE_PUBLIC_SITE_URL` in each environment — FRONTEND_URL is server-only;
++# `VITE_PUBLIC_SITE_URL` is client-only for Open Graph/meta (see Story 7-2 epic follow-ups).
++# (local: http://localhost:5173, preview: your *.vercel.app URL, production: https://yourdomain).
++# Default in code if unset: http://localhost:5173
++#FRONTEND_URL=http://localhost:5173
++#
++# DEV_API_PROXY: optional. For `npm run dev` (Vite), `/api` is proxied to this origin
++# (default http://127.0.0.1:3000) so the SPA can `fetch("/api/...")`. Point it at
++# `vercel dev` (or match `concurrently` / `dev:full` if you use a different port).
++#DEV_API_PROXY=http://127.0.0.1:3000
++
++# STRIPE_SECRET_KEY: required for real payments & webhooks. Server only. e.g. sk_test_... (local/preview) or sk_live_... (production)
++#STRIPE_SECRET_KEY=sk_test_xxxxxxxx
++
++# STRIPE_WEBHOOK_SECRET: required to verify webhooks. Server only. From Stripe CLI or Dashboard.
++#STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxx
++
++# RESEND_API_KEY: optional. Transactional email when wired. Server only.
++#RESEND_API_KEY=re_xxxxxxxx
++#
++# RESEND_FROM: required for real sends — must be a verified domain/sender in the Resend dashboard
++# (sandbox: use their docs for test addresses; production: your domain DNS verified).
++#RESEND_FROM="Zephyr Lux <orders@mail.yourdomain.com>"
++#
++# SUPPORT_EMAIL and CONTACT_EMAIL: optional (CONTACT_EMAIL is an alias for SUPPORT_EMAIL).
++# Shown in customer order confirmation (E4-S6) when set; otherwise copy falls back to RESEND_FROM.
++#SUPPORT_EMAIL=help@yourdomain.com
++#
++# OWNER_NOTIFICATION_EMAIL: optional. Comma-separated inboxes for "new paid order" owner alerts (Epic 4 E4-S5). Server only.
++# Without RESEND_API_KEY + RESEND_FROM + this recipient, paid orders still complete but owner email is skipped (warn logged).
++#OWNER_NOTIFICATION_EMAIL=you@yourdomain.com
++
++# STORE_BACKEND: optional. auto | blob | local — controls order/blob storage. Default: auto
++#STORE_BACKEND=auto
++
++# VERCEL_BLOB_READ_WRITE_TOKEN: optional in dev; used when persisting to Vercel Blob. Server only.
++#VERCEL_BLOB_READ_WRITE_TOKEN=vercel_blob_rw_xxxxxxxx
++
++# LOG_LEVEL: optional. pino log level. Default: info
++#LOG_LEVEL=info
++
++# --- Client (Vite) — only VITE_* is exposed to the browser -------------------
++# VITE_PUBLIC_SITE_URL: optional but recommended for production Open Graph / JSON-LD absolute URLs.
++# Must be the origin customers use (e.g. local: http://localhost:5173, production: https://www.yourstore.com).
++# No trailing slash. Read: src/seo/site.ts
++#VITE_PUBLIC_SITE_URL=https://www.example.com
++
++# VITE_STRIPE_PUBLIC_KEY: optional. If set, loadStripe() runs on checkout. Use pk_test_... / pk_live_... only.
++# Read: src/components/Cart/CheckoutPage.tsx (legacy duplicate: CheckoutPage.js)
++#VITE_STRIPE_PUBLIC_KEY=pk_test_xxxxxxxx
++
++# VITE_USE_MOCK_STRIPE: optional. "true" enables mock payment path. Default: unset / false
++# Read: src/utils/config.ts (legacy: config.js)
++#VITE_USE_MOCK_STRIPE=true
++
++# VITE_API_URL: optional. Subscription/newsletter API base. Default in code if unset: http://localhost:5000
++# Read: src/components/SubscriptionForm/SubscriptionForm.tsx (legacy: SubscriptionForm.js)
++# For `npm run dev:full`, set this to the origin shown by `vercel dev` (often http://localhost:3000), not blindly to the code default.
++#VITE_API_URL=http://localhost:3000
++
++# VITE_CATALOG_BACKEND: optional. "supabase" uses SupabaseCatalogAdapter; anything else = static JSON.
++# Read: src/catalog/adapter.ts
++#VITE_CATALOG_BACKEND=static
++
++# VITE_SUPABASE_URL: required when VITE_CATALOG_BACKEND=supabase. Public project URL (https://….supabase.co).
++# Read: src/catalog/adapter.ts
++#VITE_SUPABASE_URL=https://your-project.supabase.co
++
++# VITE_SUPABASE_ANON_KEY: required when VITE_CATALOG_BACKEND=supabase. Public anon key (RLS-enforced); safe in the browser bundle.
++# Read: src/catalog/adapter.ts
++#VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
++
++# --- Analytics (Story 6-6, FR-AN-002) — optional; omit in prod for no third-party calls --------
++# Events are privacy-scoped (pathname-only page_view, no Stripe IDs / email in payloads). With both
++# variables unset, production builds no-op analytics (no console spam); dev uses console.debug only.
++# Pick ONE provider path:
++# - Plausible: set domain and add Plausible script so `window.plausible` exists.
++# - GA4: set measurement ID and load gtag.js so `window.gtag` exists.
++#VITE_ANALYTICS_PLAUSIBLE_DOMAIN=yourdomain.com
++#VITE_ANALYTICS_GA_MEASUREMENT_ID=G-XXXXXXXX
++
++# Admin (story 2-6): same VITE_SUPABASE_* powers Supabase Auth for /admin/* (src/lib/supabaseBrowser.ts).
++# Catalog writes require app_metadata.role = "admin" on the user JWT: Supabase Dashboard → Authentication →
++# Users → select user → App metadata (raw JSON), e.g. { "role": "admin" }.
++# Optional server-only supplement (never the sole production gate): ALLOWED_ADMIN_EMAILS in api/admin/* if added later.
++
++# --- Server-only / reserved names ---------------------------------------------
++# Epic 4: create-payment-intent, stripe-webhook, and order-by-payment-intent require SUPABASE_URL +
++# SUPABASE_SERVICE_ROLE_KEY (see top of this file). Without them, checkout and webhooks return 503.
++# Never expose the service role key in VITE_* or client code (NFR-SEC-002).
++# TRANSACTIONAL_EMAIL_API_KEY= # example reserved name if email is abstracted / renamed from RESEND_API_KEY; server-only
++# (Additional provider keys as named in PRD / architecture when implemented.)
++#
++# Before enabling customer/owner Resend in production: set RESEND_API_KEY, RESEND_FROM (verified),
++# SUPPORT_EMAIL for human-facing support, and owner inbox OWNER_NOTIFICATION_EMAIL (E4-S5) if used.
+diff --git a/src/components/App/Layout.tsx b/src/components/App/Layout.tsx
+index af9aa8e..0bb3788 100644
+--- a/src/components/App/Layout.tsx
++++ b/src/components/App/Layout.tsx
+@@ -1,10 +1,39 @@
+-import { Outlet } from "react-router-dom";
++import { useEffect } from "react";
++import { Outlet, useLocation } from "react-router-dom";
++import { ANALYTICS_EVENTS } from "../../analytics/events";
++import { dispatchAnalyticsEvent } from "../../analytics/sink";
++import { usePageMeta } from "../../seo/meta";
++import { DEFAULT_META_DESCRIPTION, SITE_BRAND } from "../../seo/site";
+ import Footer from "../Footer/Footer";
+ import Header from "../Header/Header";
+ 
+-const Layout: React.FC = () => {
++const Layout = () => {
++  const location = useLocation();
++
++  usePageMeta({
++    title: SITE_BRAND,
++    description: DEFAULT_META_DESCRIPTION,
++    canonicalPath: location.pathname,
++    ogType: "website",
++  });
++
++  useEffect(() => {
++    const path = location.pathname;
++    const storageKey = `analytics_page_view:${path}:${location.key}`;
++    try {
++      if (sessionStorage.getItem(storageKey)) return;
++      sessionStorage.setItem(storageKey, "1");
++    } catch {
++      /* private mode / quota — may duplicate in dev Strict Mode */
++    }
++    dispatchAnalyticsEvent({
++      name: ANALYTICS_EVENTS.page_view,
++      payload: { path },
++    });
++  }, [location.pathname, location.key]);
++
+   return (
+-    <div className="App">
++    <div className="App" data-testid="storefront-layout">
+       <Header />
+       <Outlet />
+       <Footer />
+diff --git a/src/components/Cart/CartPage.tsx b/src/components/Cart/CartPage.tsx
+index f3fb4bd..5a27656 100644
+--- a/src/components/Cart/CartPage.tsx
++++ b/src/components/Cart/CartPage.tsx
+@@ -1,33 +1,186 @@
+ import { faCheckCircle, faLock, faUndoAlt } from "@fortawesome/free-solid-svg-icons";
+ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+-import React, { useContext, useEffect, useState } from "react";
+-import { useNavigate } from "react-router-dom";
++import React, { useContext, useEffect, useMemo, useState } from "react";
++import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
++import { normalizeLineSku } from "../../cart/lineKey";
++import {
++  isCartOkForCheckout,
++  validateStorefrontCartLines,
++} from "../../cart/reconcile";
++import type { CartLineValidation } from "../../cart/reconcile";
+ import { CartContext } from "../../context/CartContext";
++import { getDefaultCatalogAdapter } from "../../catalog/factory";
++import type { CatalogListItem } from "../../catalog/types";
++import { useCartQuote } from "../../hooks/useCartQuote";
++import type { CartLineQuote } from "../../lib/cartQuoteTypes";
++import { formatCents } from "../../lib/money";
++import { formatPageTitleWithBrand, usePageMeta } from "../../seo/meta";
++
++function lineKey(item: { id: number; sku?: string }): string {
++  return `${item.id}::${normalizeLineSku(item.sku)}`;
++}
++
++function incrementDisabled(v: CartLineValidation | undefined): boolean {
++  if (!v) return false;
++  if (v.issues.length > 0) return true;
++  if (v.maxQuantity == null) return true;
++  return v.line.quantity >= v.maxQuantity;
++}
+ 
+ const CartPage: React.FC = () => {
+-  const { cartItems, addToCart, removeFromCart } = useContext(CartContext);
+-  const [progressMessage, setProgressMessage] = useState("Spend $50 more to qualify for free shipping!");
++  const {
++    cartItems,
++    addToCart,
++    removeFromCart,
++    reconcileNotice,
++    clearReconcileNotice,
++    hydrateCartFromCatalog,
++  } = useContext(CartContext);
++  const [catalogList, setCatalogList] = useState<CatalogListItem[] | null>(null);
++  const [catalogError, setCatalogError] = useState<string | null>(null);
++  const [progressMessage, setProgressMessage] = useState(
++    "Spend $50 more to qualify for free shipping!"
++  );
+   const navigate = useNavigate();
++  const location = useLocation();
++  const [searchParams] = useSearchParams();
++  const checkoutCanceled = searchParams.get("checkout") === "canceled";
+ 
+-  const total = cartItems.reduce((x, y) => x + y.price * y.quantity, 0);
++  usePageMeta({
++    title: formatPageTitleWithBrand("Your bag"),
++    description: "Review items in your Zephyr Lux bag before checkout.",
++    canonicalPath: location.pathname || "/cart",
++  });
+ 
+   useEffect(() => {
+-    updateProgressMessage();
+-  }, [cartItems]);
++    let cancelled = false;
++    (async () => {
++      try {
++        const list = await getDefaultCatalogAdapter().listProducts();
++        if (cancelled) return;
++        setCatalogError(null);
++        setCatalogList(list);
++        hydrateCartFromCatalog(list);
++      } catch {
++        if (!cancelled) {
++          setCatalogError("We couldn't refresh availability. Try again.");
++        }
++      }
++    })();
++    return () => {
++      cancelled = true;
++    };
++  }, [cartItems, hydrateCartFromCatalog]);
++
++  const validations = useMemo(() => {
++    if (!catalogList) return null;
++    return validateStorefrontCartLines(cartItems, catalogList);
++  }, [cartItems, catalogList]);
++
++  const validationByKey = useMemo(() => {
++    const m = new Map<string, CartLineValidation>();
++    if (!validations) return m;
++    for (const v of validations) {
++      m.set(lineKey(v.line), v);
++    }
++    return m;
++  }, [validations]);
++
++  const checkoutAllowed =
++    catalogList != null &&
++    validations != null &&
++    cartItems.length > 0 &&
++    isCartOkForCheckout(validations);
+ 
+-  const handleAddToCart = (item: any) => {
+-    addToCart(item);
+-  };
++  const { quote, loading: quoteLoading, error: quoteError, refetch: refetchQuote, drafts: checkoutDrafts } =
++    useCartQuote(cartItems);
+ 
+-  const updateProgressMessage = () => {
+-    const newTotal = cartItems.reduce((x, y) => x + y.price * y.quantity, 0);
+-    const remaining = 50 - newTotal;
++  const subtotal = useMemo(() => {
++    if (!validations) {
++      return cartItems.reduce((s, i) => s + i.price * i.quantity, 0);
++    }
++    return validations.reduce((s, v) => {
++      if (v.issues.length > 0) {
++        return s;
++      }
++      const unit = v.displayUnitPrice ?? v.line.price;
++      return s + unit * v.line.quantity;
++    }, 0);
++  }, [validations, cartItems]);
++
++  const lineQuoteByCartIndex = useMemo(() => {
++    const m = new Map<number, CartLineQuote>();
++    if (!quote) return m;
++    let d = 0;
++    cartItems.forEach((item, idx) => {
++      if (normalizeLineSku(item.sku) === "") return;
++      const row = quote.lines[d];
++      if (row) m.set(idx, row);
++      d += 1;
++    });
++    return m;
++  }, [quote, cartItems]);
++
++  const cartLineRows = useMemo(() => {
++    return cartItems.map((item, itemIndex) => {
++      const key = lineKey(item);
++      const v = validationByKey.get(key);
++      const lineQ = lineQuoteByCartIndex.get(itemIndex);
++      const unit = v?.displayUnitPrice != null ? v.displayUnitPrice : item.price;
++      const lineTotal = unit * item.quantity;
++      const skuForQuote = normalizeLineSku(item.sku);
++      const awaitingCatalogPrice = quoteLoading && !lineQ && skuForQuote !== "";
++      const unitDisplay = lineQ
++        ? formatCents(lineQ.unit_cents)
++        : awaitingCatalogPrice
++          ? "…"
++          : `$${unit.toFixed(2)}`;
++      const lineTotalDisplay = lineQ
++        ? formatCents(lineQ.line_cents)
++        : awaitingCatalogPrice
++          ? "…"
++          : `$${lineTotal.toFixed(2)}`;
++      const plusDisabled = incrementDisabled(v);
++      const skuNorm = normalizeLineSku(item.sku);
++      const variantLabel =
++        skuNorm !== ""
++          ? `SKU ${skuNorm}`
++          : item.variant_id
++            ? `Variant ${String(item.variant_id).slice(0, 8)}…`
++            : null;
++      return {
++        key,
++        item,
++        itemIndex,
++        v,
++        lineQ,
++        unitDisplay,
++        lineTotalDisplay,
++        plusDisabled,
++        variantLabel,
++      };
++    });
++  }, [cartItems, validationByKey, lineQuoteByCartIndex, quoteLoading]);
++
++  const progressSubtotalDollars = quote ? quote.subtotal_cents / 100 : subtotal;
++
++  const subtotalDisplay =
++    quote
++      ? formatCents(quote.subtotal_cents)
++      : quoteLoading
++        ? "…"
++        : `$${subtotal.toFixed(2)}`;
++
++  useEffect(() => {
++    const remaining = 50 - progressSubtotalDollars;
+     if (remaining <= 0) {
+       setProgressMessage("Congratulations! You've qualified for free shipping!");
+     } else {
+-      setProgressMessage(`Spend $${remaining.toFixed(2)} more to qualify for free shipping!`);
++      setProgressMessage(
++        `Spend $${remaining.toFixed(2)} more to qualify for free shipping!`
++      );
+     }
+-  };
++  }, [progressSubtotalDollars]);
+ 
+   return (
+     <div className="relative bg-black text-white min-h-screen">
+@@ -35,7 +188,17 @@ const CartPage: React.FC = () => {
+         {/* Header content */}
+       </header>
+ 
+-      <main className="pt-52 max-w-6xl mx-auto p-4">
++      <main
++        className={`pt-52 max-w-6xl mx-auto p-4 ${cartItems.length > 0 ? "pb-28 md:pb-4" : ""}`}
++      >
++        {checkoutCanceled && (
++          <div
++            role="status"
++            className="mb-6 p-3 rounded border border-amber-600 bg-amber-950 text-amber-100 text-sm max-w-2xl mx-auto text-center"
++          >
++            Checkout was canceled — your bag is still saved.
++          </div>
++        )}
+         <div className="flex justify-center items-center space-x-4">
+           <h1 className="text-4xl font-extrabold">SHOPPING</h1>
+           <h1 className="text-4xl font-bold text-gray-700">BAG</h1>
+@@ -44,18 +207,190 @@ const CartPage: React.FC = () => {
+           <p className="text-center text-gray-400">Your cart is empty.</p>
+         ) : (
+           <div>
+-            {/* Free Shipping Progress */}
++            {catalogError && (
++              <div
++                role="alert"
++                className="mb-4 p-3 rounded border border-red-700 bg-red-950 text-red-100 text-sm"
++              >
++                {catalogError}
++              </div>
++            )}
++            {reconcileNotice && (
++              <div
++                role="status"
++                className="mb-4 p-3 rounded border border-amber-600 bg-amber-950 text-amber-100 text-sm"
++              >
++                <p className="mb-2">{reconcileNotice}</p>
++                <button
++                  type="button"
++                  onClick={clearReconcileNotice}
++                  className="text-amber-200 underline text-xs"
++                >
++                  Dismiss
++                </button>
++              </div>
++            )}
++            {!checkoutAllowed && validations && catalogList && (
++              <div
++                role="alert"
++                className="mb-4 p-3 rounded border border-red-600 bg-red-950/80 text-red-100 text-sm"
++              >
++                <p className="font-semibold mb-1">Fix your bag before checkout</p>
++                <ul className="list-disc list-inside space-y-1">
++                  {validations
++                    .filter((v) => v.issues.length > 0)
++                    .map((v) => (
++                      <li key={lineKey(v.line)}>
++                        <span className="font-medium">{v.line.name}: </span>
++                        {v.issues.map((i) => i.message).join(" ")}
++                      </li>
++                    ))}
++                </ul>
++              </div>
++            )}
++            {quoteError && (
++              <div
++                role="alert"
++                className="mb-4 p-3 rounded border border-amber-600 bg-amber-950 text-amber-100 text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
++              >
++                <span>{quoteError}</span>
++                <button
++                  type="button"
++                  onClick={refetchQuote}
++                  className="text-amber-200 underline text-sm"
++                >
++                  Retry
++                </button>
++              </div>
++            )}
++            {quoteLoading && checkoutDrafts.length > 0 && !quote && (
++              <p className="text-center text-sm text-gray-400 mb-2" role="status">
++                Loading prices from catalog…
++              </p>
++            )}
+             <div className="mb-4 bg-black p-3 rounded shadow border border-gray-600">
+-              <p className="text-center text-sm font-bold text-green-400">{progressMessage}</p>
++              <p className="text-center text-sm font-bold text-green-400">
++                {progressMessage}
++              </p>
+               <div className="relative h-2 bg-gray-800 rounded mt-2">
+                 <div
+                   className="absolute top-0 left-0 h-full bg-green-500 rounded"
+-                  style={{ width: `${Math.min((total / 50) * 100, 100)}%` }}
+-                ></div>
++                  style={{ width: `${Math.min((progressSubtotalDollars / 50) * 100, 100)}%` }}
++                />
+               </div>
+             </div>
+ 
+-            <div className="overflow-x-auto">
++            <p className="md:hidden text-center text-xs text-gray-500 mb-3" role="note">
++              Your running subtotal and checkout are pinned to the bottom on small screens — scroll up to
++              change items.
++            </p>
++
++            <div className="md:hidden space-y-4">
++              {cartLineRows.map(
++                ({
++                  key,
++                  item,
++                  v,
++                  lineQ,
++                  unitDisplay,
++                  lineTotalDisplay,
++                  plusDisabled,
++                  variantLabel,
++                }) => (
++                  <article
++                    key={key}
++                    data-testid={`cart-line-mobile-${key}`}
++                    className="rounded-lg border border-gray-600 bg-black p-4 shadow"
++                    aria-describedby={v && v.issues.length > 0 ? `issues-m-${key}` : undefined}
++                  >
++                    <div className="flex gap-3 min-w-0">
++                      <img
++                        src={item.image || "/assets/img/Listing.jpeg"}
++                        alt=""
++                        className="h-16 w-16 shrink-0 object-contain border border-gray-600 rounded bg-white"
++                      />
++                      <div className="min-w-0 flex-1">
++                        <p className="font-medium text-sm text-white break-words">{item.name}</p>
++                        {variantLabel ? (
++                          <p className="text-xs text-gray-400 mt-1 break-all">{variantLabel}</p>
++                        ) : null}
++                        <p className="text-xs text-gray-500 mt-1">Estimated delivery: 3–5 days</p>
++                        {v && v.issues.length > 0 ? (
++                          <ul
++                            id={`issues-m-${key}`}
++                            className="text-red-400 text-sm mt-2 list-disc list-inside"
++                          >
++                            {v.issues.map((issue) => (
++                              <li key={issue.code}>{issue.message}</li>
++                            ))}
++                          </ul>
++                        ) : null}
++                      </div>
++                    </div>
++                    <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
++                      <div>
++                        <p className="text-gray-500 text-xs">Price</p>
++                        <p className="font-semibold text-white tabular-nums">
++                          {lineQ ? (
++                            <span className="block text-xs text-gray-500 font-normal" aria-hidden>
++                              Catalog
++                            </span>
++                          ) : null}
++                          {unitDisplay}
++                        </p>
++                      </div>
++                      <div className="text-right">
++                        <p className="text-gray-500 text-xs">Line total</p>
++                        <p className="font-bold text-white tabular-nums">{lineTotalDisplay}</p>
++                      </div>
++                    </div>
++                    <div
++                      className="mt-4 flex flex-wrap items-center justify-between gap-3"
++                      role="group"
++                      aria-label={`Quantity for ${item.name}`}
++                    >
++                      <div className="flex items-center gap-2">
++                        <button
++                          type="button"
++                          onClick={() => removeFromCart(item.id, item.sku)}
++                          className="min-h-11 min-w-11 shrink-0 rounded bg-gray-700 text-white text-lg leading-none hover:bg-gray-500"
++                          aria-label={`Decrease quantity for ${item.name}`}
++                        >
++                          −
++                        </button>
++                        <span className="min-w-[2ch] text-center font-semibold text-white" aria-live="polite">
++                          {item.quantity}
++                        </span>
++                        <button
++                          type="button"
++                          onClick={() => addToCart(item)}
++                          disabled={plusDisabled}
++                          className="min-h-11 min-w-11 shrink-0 rounded bg-gray-700 text-white text-lg leading-none hover:bg-gray-500 disabled:opacity-40 disabled:cursor-not-allowed"
++                          aria-label={`Increase quantity for ${item.name}`}
++                        >
++                          +
++                        </button>
++                      </div>
++                      <button
++                        type="button"
++                        onClick={() => removeFromCart(item.id, item.sku)}
++                        className="min-h-11 rounded bg-red-600 px-4 text-sm font-medium text-white hover:bg-red-500"
++                      >
++                        Remove
++                      </button>
++                    </div>
++                    {v &&
++                    v.issues.length === 0 &&
++                    v.maxQuantity != null &&
++                    item.quantity >= v.maxQuantity ? (
++                      <p className="text-amber-400 text-xs mt-2">Maximum {v.maxQuantity} available.</p>
++                    ) : null}
++                  </article>
++                ),
++              )}
++            </div>
++
++            <div className="hidden md:block overflow-x-auto">
+               <table className="min-w-full table-auto border-collapse">
+                 <thead>
+                   <tr className="bg-black text-white uppercase text-sm border-b border-gray-700">
+@@ -67,121 +402,215 @@ const CartPage: React.FC = () => {
+                   </tr>
+                 </thead>
+                 <tbody className="bg-black">
+-                  {cartItems.map((item) => (
+-                    <tr key={item.id} className="border-b border-gray-700 hover:bg-gray-800">
+-                      <td className="py-4 px-6 flex flex-col sm:flex-row gap-4 items-center"> {/* Key changes here */}
+-                        <img
+-                          src={item.image || "/assets/img/Listing.jpeg"}
+-                          alt={item.name}
+-                          className="w-16 h-16 object-contain border border-gray-600 rounded bg-white sm:w-20 sm:h-20"
+-                        />
+-                        <div className="text-center sm:text-left"> {/* Key changes here */}
+-                          <p className="font-medium text-sm text-white">{item.name}</p>
+-                          <p className="text-sm text-gray-400">Estimated delivery: 3-5 days</p>
+-                        </div>
+-                      </td>
+-                      <td className="py-4 px-6 text-center font-semibold text-white">
+-                        ${item.price.toFixed(2)}
+-                      </td>
+-                      <td className="py-4 px-6 text-center">
+-                        <div className="flex flex-col items-center justify-center md:flex-row md:gap-2">
+-                          <span className="font-semibold text-white md:hidden mb-1">Quantity</span>
+-                          <button
+-                            onClick={() => removeFromCart(item.id)}
+-                            className="bg-gray-700 text-white px-2 py-1 rounded hover:bg-gray-500"
++                  {cartLineRows.map(
++                    ({
++                      key,
++                      item,
++                      v,
++                      lineQ,
++                      unitDisplay,
++                      lineTotalDisplay,
++                      plusDisabled,
++                      variantLabel,
++                    }) => (
++                      <tr
++                        key={key}
++                        className="border-b border-gray-700 hover:bg-gray-800"
++                        aria-describedby={
++                          v && v.issues.length > 0 ? `issues-${key}` : undefined
++                        }
++                      >
++                        <td className="py-4 px-6">
++                          <div className="flex flex-col sm:flex-row gap-4 items-center">
++                            <img
++                              src={item.image || "/assets/img/Listing.jpeg"}
++                              alt=""
++                              className="w-16 h-16 object-contain border border-gray-600 rounded bg-white sm:w-20 sm:h-20"
++                            />
++                            <div className="text-center sm:text-left min-w-0">
++                              <p className="font-medium text-sm text-white break-words">{item.name}</p>
++                              {variantLabel ? (
++                                <p className="text-xs text-gray-400 mt-1 break-all">{variantLabel}</p>
++                              ) : null}
++                              <p className="text-sm text-gray-400">Estimated delivery: 3-5 days</p>
++                              {v && v.issues.length > 0 && (
++                                <ul
++                                  id={`issues-${key}`}
++                                  className="text-red-400 text-sm mt-2 list-disc list-inside text-left"
++                                >
++                                  {v.issues.map((issue) => (
++                                    <li key={issue.code}>{issue.message}</li>
++                                  ))}
++                                </ul>
++                              )}
++                            </div>
++                          </div>
++                        </td>
++                        <td className="py-4 px-6 text-center font-semibold text-white">
++                          {lineQ && (
++                            <span className="block text-xs text-gray-500 font-normal" aria-hidden>
++                              Catalog
++                            </span>
++                          )}
++                          {unitDisplay}
++                        </td>
++                        <td className="py-4 px-6 text-center">
++                          <div
++                            className="flex flex-col items-center justify-center md:flex-row md:gap-2"
++                            role="group"
++                            aria-labelledby={`qty-label-${key}`}
+                           >
+-                            -
+-                          </button>
+-                          <span className="font-semibold text-white">{item.quantity}</span>
++                            <span
++                              id={`qty-label-${key}`}
++                              className="font-semibold text-white md:hidden mb-1"
++                            >
++                              Quantity
++                            </span>
++                            <button
++                              type="button"
++                              onClick={() => removeFromCart(item.id, item.sku)}
++                              className="min-h-11 min-w-11 rounded bg-gray-700 text-white hover:bg-gray-500"
++                              aria-label={`Decrease quantity for ${item.name}`}
++                            >
++                              −
++                            </button>
++                            <span className="font-semibold text-white" aria-live="polite">
++                              {item.quantity}
++                            </span>
++                            <button
++                              type="button"
++                              onClick={() => addToCart(item)}
++                              disabled={plusDisabled}
++                              className="min-h-11 min-w-11 rounded bg-gray-700 text-white hover:bg-gray-500 disabled:opacity-40 disabled:cursor-not-allowed"
++                              aria-label={`Increase quantity for ${item.name}`}
++                            >
++                              +
++                            </button>
++                          </div>
++                          {v &&
++                            v.issues.length === 0 &&
++                            v.maxQuantity != null &&
++                            item.quantity >= v.maxQuantity && (
++                              <p className="text-amber-400 text-xs mt-1 max-w-[12rem] mx-auto">
++                                Maximum {v.maxQuantity} available.
++                              </p>
++                            )}
++                        </td>
++                        <td className="py-4 px-6 text-center font-bold text-white">
++                          {lineTotalDisplay}
++                        </td>
++                        <td className="py-4 px-6 text-center">
+                           <button
+-                            onClick={() => handleAddToCart(item)}
+-                            className="bg-gray-700 text-white px-2 py-1 rounded hover:bg-gray-500"
++                            type="button"
++                            onClick={() => {
++                              removeFromCart(item.id, item.sku);
++                            }}
++                            className="min-h-11 rounded bg-red-500 px-4 text-white hover:bg-red-600"
+                           >
+-                            +
++                            Remove
+                           </button>
+-                        </div>
+-                      </td>
+-                      <td className="py-4 px-6 text-center font-bold text-white">
+-                        ${(item.price * item.quantity).toFixed(2)}
+-                      </td>
+-                      <td className="py-4 px-6 text-center">
+-                        <button
+-                          onClick={() => {
+-                            removeFromCart(item.id);
+-                          }}
+-                          className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+-                        >
+-                          Remove
+-                        </button>
+-                      </td>
+-                    </tr>
+-                  ))}
++                        </td>
++                      </tr>
++                    ),
++                  )}
+                 </tbody>
+               </table>
+-              {/* Cart Summary */}
++            </div>
++
+               <div className="mt-6 bg-black p-4 rounded shadow border border-gray-600">
+-                <p className="text-lg font-semibold text-white">Subtotal: ${total.toFixed(2)}</p>
+-                <p className="text-sm text-gray-400">Shipping and taxes calculated at checkout.</p>
++                <p className="text-lg font-semibold text-white">
++                  Subtotal: {subtotalDisplay}
++                </p>
++                <p className="text-sm text-gray-400">
++                  {quote
++                    ? "Prices and subtotal are from the current catalog. Shipping and taxes are at checkout."
++                    : "Shipping and taxes calculated at checkout."}
++                </p>
+               </div>
+ 
+-              {/* Coupon Code Section */}
+-              <div className="mt-6 flex justify-between items-center bg-black p-4 rounded shadow border border-gray-600">
++              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center bg-black p-4 rounded shadow border border-gray-600">
+                 <input
+                   type="text"
+                   placeholder="Enter coupon code"
+-                  className="w-2/3 p-2 border border-gray-600 rounded bg-gray-800 text-white"
++                  className="w-full sm:flex-1 min-w-0 p-2 min-h-11 border border-gray-600 rounded bg-gray-800 text-white"
+                 />
+-                <button className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
++                <button
++                  type="button"
++                  className="min-h-11 shrink-0 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
++                >
+                   Apply Coupon
+                 </button>
+               </div>
+ 
+-              {/* Call to Action */}
+-              <div className="mt-6 flex justify-between">
++              <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between sm:items-center">
+                 <button
++                  type="button"
+                   onClick={() => navigate("/products")}
+-                  className="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-600"
++                  className="min-h-11 w-full sm:w-auto bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-600"
+                 >
+                   Continue Shopping
+                 </button>
+                 <button
+-                  onClick={() => navigate("/checkout", { state: { subtotal: total, items: cartItems } })}
+-                  className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600"
++                  type="button"
++                  onClick={() =>
++                    navigate("/checkout", { state: { subtotal, items: cartItems } })
++                  }
++                  disabled={!checkoutAllowed}
++                  className="hidden md:inline-flex min-h-11 items-center justify-center bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                 >
+                   Proceed to Checkout
+                 </button>
+-
+               </div>
+ 
+-              {/* Trust Badges */}
+-              <div className="mt-6 flex justify-center gap-4">  {/* Parent container */}
+-                <div className="flex items-center"> {/* Container for each icon + text */}
++              <div className="mt-6 flex flex-wrap justify-center gap-4 text-sm">
++                <div className="flex items-center">
+                   <FontAwesomeIcon
+                     icon={faLock}
+-                    className="text-gray-500 mr-2 text-lg"  // Icon styles
+-                    aria-label="Secure Payment"
++                    className="text-gray-500 mr-2 text-lg"
++                    aria-hidden
+                   />
+-                  <span className="text-gray-500">Secure Payment</span> {/* Text style */}
++                  <span className="text-gray-500">Secure Payment</span>
+                 </div>
+ 
+-                <div className="flex items-center"> {/* Container for each icon + text */}
++                <div className="flex items-center">
+                   <FontAwesomeIcon
+                     icon={faUndoAlt}
+-                    className="text-gray-500 mr-2 text-lg" // Icon styles
+-                    aria-label="Free Returns"
++                    className="text-gray-500 mr-2 text-lg"
++                    aria-hidden
+                   />
+-                  <span className="text-gray-500">Free Returns</span> {/* Text style */}
++                  <span className="text-gray-500">Free Returns</span>
+                 </div>
+ 
+-                <div className="flex items-center"> {/* Container for each icon + text */}
++                <div className="flex items-center">
+                   <FontAwesomeIcon
+                     icon={faCheckCircle}
+-                    className="text-gray-500 mr-2 text-lg" // Icon styles
+-                    aria-label="Satisfaction Guaranteed"
++                    className="text-gray-500 mr-2 text-lg"
++                    aria-hidden
+                   />
+-                  <span className="text-gray-500">Satisfaction Guaranteed</span> {/* Text style */}
++                  <span className="text-gray-500">Satisfaction Guaranteed</span>
+                 </div>
+               </div>
++
++            <div
++              className="md:hidden fixed bottom-0 left-0 right-0 z-20 border-t border-gray-700 bg-black/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_24px_rgba(0,0,0,0.45)]"
++              data-testid="cart-mobile-checkout-bar"
++            >
++              <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
++                <div className="min-w-0">
++                  <p className="text-[10px] uppercase tracking-wide text-gray-500">Subtotal</p>
++                  <p className="text-base font-semibold text-white tabular-nums truncate">{subtotalDisplay}</p>
++                </div>
++                <button
++                  type="button"
++                  onClick={() =>
++                    navigate("/checkout", { state: { subtotal, items: cartItems } })
++                  }
++                  disabled={!checkoutAllowed}
++                  className="min-h-12 shrink-0 rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-40"
++                >
++                  Checkout
++                </button>
++              </div>
+             </div>
+           </div>
+         )}
+@@ -190,4 +619,4 @@ const CartPage: React.FC = () => {
+   );
+ };
+ 
+-export default CartPage;
+\ No newline at end of file
++export default CartPage;
+diff --git a/src/components/Cart/CheckoutPage.tsx b/src/components/Cart/CheckoutPage.tsx
+index f16e403..c25ae76 100644
+--- a/src/components/Cart/CheckoutPage.tsx
++++ b/src/components/Cart/CheckoutPage.tsx
+@@ -1,10 +1,21 @@
+-import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
+-import { loadStripe } from '@stripe/stripe-js';
+-import React, { useContext, useEffect, useState } from 'react';
+-import { useNavigate } from 'react-router-dom';
++import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
++import { loadStripe } from "@stripe/stripe-js";
++import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
++import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
++import { ANALYTICS_EVENTS } from "../../analytics/events";
++import { dispatchAnalyticsEvent } from "../../analytics/sink";
++import {
++  isCartOkForCheckout,
++  validateStorefrontCartLines,
++} from "../../cart/reconcile";
+ import { CartContext } from "../../context/CartContext";
++import { getDefaultCatalogAdapter } from "../../catalog/factory";
++import type { CatalogListItem } from "../../catalog/types";
++import { useCartQuote } from "../../hooks/useCartQuote";
+ import { checkoutSchema } from "../../lib/validation";
+ import { IS_MOCK_PAYMENT } from "../../utils/config";
++import { formatPageTitleWithBrand, usePageMeta } from "../../seo/meta";
++import { SITE_BRAND } from "../../seo/site";
+ 
+ interface PaymentIntentResult {
+     paymentIntent?: {
+@@ -15,12 +26,13 @@ interface PaymentIntentResult {
+ }
+ 
+ const InnerCheckoutForm: React.FC<{
+-    clientSecret: string;
+-    total: number;
+-    cartItems: any[];
++    orderTotalDollars: number;
++    cartItems: unknown[];
+     clearCart: () => void;
+     formValid: boolean;
+-}> = ({ clientSecret, total, cartItems, clearCart, formValid }) => {
++    readyToPay: boolean;
++    customerEmail: string;
++}> = ({ orderTotalDollars, cartItems, clearCart, formValid, readyToPay, customerEmail }) => {
+     const navigate = useNavigate();
+     const stripe = useStripe();
+     const elements = useElements();
+@@ -33,12 +45,24 @@ const InnerCheckoutForm: React.FC<{
+             return;
+         }
+         if (paymentIntentResult.paymentIntent) {
++            const { id, status } = paymentIntentResult.paymentIntent;
++            if (status !== "succeeded") {
++                setPaymentError(
++                    status === "processing"
++                        ? "Payment is still processing. You can check your email for updates or wait and refresh."
++                        : status
++                          ? `Payment not completed (status: ${status}). You can try again.`
++                          : "Could not confirm payment status. Check your email or try again."
++                );
++                return;
++            }
+             clearCart();
+             navigate("/order-confirmation", {
+                 state: {
+-                    orderId: paymentIntentResult.paymentIntent.id ?? "unknown",
+-                    total: total ?? 0,
++                    orderId: id ?? "unknown",
++                    total: orderTotalDollars ?? 0,
+                     items: cartItems.length ? cartItems : [],
++                    email: customerEmail || undefined,
+                 },
+             });
+         }
+@@ -70,20 +94,30 @@ const InnerCheckoutForm: React.FC<{
+                 handlePaymentResult(paymentIntentResult);
+                 setProcessing(false);
+             }
+-        } catch (error) {
++        } catch {
+             setPaymentError("An unexpected error occurred during payment.");
+             setProcessing(false);
+         }
+     };
+ 
+     return (
+-        <form onSubmit={onSubmit}>
+-            <PaymentElement />
+-            {paymentError && <p className="text-red-500 mt-2">{paymentError}</p>}
++        <form onSubmit={onSubmit} className="space-y-4 pb-4">
++            <div
++                className="rounded-lg border border-gray-600 bg-gray-900/40 p-3 sm:p-4 relative z-0 isolate"
++                data-testid="checkout-payment-element-shell"
++            >
++                <PaymentElement />
++            </div>
++            {paymentError && (
++                <p className="text-red-500 mt-2 break-words" role="alert">
++                    {paymentError}
++                </p>
++            )}
+             <button
+                 type="submit"
+-                disabled={!formValid || processing}
+-                className={`w-full p-3 rounded font-bold text-lg ${processing ? "bg-gray-600" : "bg-green-500 hover:bg-green-600"}`}
++                id="checkout-submit-pay"
++                disabled={!formValid || !readyToPay || processing}
++                className={`w-full min-h-12 scroll-mt-32 rounded px-4 py-3 font-bold text-lg ${processing ? "bg-gray-600" : "bg-green-500 hover:bg-green-600"}`}
+             >
+                 {processing ? "Processing..." : "Pay Now"}
+             </button>
+@@ -94,54 +128,244 @@ const InnerCheckoutForm: React.FC<{
+ const CheckoutPage = () => {
+     const { cartItems, clearCart } = useContext(CartContext);
+     const navigate = useNavigate();
++    const location = useLocation();
++    const [searchParams] = useSearchParams();
++    const checkoutCanceled = searchParams.get("checkout") === "canceled";
++
++    const [catalogList, setCatalogList] = useState<CatalogListItem[] | null>(null);
++    const [catalogError, setCatalogError] = useState(false);
++
++    const {
++        quote,
++        error: cartQuoteError,
++        refetch: refetchCartQuote,
++        drafts: checkoutLines,
++        loading: cartQuoteLoading,
++    } = useCartQuote(cartItems);
+ 
+     const [clientSecret, setClientSecret] = useState<string | null>(null);
+-    const stripePromise = (import.meta as any).env?.VITE_STRIPE_PUBLIC_KEY ? loadStripe((import.meta as any).env.VITE_STRIPE_PUBLIC_KEY) : null;
++
++    const validations = useMemo(() => {
++        if (!catalogList) return null;
++        return validateStorefrontCartLines(cartItems, catalogList);
++    }, [cartItems, catalogList]);
++
++    const checkoutOk =
++        catalogList != null &&
++        validations != null &&
++        cartItems.length > 0 &&
++        isCartOkForCheckout(validations);
++
++    const checkoutSeo = useMemo(() => {
++        const path = location.pathname || "/checkout";
++        if (cartItems.length === 0) {
++            return {
++                title: formatPageTitleWithBrand("Checkout"),
++                description: "Secure checkout for Zephyr Lux orders.",
++                canonicalPath: path,
++            };
++        }
++        if (catalogList === null && !catalogError) {
++            return {
++                title: `Verifying your bag — ${SITE_BRAND}`,
++                description: "Verifying your cart before secure checkout.",
++                canonicalPath: path,
++            };
++        }
++        if (catalogError) {
++            return {
++                title: `Checkout unavailable — ${SITE_BRAND}`,
++                description: "We could not verify your cart against the catalog.",
++                canonicalPath: path,
++            };
++        }
++        if (!checkoutOk && validations) {
++            return {
++                title: `Update your bag — ${SITE_BRAND}`,
++                description: "Resolve cart line issues before completing checkout.",
++                canonicalPath: path,
++            };
++        }
++        return {
++            title: formatPageTitleWithBrand("Checkout"),
++            description: "Secure checkout for Zephyr Lux orders.",
++            canonicalPath: path,
++        };
++    }, [
++        location.pathname,
++        cartItems.length,
++        catalogList,
++        catalogError,
++        checkoutOk,
++        validations,
++    ]);
++
++    usePageMeta(checkoutSeo);
++
++    const stripePromise = useMemo(() => {
++        if (!checkoutOk) return null;
++        const key = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
++        if (!key) return null;
++        return loadStripe(key);
++    }, [checkoutOk]);
+ 
+     const [formData, setFormData] = useState({
+         name: "",
+         email: "",
+         address: "",
++        city: "",
++        state: "",
++        postal_code: "",
++        country: "US",
++    });
++
++    const [debouncedCheckoutContext, setDebouncedCheckoutContext] = useState({
++        email: "",
++        name: "",
++        address: "",
++        city: "",
++        state: "",
++        postal_code: "",
++        country: "US",
+     });
+ 
++    useEffect(() => {
++        const t = setTimeout(() => {
++            setDebouncedCheckoutContext({
++                email: formData.email.trim(),
++                name: formData.name.trim(),
++                address: formData.address.trim(),
++                city: formData.city.trim(),
++                state: formData.state.trim(),
++                postal_code: formData.postal_code.trim(),
++                country: formData.country.trim() || "US",
++            });
++        }, 500);
++        return () => clearTimeout(t);
++    }, [
++        formData.email,
++        formData.name,
++        formData.address,
++        formData.city,
++        formData.state,
++        formData.postal_code,
++        formData.country,
++    ]);
++
++    const contactInSync =
++        formData.email.trim() === debouncedCheckoutContext.email &&
++        formData.name.trim() === debouncedCheckoutContext.name &&
++        formData.address.trim() === debouncedCheckoutContext.address &&
++        formData.city.trim() === debouncedCheckoutContext.city &&
++        formData.state.trim() === debouncedCheckoutContext.state &&
++        formData.postal_code.trim() === debouncedCheckoutContext.postal_code &&
++        formData.country.trim() === debouncedCheckoutContext.country;
++
++    const paymentBootstrapKey = useMemo(
++        () => JSON.stringify({ lines: checkoutLines, ...debouncedCheckoutContext }),
++        [checkoutLines, debouncedCheckoutContext]
++    );
++
++    /** Stable fingerprint so catalog list fetch is not tied to cart array identity. */
++    const catalogFetchKey = useMemo(
++        () =>
++            JSON.stringify(
++                cartItems.map((i) => ({
++                    id: i.id,
++                    sku: i.sku ?? null,
++                    quantity: i.quantity,
++                }))
++            ),
++        [cartItems]
++    );
++
+     const [errors, setErrors] = useState({
+         name: "",
+         email: "",
+         address: "",
++        city: "",
++        state: "",
++        postal_code: "",
++        country: "",
+     });
+ 
+-    const [total, setTotal] = useState(0);
+     const [paymentError, setPaymentError] = useState<string | null>(null);
+     const [processing, setProcessing] = useState(false);
+-    const [orderConfirmation, setOrderConfirmation] = useState(false);
+     const [formValid, setFormValid] = useState(false);
+ 
+     useEffect(() => {
+-        calculateTotal();
+-    }, [cartItems]);
++        if (cartItems.length === 0) {
++            navigate("/cart", { replace: true });
++        }
++    }, [cartItems.length, navigate]);
+ 
++    /**
++     * Funnel: once per checkout entry for this `location.key` (browser Back → Checkout may fire again — acceptable).
++     * Skips when bag is empty (`line_item_count === 0`). `sessionStorage` dedupes React Strict Mode remounts.
++     */
+     useEffect(() => {
+-        validateForm();
+-    }, [formData]);
++        if (cartItems.length === 0) return;
++        const storageKey = `analytics_checkout_start_fired:${location.key}`;
++        try {
++            if (sessionStorage.getItem(storageKey)) return;
++            sessionStorage.setItem(storageKey, "1");
++        } catch {
++            /* private mode — may duplicate */
++        }
++        dispatchAnalyticsEvent({
++            name: ANALYTICS_EVENTS.checkout_start,
++            payload: { line_item_count: cartItems.length },
++        });
++    }, [location.key, cartItems.length]);
+ 
+-    const calculateTotal = () => {
+-        const subtotal = cartItems.reduce((x, y) => x + y.price * y.quantity, 0);
+-        setTotal(subtotal);
+-    };
++    useEffect(() => {
++        let cancelled = false;
++        (async () => {
++            try {
++                const list = await getDefaultCatalogAdapter().listProducts();
++                if (!cancelled) {
++                    setCatalogList(list);
++                    setCatalogError(false);
++                }
++            } catch {
++                if (!cancelled) setCatalogError(true);
++            }
++        })();
++        return () => {
++            cancelled = true;
++        };
++    }, [catalogFetchKey]);
+ 
+-    const validateForm = () => {
+-        const isValid = formData.name !== "" && formData.email !== "" && formData.address !== "";
++    const validateForm = useCallback(() => {
++        const isValid =
++            formData.name !== "" &&
++            formData.email !== "" &&
++            formData.address !== "" &&
++            formData.city !== "" &&
++            formData.state !== "" &&
++            formData.postal_code !== "" &&
++            formData.country !== "";
+         setFormValid(isValid);
+-    };
++    }, [
++        formData.name,
++        formData.email,
++        formData.address,
++        formData.city,
++        formData.state,
++        formData.postal_code,
++        formData.country,
++    ]);
+ 
+-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+-        const { name, value } = e.target;
+-        setFormData({ ...formData, [name]: value });
+-        setErrors({ ...errors, [name]: "" });
++    useEffect(() => {
+         validateForm();
++    }, [validateForm]);
++
++    const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
++        const { name, value } = e.target;
++        setFormData((prev) => ({ ...prev, [name]: value }));
++        setErrors((prev) => ({ ...prev, [name]: "" }));
+     };
+ 
+-    // If you want a separate mock flow, define it here.
+     const mockStripe = {
+         confirmPayment: async (): Promise<PaymentIntentResult> => {
+             return new Promise((resolve, reject) => {
+@@ -166,43 +390,111 @@ const CheckoutPage = () => {
+     };
+ 
+     useEffect(() => {
+-        if (IS_MOCK_PAYMENT) return;
+-        // fetch clientSecret from API using a fallback amount
+-        const fetchClientSecret = async () => {
++        if (!checkoutOk) {
++            setClientSecret(null);
++        }
++    }, [checkoutOk]);
++
++    useEffect(() => {
++        if (IS_MOCK_PAYMENT || !checkoutOk || !quote || checkoutLines.length === 0) {
++            if (!IS_MOCK_PAYMENT) {
++                setClientSecret(null);
++            }
++            return;
++        }
++        let cancelled = false;
++        const run = async () => {
++            setClientSecret(null);
++            setPaymentError(null);
+             try {
+-                const tax = total * 0.07;
+-                const shipping = 5;
+-                const grandTotal = total + tax + shipping;
+                 const res = await fetch("/api/create-payment-intent", {
+                     method: "POST",
+                     headers: { "Content-Type": "application/json" },
+-                    body: JSON.stringify({ amount: Math.round(grandTotal * 100), currency: "usd" })
++                    body: JSON.stringify({
++                        items: checkoutLines,
++                        email: debouncedCheckoutContext.email || undefined,
++                        currency: "usd",
++                        ...(debouncedCheckoutContext.name.length > 0 &&
++                        debouncedCheckoutContext.address.length > 0 &&
++                        debouncedCheckoutContext.city.length > 0 &&
++                        debouncedCheckoutContext.state.length > 0 &&
++                        debouncedCheckoutContext.postal_code.length > 0 &&
++                        debouncedCheckoutContext.country.length > 0
++                            ? {
++                                  customer_name: debouncedCheckoutContext.name,
++                                  shipping_address: {
++                                      name: debouncedCheckoutContext.name,
++                                      line1: debouncedCheckoutContext.address,
++                                      city: debouncedCheckoutContext.city,
++                                      state: debouncedCheckoutContext.state,
++                                      postal_code: debouncedCheckoutContext.postal_code,
++                                      country: debouncedCheckoutContext.country,
++                                  },
++                              }
++                            : {}),
++                    }),
+                 });
+-                const json = await res.json();
+-                if (json?.clientSecret) setClientSecret(json.clientSecret);
+-                else setPaymentError("Failed to create payment intent");
+-            } catch (e) {
+-                setPaymentError("Failed to initialize payment");
++                const json = (await res.json()) as {
++                    clientSecret?: string;
++                    error?: string;
++                    checkoutRef?: string;
++                    orderLookupKey?: string;
++                };
++                if (cancelled) return;
++                if (!res.ok) {
++                    setClientSecret(null);
++                    setPaymentError(
++                        json.error ??
++                            "We could not start payment for your bag. Please return to your bag and try again."
++                    );
++                    return;
++                }
++                if (json?.clientSecret) {
++                    setClientSecret(json.clientSecret);
++                    const cs = json.clientSecret;
++                    const at = cs.indexOf("_secret_");
++                    const piId = at > 0 ? cs.slice(0, at) : null;
++                    if (piId && json.orderLookupKey) {
++                        try {
++                            sessionStorage.setItem(`zlx_pilu_${piId}`, json.orderLookupKey);
++                        } catch {
++                            // ignore private mode / quota
++                        }
++                    }
++                } else {
++                    setClientSecret(null);
++                    setPaymentError("Failed to create payment intent");
++                }
++            } catch {
++                if (!cancelled) {
++                    setClientSecret(null);
++                    setPaymentError("Failed to initialize payment");
++                }
+             }
+         };
+-        fetchClientSecret();
+-    }, [total]);
++        void run();
++        return () => {
++            cancelled = true;
++        };
++    // paymentBootstrapKey encodes checkoutLines + debounced contact/shipping
++    // eslint-disable-next-line react-hooks/exhaustive-deps -- avoid duplicate fetches when primitives match fingerprint
++    }, [paymentBootstrapKey, checkoutOk, quote]);
++
+     const handleSubmit = async (event: React.FormEvent) => {
+         event.preventDefault();
++        if (!checkoutOk) return;
+         setProcessing(true);
+         setPaymentError(null);
+ 
+-        console.log("[handleSubmit] Checking IS_MOCK_PAYMENT:", IS_MOCK_PAYMENT);
+         const parsed = checkoutSchema.safeParse(formData);
+         if (!parsed.success) {
+-            const fieldErrors: any = {};
++            const fieldErrors: Record<string, string> = {};
+             parsed.error.issues.forEach((i) => { fieldErrors[i.path[0] as string] = i.message; });
+             setErrors({ ...errors, ...fieldErrors });
+             setProcessing(false);
+             return;
+         }
+         if (IS_MOCK_PAYMENT) {
+-            console.log("Using mockStripe for confirmPayment.");
+             try {
+                 const mockResult: PaymentIntentResult = await mockStripe.confirmPayment();
+                 handlePaymentResult(mockResult);
+@@ -213,9 +505,6 @@ const CheckoutPage = () => {
+             setProcessing(false);
+             return;
+         }
+-
+-        // Real Flow
+-        // This submit path only used in mock mode now.
+     };
+ 
+     function handlePaymentResult(paymentIntentResult: PaymentIntentResult) {
+@@ -225,19 +514,122 @@ const CheckoutPage = () => {
+         }
+ 
+         if (paymentIntentResult.paymentIntent) {
+-            console.log("Payment Successful", paymentIntentResult.paymentIntent);
++            const { id, status } = paymentIntentResult.paymentIntent;
++            if (status !== "succeeded") {
++                setPaymentError(
++                    status === "processing"
++                        ? "Payment is still processing. Check your email for updates."
++                        : status
++                          ? `Payment not completed (status: ${status}). You can try again.`
++                          : "Could not confirm payment status. Check your email or try again."
++                );
++                return;
++            }
+             clearCart();
+-            setOrderConfirmation(true);
+             navigate("/order-confirmation", {
+                 state: {
+-                    orderId: paymentIntentResult.paymentIntent.id ?? "unknown",
+-                    total: total ?? 0,
++                    orderId: id ?? "unknown",
++                    total: quote ? quote.total_cents / 100 : 0,
+                     items: cartItems.length ? cartItems : [],
++                    email: formData.email || undefined,
+                 },
+             });
+         }
+     }
+ 
++    if (cartItems.length === 0) {
++        return null;
++    }
++
++    if (catalogList === null && !catalogError) {
++        return (
++            <div className="relative bg-black text-white min-h-screen">
++                <div className="h-56" />
++                <main className="max-w-4xl mx-auto w-full min-w-0 px-4 py-6 sm:px-6 pb-24">
++                    <p className="text-gray-400">Verifying your bag…</p>
++                </main>
++            </div>
++        );
++    }
++
++    if (catalogError) {
++        return (
++            <div className="relative bg-black text-white min-h-screen">
++                <div className="h-56" />
++                <main className="max-w-4xl mx-auto w-full min-w-0 px-4 py-6 sm:px-6 pb-24" role="alert">
++                    <h1 className="text-2xl font-bold mb-4">Checkout unavailable</h1>
++                    <p className="text-gray-300 mb-4">
++                        We could not verify your cart against the catalog. Return to your bag and try again.
++                    </p>
++                    <Link to="/cart" className="text-green-400 underline font-semibold">
++                        Return to bag
++                    </Link>
++                </main>
++            </div>
++        );
++    }
++
++    if (!checkoutOk && validations) {
++        return (
++            <div className="relative bg-black text-white min-h-screen">
++                <header className="fixed top-0 w-full z-10 bg-black text-white shadow">
++                    <div className="max-w-6xl mx-auto p-4 flex justify-between items-center">
++                        <h1 className="text-xl font-bold">Zephyr Lux</h1>
++                    </div>
++                </header>
++                <div className="h-56" />
++                <main className="max-w-4xl mx-auto w-full min-w-0 px-4 py-6 sm:px-6 pb-24" role="alert">
++                    <h1 className="text-3xl font-extrabold mb-4">Update your bag</h1>
++                    <p className="text-gray-300 mb-4">
++                        One or more items need attention before you can pay. Fix the issues below in your bag, then try checkout again.
++                    </p>
++                    <ul className="list-disc list-inside text-gray-200 space-y-2 mb-6">
++                        {validations
++                            .filter((v) => v.issues.length > 0)
++                            .map((v) => (
++                                <li key={`${v.line.id}::${v.line.sku ?? ""}`}>
++                                    <span className="font-medium text-white">{v.line.name}: </span>
++                                    {v.issues.map((i) => i.message).join(" ")}
++                                </li>
++                            ))}
++                    </ul>
++                    <Link
++                        to="/cart"
++                        className="inline-flex min-h-12 items-center justify-center bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-500"
++                    >
++                        Return to bag
++                    </Link>
++                </main>
++            </div>
++        );
++    }
++
++    const orderLineDisplay = quote
++        ? quote.lines.map((line) => ({
++            name: line.product_title,
++            quantity: line.quantity,
++            lineTotal: line.line_cents / 100,
++        }))
++        : cartQuoteLoading
++          ? []
++          : cartQuoteError && validations
++            ? validations.map((v) => ({
++                name: v.line.name,
++                quantity: v.line.quantity,
++                lineTotal: (v.displayUnitPrice ?? v.line.price) * v.line.quantity,
++            }))
++            : validations
++              ? validations.map((v) => ({
++                name: v.line.name,
++                quantity: v.line.quantity,
++                lineTotal: (v.displayUnitPrice ?? v.line.price) * v.line.quantity,
++            }))
++              : cartItems.map((item) => ({
++                name: item.name,
++                quantity: item.quantity,
++                lineTotal: item.price * item.quantity,
++            }));
++
+     return (
+         <div className="relative bg-black text-white min-h-screen">
+             <header className="fixed top-0 w-full z-10 bg-black text-white shadow">
+@@ -246,43 +638,251 @@ const CheckoutPage = () => {
+                 </div>
+             </header>
+ 
+-            <div className="h-56"></div>
++            <div className="h-56" />
+ 
+-            <main className="max-w-4xl mx-auto p-6">
++            <main className="max-w-4xl mx-auto w-full min-w-0 px-4 py-6 sm:px-6 pb-28 md:pb-10">
++                {checkoutCanceled && (
++                    <div
++                        role="status"
++                        className="mb-4 p-3 rounded border border-amber-600 bg-amber-950 text-amber-100 text-sm"
++                    >
++                        Checkout was canceled — your bag is still saved. You can
++                        return to it anytime.
++                    </div>
++                )}
++                <div className="mb-4">
++                    <Link
++                        to="/cart"
++                        className="text-amber-300 underline text-sm"
++                    >
++                        ← Back to bag
++                    </Link>
++                </div>
+                 <h1 className="text-3xl font-extrabold mb-6">Checkout</h1>
+                 <div className="bg-gray-800 p-4 rounded mb-6">
+                     <h2 className="text-xl font-bold mb-4">Order Summary</h2>
+-                    {cartItems.map((item) => (
+-                        <div key={item.id} className="flex justify-between items-center mb-2">
+-                            <span className="text-gray-400">{item.name} x {item.quantity}</span>
+-                            <span className="text-gray-400">${(item.price * item.quantity).toFixed(2)}</span>
++                    {cartQuoteError && (
++                        <div className="text-red-400 mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2" role="alert">
++                            <span>{cartQuoteError}</span>
++                            <button
++                                type="button"
++                                onClick={refetchCartQuote}
++                                className="text-amber-300 underline text-sm"
++                            >
++                                Retry
++                            </button>
++                        </div>
++                    )}
++                    {cartQuoteLoading && !quote && (
++                        <p className="text-gray-500 text-sm mb-2" role="status">
++                            Loading line items from the catalog…
++                        </p>
++                    )}
++                    {orderLineDisplay.map((row, idx) => (
++                        <div
++                            key={`${idx}-${row.name}`}
++                            className="flex justify-between items-start gap-3 mb-2 min-w-0"
++                        >
++                            <span className="text-gray-400 flex-1 min-w-0 break-words">
++                                {row.name} × {row.quantity}
++                            </span>
++                            <span className="text-gray-400 shrink-0 tabular-nums">
++                                ${row.lineTotal.toFixed(2)}
++                            </span>
+                         </div>
+                     ))}
+                     <hr className="border-gray-700 my-2" />
+-                    <p className="text-gray-400">Subtotal: ${total.toFixed(2)}</p>
+-                    <p className="text-gray-400">Shipping (Estimate): $5.00</p>
+-                    <p className="text-gray-400">Taxes (Estimate): ${(total * 0.07).toFixed(2)}</p>
+-                    <p className="font-bold text-lg mt-2">Total: ${(total + (total * 0.07) + 5).toFixed(2)}</p>
++                    {quote ? (
++                        <>
++                            <p className="text-gray-400">
++                                Subtotal: ${(quote.subtotal_cents / 100).toFixed(2)}
++                            </p>
++                            <p className="text-gray-400">
++                                Shipping:{" "}
++                                {quote.shipping_cents === 0
++                                    ? "Free"
++                                    : `$${(quote.shipping_cents / 100).toFixed(2)}`}
++                            </p>
++                            <p className="text-gray-400">
++                                Tax: ${(quote.tax_cents / 100).toFixed(2)}
++                            </p>
++                            <p className="font-bold text-lg mt-2">
++                                Total: ${(quote.total_cents / 100).toFixed(2)}
++                            </p>
++                        </>
++                    ) : (
++                        <p className="text-gray-500 text-sm" role="status">
++                            {!cartQuoteError
++                                ? "Calculating your totals from the current catalog…"
++                                : "Fix pricing above to continue."}
++                        </p>
++                    )}
+                 </div>
+ 
++                <div className="bg-gray-800 p-4 rounded mb-6 w-full min-w-0 overflow-x-hidden">
++                    <h2 className="text-lg font-bold mb-3">Contact &amp; shipping</h2>
++                    <div className="space-y-3 w-full max-w-full sm:max-w-xl md:max-w-2xl">
++                        <div>
++                            <label htmlFor="ck-name" className="block text-sm text-gray-400 mb-1">
++                                Full name
++                            </label>
++                            <input
++                                id="ck-name"
++                                name="name"
++                                value={formData.name}
++                                onChange={handleFormChange}
++                                className="w-full min-h-11 box-border p-2 rounded bg-gray-900 border border-gray-600 text-white"
++                                autoComplete="name"
++                            />
++                            {errors.name && <p className="text-red-400 text-sm mt-1">{errors.name}</p>}
++                        </div>
++                        <div>
++                            <label htmlFor="ck-email" className="block text-sm text-gray-400 mb-1">
++                                Email
++                            </label>
++                            <input
++                                id="ck-email"
++                                name="email"
++                                type="email"
++                                value={formData.email}
++                                onChange={handleFormChange}
++                                className="w-full min-h-11 box-border p-2 rounded bg-gray-900 border border-gray-600 text-white"
++                                autoComplete="email"
++                            />
++                            {errors.email && <p className="text-red-400 text-sm mt-1">{errors.email}</p>}
++                        </div>
++                        <div>
++                            <label htmlFor="ck-addr" className="block text-sm text-gray-400 mb-1">
++                                Shipping address
++                            </label>
++                            <textarea
++                                id="ck-addr"
++                                name="address"
++                                value={formData.address}
++                                onChange={handleFormChange}
++                                rows={3}
++                                className="w-full min-h-11 box-border p-2 rounded bg-gray-900 border border-gray-600 text-white"
++                                autoComplete="street-address"
++                            />
++                            {errors.address && <p className="text-red-400 text-sm mt-1">{errors.address}</p>}
++                        </div>
++                        <div>
++                            <label htmlFor="ck-city" className="block text-sm text-gray-400 mb-1">
++                                City
++                            </label>
++                            <input
++                                id="ck-city"
++                                name="city"
++                                value={formData.city}
++                                onChange={handleFormChange}
++                                className="w-full min-h-11 box-border p-2 rounded bg-gray-900 border border-gray-600 text-white"
++                                autoComplete="address-level2"
++                            />
++                            {errors.city && <p className="text-red-400 text-sm mt-1">{errors.city}</p>}
++                        </div>
++                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
++                            <div>
++                                <label htmlFor="ck-state" className="block text-sm text-gray-400 mb-1">
++                                    State / region
++                                </label>
++                                <input
++                                    id="ck-state"
++                                    name="state"
++                                    value={formData.state}
++                                    onChange={handleFormChange}
++                                    className="w-full min-h-11 box-border p-2 rounded bg-gray-900 border border-gray-600 text-white"
++                                    autoComplete="address-level1"
++                                />
++                                {errors.state && <p className="text-red-400 text-sm mt-1">{errors.state}</p>}
++                            </div>
++                            <div>
++                                <label htmlFor="ck-postal" className="block text-sm text-gray-400 mb-1">
++                                    Postal code
++                                </label>
++                                <input
++                                    id="ck-postal"
++                                    name="postal_code"
++                                    value={formData.postal_code}
++                                    onChange={handleFormChange}
++                                    className="w-full min-h-11 box-border p-2 rounded bg-gray-900 border border-gray-600 text-white"
++                                    autoComplete="postal-code"
++                                />
++                                {errors.postal_code && (
++                                    <p className="text-red-400 text-sm mt-1">{errors.postal_code}</p>
++                                )}
++                            </div>
++                        </div>
++                        <div>
++                            <label htmlFor="ck-country" className="block text-sm text-gray-400 mb-1">
++                                Country
++                            </label>
++                            <input
++                                id="ck-country"
++                                name="country"
++                                value={formData.country}
++                                onChange={handleFormChange}
++                                className="w-full min-h-11 box-border p-2 rounded bg-gray-900 border border-gray-600 text-white"
++                                autoComplete="country-name"
++                            />
++                            {errors.country && <p className="text-red-400 text-sm mt-1">{errors.country}</p>}
++                        </div>
++                    </div>
++                </div>
++
++                {!IS_MOCK_PAYMENT && paymentError && !clientSecret && (
++                    <p className="text-red-500 mt-2 mb-4" role="alert">
++                        {paymentError}
++                    </p>
++                )}
++
+                 {IS_MOCK_PAYMENT ? (
+                     <form onSubmit={handleSubmit}>
+-                        {paymentError && <p className="text-red-500 mt-2">{paymentError}</p>}
++                        {paymentError && (
++                            <p className="text-red-500 mt-2" role="alert">
++                                {paymentError}
++                            </p>
++                        )}
+                         <button
+                             type="submit"
+-                            disabled={!formValid || processing}
+-                            className={`w-full p-3 rounded font-bold text-lg ${processing ? "bg-gray-600" : "bg-green-500 hover:bg-green-600"}`}
++                            disabled={
++                                !checkoutOk ||
++                                !formValid ||
++                                !contactInSync ||
++                                processing ||
++                                !quote ||
++                                Boolean(cartQuoteError)
++                            }
++                            className={`w-full min-h-12 scroll-mt-32 rounded px-4 py-3 font-bold text-lg ${processing ? "bg-gray-600" : "bg-green-500 hover:bg-green-600"}`}
+                         >
+                             {processing ? "Processing..." : "Pay Now"}
+                         </button>
+                     </form>
+                 ) : (
+-                    clientSecret && stripePromise ? (
+-                        <Elements stripe={stripePromise} options={{ clientSecret }}>
+-                            <InnerCheckoutForm clientSecret={clientSecret} total={total} cartItems={cartItems} clearCart={clearCart} formValid={formValid} />
++                    clientSecret && stripePromise && quote ? (
++                        <>
++                            {!contactInSync && formValid && (
++                                <p className="text-amber-200 text-sm mb-3" role="status">
++                                    Syncing your details with the payment form — wait a moment, then use Pay
++                                    Now.
++                                </p>
++                            )}
++                            <Elements key={paymentBootstrapKey} stripe={stripePromise} options={{ clientSecret }}>
++                            <InnerCheckoutForm
++                                orderTotalDollars={quote.total_cents / 100}
++                                cartItems={cartItems}
++                                clearCart={clearCart}
++                                formValid={formValid}
++                                readyToPay={contactInSync}
++                                customerEmail={formData.email}
++                            />
+                         </Elements>
++                        </>
+                     ) : (
+-                        <p className="text-gray-400">Initializing payment...</p>
++                        <p className="text-gray-400" role="status">
++                            {!quote && !cartQuoteError
++                                ? "Loading pricing and payment…"
++                                : "Initializing payment..."}
++                        </p>
+                     )
+                 )}
+             </main>
+diff --git a/src/components/Contact/ContactPage.tsx b/src/components/Contact/ContactPage.tsx
+new file mode 100644
+index 0000000..aee9eed
+--- /dev/null
++++ b/src/components/Contact/ContactPage.tsx
+@@ -0,0 +1,37 @@
++import React from "react";
++import { formatPageTitleWithBrand, usePageMeta } from "../../seo/meta";
++
++const SUPPORT_EMAIL = "support@zephyrlux.example";
++
++const ContactPage: React.FC = () => {
++  usePageMeta({
++    title: formatPageTitleWithBrand("Contact"),
++    description: "Contact Zephyr Lux for order questions, sizing, or returns.",
++    canonicalPath: "/contact",
++  });
++  return (
++    <main className="contact-page min-h-[50vh] bg-neutral-900 text-neutral-100">
++      {/* Template — replace before production: SUPPORT_EMAIL, hours, and address must reflect real operations. */}
++      <div className="prose prose-invert prose-headings:text-neutral-100 prose-a:text-red-400 hover:prose-a:text-red-300 max-w-prose mx-auto px-4 py-10 lg:py-14">
++        <h1>Contact us</h1>
++        <p>
++          For order questions, sizing, or returns, reach out using the email below. Replace the placeholder address
++          and hours with your production support details.
++        </p>
++        <h2>Email</h2>
++        <p>
++          <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
++        </p>
++        <h2>Support hours (placeholder)</h2>
++        <p>Monday–Friday, 9:00–17:00 (local time — specify timezone before launch).</p>
++        <h2>Physical fulfillment</h2>
++        <p>
++          If you publish a returns address or corporate office, add it here. Do not invent a real street address for
++          placeholder content.
++        </p>
++      </div>
++    </main>
++  );
++};
++
++export default ContactPage;
+diff --git a/src/components/OrderConfirmation/OrderConfirmation.tsx b/src/components/OrderConfirmation/OrderConfirmation.tsx
+index 8e90c30..2879538 100644
+--- a/src/components/OrderConfirmation/OrderConfirmation.tsx
++++ b/src/components/OrderConfirmation/OrderConfirmation.tsx
+@@ -1,32 +1,327 @@
+-import React from 'react';
+-import { useLocation } from 'react-router-dom'; // If you're passing data
++import React, { useEffect, useMemo, useState } from "react";
++import { ANALYTICS_EVENTS } from "../../analytics/events";
++import { consumePurchaseAnalyticsSlot } from "../../analytics/purchaseDedupe";
++import { dispatchAnalyticsEvent } from "../../analytics/sink";
++import { Link, useLocation, useSearchParams } from "react-router-dom";
++import {
++  formatLineSubtotalDollars,
++  queryPartialHeading,
++  queryPartialSubtitle,
++  resolveConfirmationView,
++  type ConfirmationItemLine,
++} from "../../order-confirmation/confirmationViewModel";
++import { formatPageTitleWithBrand, usePageMeta } from "../../seo/meta";
++import { SITE_BRAND } from "../../seo/site";
++
++const SUPPORT_MAIL = "mailto:support@zephyrlux.com";
++
++type PaidOrderApiResponse = {
++  order_number: string;
++  email: string;
++  total_cents: number;
++  items: ConfirmationItemLine[];
++};
+ 
+ const OrderConfirmation: React.FC = () => {
+-    const location = useLocation(); // For accessing passed data (optional)
+-    const orderId = location.state?.orderId;
+-    const total = location.state?.total;
+-    const items = location.state?.items;
++  const location = useLocation();
++  const [searchParams] = useSearchParams();
++  const [paidOrder, setPaidOrder] = useState<PaidOrderApiResponse | null>(null);
++  const [paidOrderLoading, setPaidOrderLoading] = useState(false);
++
++  const view = useMemo(
++    () =>
++      resolveConfirmationView({
++        locationState: location.state,
++        searchParams,
++      }),
++    [location.state, searchParams]
++  );
++
++  const paymentIntentForLookup =
++    view.stripeQuery.paymentIntentId ??
++    (view.paymentRef?.startsWith("pi_") ? view.paymentRef : null);
++
++  const orderConfirmMeta = useMemo(() => {
++    const path = location.pathname || "/order-confirmation";
++    if (view.mode === "fallback") {
++      return {
++        title: `Order help — ${SITE_BRAND}`,
++        description:
++          "We could not load full order details. Check your email or return to your bag.",
++        canonicalPath: path,
++      };
++    }
++    if (paidOrder?.order_number && paymentIntentForLookup) {
++      return {
++        title: `Order ${paidOrder.order_number} confirmed — ${SITE_BRAND}`,
++        description: "Your payment was recorded. Thank you for shopping with Zephyr Lux.",
++        canonicalPath: path,
++      };
++    }
++    if (view.mode === "queryPartial") {
++      const head = queryPartialHeading(view.stripeQuery.redirectStatus);
++      return {
++        title: `${head} — ${SITE_BRAND}`,
++        description: queryPartialSubtitle(view.stripeQuery.redirectStatus),
++        canonicalPath: path,
++      };
++    }
++    return {
++      title: formatPageTitleWithBrand("Order confirmation"),
++      description: "Your Zephyr Lux order confirmation.",
++      canonicalPath: path,
++    };
++  }, [
++    location.pathname,
++    view.mode,
++    view.stripeQuery.redirectStatus,
++    paidOrder?.order_number,
++    paymentIntentForLookup,
++  ]);
++
++  usePageMeta(orderConfirmMeta);
++
++  useEffect(() => {
++    if (!paymentIntentForLookup) return;
++    let cancelled = false;
++    setPaidOrderLoading(true);
++    setPaidOrder(null);
++    const q = encodeURIComponent(paymentIntentForLookup);
++    let lookup: string | null = null;
++    try {
++      lookup = sessionStorage.getItem(`zlx_pilu_${paymentIntentForLookup}`);
++    } catch {
++      lookup = null;
++    }
++    if (!lookup) {
++      setPaidOrderLoading(false);
++      return;
++    }
++    const lq = encodeURIComponent(lookup);
++    fetch(
++      `/api/order-by-payment-intent?payment_intent_id=${q}&order_lookup=${lq}`,
++    )
++      .then(async (r) => {
++        if (!r.ok) return null;
++        return r.json() as Promise<PaidOrderApiResponse>;
++      })
++      .then((data) => {
++        if (cancelled) return;
++        if (data?.order_number) setPaidOrder(data);
++      })
++      .finally(() => {
++        if (!cancelled) setPaidOrderLoading(false);
++      });
++    return () => {
++      cancelled = true;
++    };
++  }, [paymentIntentForLookup]);
++
++  useEffect(() => {
++    const orderNumRaw = paidOrder?.order_number;
++    if (!orderNumRaw) return;
++    const orderNum = orderNumRaw.trim();
++    if (!orderNum) return;
++
++    if (!consumePurchaseAnalyticsSlot(orderNum)) return;
+ 
++    dispatchAnalyticsEvent({
++      name: ANALYTICS_EVENTS.purchase,
++      payload: { order_number: orderNum },
++    });
++  }, [paidOrder?.order_number]);
++
++  if (view.mode === "fallback") {
+     return (
+-        <div>
+-            <h1>Order Confirmed!</h1>
+-            {orderId && <p>Order ID: {orderId}</p>} {/* Conditionally render */}
+-            {total && <p>Total: ${total.toFixed(2)}</p>}
+-            {items && (
+-                <div>
+-                    <h2>Items</h2>
+-                    <ul>
+-                        {items.map((item: { id: React.Key | null | undefined; name: string | number | boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | null | undefined; quantity: string | number | boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | null | undefined; price: number; }) => (
+-                            <li key={item.id}>
+-                                {item.name} x {item.quantity} - ${item.price.toFixed(2)}
+-                            </li>
+-                        ))}
+-                    </ul>
+-                </div>
+-            )}
+-            {/* ... other confirmation details */}
++      <div className="min-h-screen bg-black text-white px-4 py-16 max-w-2xl mx-auto">
++        <h1 className="text-2xl font-bold mb-4">
++          We couldn’t load your order details on this page
++        </h1>
++        <p className="text-gray-300 mb-4">
++          If you just paid, your payment may still be processing. Please check
++          your email for a receipt or confirmation, or return to your bag to
++          try again.
++        </p>
++        <ul className="list-disc pl-5 text-gray-300 space-y-2 mb-8">
++          <li>Check your email for a confirmation or receipt from Stripe or Zephyr Lux.</li>
++          <li>
++            <Link to="/cart" className="text-amber-300 underline">
++              Return to your bag
++            </Link>{" "}
++            — your items are still saved if you did not complete checkout.
++          </li>
++          <li>
++            <a className="text-amber-300 underline" href={SUPPORT_MAIL}>
++              Email support
++            </a>{" "}
++            if you need help.
++          </li>
++        </ul>
++        <p className="text-sm text-gray-500" role="status">
++          A full order number will appear after your payment is recorded in our
++          system (not shown on this page yet).
++        </p>
++      </div>
++    );
++  }
++
++  if (paidOrder && paymentIntentForLookup) {
++    const displayItems =
++      paidOrder.items?.length ? paidOrder.items : view.items ?? [];
++    const displayTotalDollars = paidOrder.total_cents / 100;
++    const displayEmail = paidOrder.email || view.email;
++    return (
++      <div className="min-h-screen bg-black text-white px-4 py-16 max-w-2xl mx-auto">
++        <h1 className="text-2xl font-bold mb-2">Order confirmed</h1>
++        <p className="text-amber-200 font-medium mb-2" role="status">
++          Order number: {paidOrder.order_number}
++        </p>
++        <p className="text-gray-200 mb-1">
++          <span className="text-gray-400">Payment reference: </span>
++          {paymentIntentForLookup}
++        </p>
++        {displayEmail && (
++          <p className="text-gray-300 mb-4">
++            <span className="text-gray-400">Email: </span>
++            {displayEmail}
++          </p>
++        )}
++        {displayItems.length > 0 && (
++          <div className="mb-6">
++            <h2 className="text-lg font-semibold mb-2">Items</h2>
++            <ul className="border border-gray-700 rounded divide-y divide-gray-800">
++              {displayItems.map((item) => (
++                <li
++                  key={String(item.id ?? item.name)}
++                  className="flex justify-between py-2 px-3 text-sm"
++                >
++                  <span>
++                    {item.name} × {item.quantity}
++                  </span>
++                  <span>${formatLineSubtotalDollars(item)}</span>
++                </li>
++              ))}
++            </ul>
++          </div>
++        )}
++        <p className="text-lg font-semibold mb-6">
++          Total: ${displayTotalDollars.toFixed(2)}
++        </p>
++        <p className="text-gray-300 mb-4" role="status">
++          Your payment is recorded in our system. You’ll receive a confirmation
++          email when fulfillment updates are available.
++        </p>
++        <Link to="/products" className="text-amber-300 underline">
++          Continue shopping
++        </Link>
++      </div>
++    );
++  }
++
++  if (view.mode === "queryPartial") {
++    const sub = queryPartialSubtitle(view.stripeQuery.redirectStatus);
++    const head = queryPartialHeading(view.stripeQuery.redirectStatus);
++    return (
++      <div className="min-h-screen bg-black text-white px-4 py-16 max-w-2xl mx-auto">
++        <h1 className="text-2xl font-bold mb-2">{head}</h1>
++        {view.paymentRef && (
++          <p className="text-gray-200 mb-4">
++            <span className="text-gray-400">Payment reference: </span>
++            {view.paymentRef}
++          </p>
++        )}
++        {view.stripeQuery.redirectStatus && (
++          <p className="text-sm text-gray-500 mb-4">
++            Status: {view.stripeQuery.redirectStatus}
++          </p>
++        )}
++        {paidOrderLoading && (
++          <p className="text-sm text-gray-400 mb-4" role="status">
++            Checking your order in our system…
++          </p>
++        )}
++        <p className="text-gray-300 mb-6">{sub}</p>
++        <p className="text-sm text-gray-500 mb-8" role="status">
++          Your order is confirmed in our system only after we receive a successful
++          payment notification — you’ll get email confirmation when that happens.
++        </p>
++        <div className="flex flex-col sm:flex-row gap-4">
++          <Link
++            to="/cart"
++            className="inline-block text-center border border-gray-500 rounded px-4 py-2 hover:bg-gray-800"
++          >
++            Back to bag
++          </Link>
++          <a
++            className="inline-block text-center border border-amber-700 text-amber-200 rounded px-4 py-2"
++            href={SUPPORT_MAIL}
++          >
++            Email support
++          </a>
+         </div>
++      </div>
+     );
++  }
++
++  // full
++  return (
++    <div className="min-h-screen bg-black text-white px-4 py-16 max-w-2xl mx-auto">
++      <h1 className="text-2xl font-bold mb-2">Order confirmed</h1>
++      {paidOrderLoading && (
++        <p className="text-sm text-gray-400 mb-4" role="status">
++          Loading order details…
++        </p>
++      )}
++      {view.paymentRef && (
++        <p className="text-gray-200 mb-1">
++          <span className="text-gray-400">Payment reference: </span>
++          {view.paymentRef}
++        </p>
++      )}
++      {view.email && (
++        <p className="text-gray-300 mb-4">
++          <span className="text-gray-400">Email: </span>
++          {view.email}
++        </p>
++      )}
++      {view.items && view.items.length > 0 && (
++        <div className="mb-6">
++          <h2 className="text-lg font-semibold mb-2">Items</h2>
++          <ul className="border border-gray-700 rounded divide-y divide-gray-800">
++            {view.items.map((item) => (
++              <li
++                key={String(item.id ?? item.name)}
++                className="flex justify-between py-2 px-3 text-sm"
++              >
++                <span>
++                  {item.name} × {item.quantity}
++                </span>
++                <span>${formatLineSubtotalDollars(item)}</span>
++              </li>
++            ))}
++          </ul>
++        </div>
++      )}
++      {view.total != null && (
++        <p className="text-lg font-semibold mb-6">
++          Total: ${view.total.toFixed(2)}
++        </p>
++      )}
++      <p className="text-gray-300 mb-4" role="status">
++        You’ll receive a confirmation email when your payment has been fully
++        recorded. If you don’t see it within a few minutes, check spam or contact
++        support.
++      </p>
++      <p className="text-sm text-gray-500 mb-8">
++        If your payment reference starts with <code className="text-gray-400">pi_</code>,
++        we also try to load your store order number from our records once the
++        webhook has run.
++      </p>
++      <Link to="/products" className="text-amber-300 underline">
++        Continue shopping
++      </Link>
++    </div>
++  );
+ };
+ 
+-export default OrderConfirmation;
+\ No newline at end of file
++export default OrderConfirmation;
+diff --git a/src/components/Policies/PoliciesIndex.tsx b/src/components/Policies/PoliciesIndex.tsx
+new file mode 100644
+index 0000000..213af1f
+--- /dev/null
++++ b/src/components/Policies/PoliciesIndex.tsx
+@@ -0,0 +1,47 @@
++import React from "react";
++import { Link } from "react-router-dom";
++import { formatPageTitleWithBrand, usePageMeta } from "../../seo/meta";
++
++const PoliciesIndex: React.FC = () => {
++  usePageMeta({
++    title: formatPageTitleWithBrand("Policies"),
++    description: "Store policies and legal information for Zephyr Lux.",
++    canonicalPath: "/policies",
++  });
++  return (
++    <main className="policy-index min-h-[50vh] bg-neutral-900 text-neutral-100">
++      <div className="prose prose-invert prose-headings:text-neutral-100 prose-a:text-red-400 hover:prose-a:text-red-300 max-w-prose mx-auto px-4 py-10 lg:py-14">
++        {/* Template — replace before production: policy index IA is launch-ready but copy is generic. */}
++        <h1>Policies</h1>
++        <p className="text-neutral-300">
++          Store policies and legal information. Each page uses merchant-neutral placeholder language until your team
++          replaces it.
++        </p>
++        <ul className="list-none pl-0 space-y-2 not-prose">
++          <li>
++            <Link to="/policies/shipping" className="text-red-400 hover:text-red-300">
++              Shipping policy
++            </Link>
++          </li>
++          <li>
++            <Link to="/policies/returns" className="text-red-400 hover:text-red-300">
++              Returns policy
++            </Link>
++          </li>
++          <li>
++            <Link to="/policies/privacy" className="text-red-400 hover:text-red-300">
++              Privacy policy
++            </Link>
++          </li>
++          <li>
++            <Link to="/policies/terms" className="text-red-400 hover:text-red-300">
++              Terms of use
++            </Link>
++          </li>
++        </ul>
++      </div>
++    </main>
++  );
++};
++
++export default PoliciesIndex;
+diff --git a/src/components/Policies/PolicyPrivacyPage.tsx b/src/components/Policies/PolicyPrivacyPage.tsx
+new file mode 100644
+index 0000000..1ad5357
+--- /dev/null
++++ b/src/components/Policies/PolicyPrivacyPage.tsx
+@@ -0,0 +1,41 @@
++import React from "react";
++import { formatPageTitleWithBrand, usePageMeta } from "../../seo/meta";
++import PolicyLayout from "./PolicyLayout";
++
++const PolicyPrivacyPage: React.FC = () => {
++  usePageMeta({
++    title: formatPageTitleWithBrand("Privacy policy"),
++    description: "Privacy policy for Zephyr Lux.",
++    canonicalPath: "/policies/privacy",
++  });
++  return (
++    <PolicyLayout title="Privacy">
++      <p>
++        This is a high-level, merchant-neutral summary. It is not legal advice and does not describe a specific
++        company&apos;s data practices until you replace it with counsel-approved text.
++      </p>
++      <h2>Information we may collect</h2>
++      <p>
++        When you place an order or contact us, we may collect details needed to fulfill the request—such as name,
++        email, shipping address, payment reference (handled by your payment provider), and messages you send.
++      </p>
++      <h2>How we use it</h2>
++      <p>
++        We use this information to process orders, communicate about the transaction, and improve the service. We do
++        not sell personal information as a product; describe any advertising, analytics, or subprocessors you actually
++        use.
++      </p>
++      <h2>Cookies and similar tech</h2>
++      <p>
++        The site may use cookies or local storage for essential functions (for example, cart or session). Document
++        optional analytics cookies if you enable them.
++      </p>
++      <h2>Your choices</h2>
++      <p>
++        List the rights available in your jurisdiction (access, deletion, opt-out) and how customers can exercise them.
++      </p>
++    </PolicyLayout>
++  );
++};
++
++export default PolicyPrivacyPage;
+diff --git a/src/components/Policies/PolicyReturnsPage.tsx b/src/components/Policies/PolicyReturnsPage.tsx
+new file mode 100644
+index 0000000..5cbc404
+--- /dev/null
++++ b/src/components/Policies/PolicyReturnsPage.tsx
+@@ -0,0 +1,39 @@
++import React from "react";
++import { Link } from "react-router-dom";
++import { formatPageTitleWithBrand, usePageMeta } from "../../seo/meta";
++import PolicyLayout from "./PolicyLayout";
++
++const PolicyReturnsPage: React.FC = () => {
++  usePageMeta({
++    title: formatPageTitleWithBrand("Returns policy"),
++    description: "Returns and exchanges policy for Zephyr Lux.",
++    canonicalPath: "/policies/returns",
++  });
++  return (
++    <PolicyLayout title="Returns">
++      <p>
++        Replace eligibility windows, conditions, refund methods, and restocking rules with your actual return program
++        before launch.
++      </p>
++      <h2>General</h2>
++      <p>
++        If an item does not meet your expectations, you may be able to return it in unused condition with original
++        packaging where applicable. Final sale or hygiene-sensitive items may be excluded—list those categories
++        explicitly.
++      </p>
++      <h2>How to start a return</h2>
++      <p>
++        Contact us using the information on the{" "}
++        <Link to="/contact">contact page</Link>. Include your order number and the items you wish to return. We will
++        confirm next steps.
++      </p>
++      <h2>Refunds</h2>
++      <p>
++        Approved refunds are typically issued to the original payment method after the return is received and inspected.
++        Timing depends on your payment processor and bank.
++      </p>
++    </PolicyLayout>
++  );
++};
++
++export default PolicyReturnsPage;
+diff --git a/src/components/Policies/PolicyShippingPage.tsx b/src/components/Policies/PolicyShippingPage.tsx
+new file mode 100644
+index 0000000..f173be4
+--- /dev/null
++++ b/src/components/Policies/PolicyShippingPage.tsx
+@@ -0,0 +1,36 @@
++import React from "react";
++import { formatPageTitleWithBrand, usePageMeta } from "../../seo/meta";
++import PolicyLayout from "./PolicyLayout";
++
++const PolicyShippingPage: React.FC = () => {
++  usePageMeta({
++    title: formatPageTitleWithBrand("Shipping policy"),
++    description: "Shipping and delivery policy for Zephyr Lux orders.",
++    canonicalPath: "/policies/shipping",
++  });
++  return (
++    <PolicyLayout title="Shipping">
++      <p>
++        This page describes how orders are prepared and delivered in general terms. Replace all timeframes, regions,
++        carriers, and fees with your real operations before production.
++      </p>
++      <h2>Processing</h2>
++      <p>
++        Orders are typically processed within a few business days. Peak periods or inventory checks may add delay.
++        You will receive an email update when the order ships or if something prevents shipment.
++      </p>
++      <h2>Delivery</h2>
++      <p>
++        Standard delivery is via common parcel carriers to the address provided at checkout. Transit time depends on
++        the carrier and destination; tracking is provided when available.
++      </p>
++      <h2>International</h2>
++      <p>
++        If you ship internationally, list countries, duties, taxes, and customs rules here. Until then, state clearly
++        which regions you serve.
++      </p>
++    </PolicyLayout>
++  );
++};
++
++export default PolicyShippingPage;
+diff --git a/src/components/Policies/PolicyTermsPage.tsx b/src/components/Policies/PolicyTermsPage.tsx
+new file mode 100644
+index 0000000..d22301e
+--- /dev/null
++++ b/src/components/Policies/PolicyTermsPage.tsx
+@@ -0,0 +1,36 @@
++import React from "react";
++import { formatPageTitleWithBrand, usePageMeta } from "../../seo/meta";
++import PolicyLayout from "./PolicyLayout";
++
++const PolicyTermsPage: React.FC = () => {
++  usePageMeta({
++    title: formatPageTitleWithBrand("Terms of use"),
++    description: "Terms of use for the Zephyr Lux storefront.",
++    canonicalPath: "/policies/terms",
++  });
++  return (
++    <PolicyLayout title="Terms of use">
++      <p>
++        These terms are generic placeholder language. Replace with jurisdiction-appropriate terms reviewed by legal
++        counsel before relying on them in production.
++      </p>
++      <h2>Use of the site</h2>
++      <p>
++        You agree to use this storefront only for lawful purposes and in line with posted policies. We may update the
++        site, prices, or availability and may limit orders that appear fraudulent or mistaken.
++      </p>
++      <h2>Products and pricing</h2>
++      <p>
++        Descriptions and images are for general reference. Minor variations can occur. Taxes and shipping are
++        calculated at checkout where applicable.
++      </p>
++      <h2>Limitation of liability</h2>
++      <p>
++        To the extent permitted by law, the site and services are provided as-is. Your counsel should tailor this
++        section for your entity and region.
++      </p>
++    </PolicyLayout>
++  );
++};
++
++export default PolicyTermsPage;
+diff --git a/src/components/ProductDetail/ProductDetail.tsx b/src/components/ProductDetail/ProductDetail.tsx
+index ce8c8b0..0a3d7ec 100644
+--- a/src/components/ProductDetail/ProductDetail.tsx
++++ b/src/components/ProductDetail/ProductDetail.tsx
+@@ -1,72 +1,541 @@
+-import { useEffect, useState } from "react";
+-import { useParams } from "react-router-dom";
++import { useEffect, useMemo, useState } from "react";
++import { Link, useLocation, useParams } from "react-router-dom";
++import { ANALYTICS_EVENTS } from "../../analytics/events";
++import { dispatchAnalyticsEvent } from "../../analytics/sink";
++import { getDefaultCatalogAdapter } from "../../catalog/factory";
++import { resolvePdpHeroImageUrl } from "../../catalog/pdpImage";
++import type { CatalogProductDetail } from "../../catalog/types";
+ import { useCart } from "../../context/CartContext";
++import type { ProductVariant } from "../../domain/commerce";
++import { usePageMeta } from "../../seo/meta";
++import {
++  buildProductJsonLd,
++  useProductJsonLd,
++  type ProductSelectionForJsonLd,
++} from "../../seo/productJsonLd";
++import {
++  DEFAULT_META_DESCRIPTION,
++  getPublicSiteBaseUrl,
++  isLikelyUnstableImageUrl,
++  SITE_BRAND,
++  toPublicAbsoluteUrl,
++} from "../../seo/site";
++import ProductImageGallery from "./ProductImageGallery";
++import { pdpCtaState } from "./pdpCta";
++import {
++  colorsForSize,
++  computeOptionLayout,
++  formatOptionLabel,
++  getPurchasableVariants,
++  lowStockMessage,
++  minMaxPriceCentsFromPurchasable,
++  resolveSelection,
++} from "./variantSelection";
++import VariantSelector from "./VariantSelector";
+ 
+-interface Product {
+-	id: number;
+-	slug: string;
+-	name: string;
+-	price?: number;
+-	priceRange?: { min: number; max: number };
+-	fabricType: string;
+-	image: string;
+-	inStock: boolean;
++function variantNameSuffix(v: ProductVariant | null): string {
++  if (!v) {
++    return "";
++  }
++  const parts: string[] = [];
++  if (v.size) {
++    parts.push(String(v.size));
++  }
++  if (v.color) {
++    parts.push(formatOptionLabel(String(v.color)));
++  }
++  return parts.length ? ` — ${parts.join(" / ")}` : "";
++}
++
++function PlainTextBlocks({ text }: { text: string }) {
++  const blocks = text.trim().split(/\n\n+/).filter(Boolean);
++  if (blocks.length === 0) {
++    return null;
++  }
++  return (
++    <div className="prose prose-stone prose-sm max-w-none">
++      {blocks.map((b, i) => (
++        <p key={i} className="whitespace-pre-wrap text-stone-700">
++          {b}
++        </p>
++      ))}
++    </div>
++  );
+ }
+ 
+ const ProductDetail: React.FC = () => {
+-	const { slug } = useParams<{ slug: string }>();
+-	const [product, setProduct] = useState<Product | null>(null);
+-	const [loading, setLoading] = useState<boolean>(true);
+-	const [error, setError] = useState<string | null>(null);
+-	const { addToCart } = useCart();
+-
+-	useEffect(() => {
+-		const load = async () => {
+-			try {
+-				const res = await fetch("/products.json");
+-				const data: Product[] = await res.json();
+-				const found = data.find((p) => p.slug === slug);
+-				if (!found) {
+-					setError("Product not found");
+-				} else {
+-					setProduct(found);
+-				}
+-			} catch (e) {
+-				setError("Failed to load product");
+-			} finally {
+-				setLoading(false);
+-			}
+-		};
+-		load();
+-	}, [slug]);
+-
+-	if (loading) return <div style={{ padding: 16 }}>Loading…</div>;
+-	if (error) return <div style={{ padding: 16 }}>{error}</div>;
+-	if (!product) return null;
+-
+-	const price = product.price ?? product.priceRange?.min ?? 0;
+-
+-	return (
+-		<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, padding: 16 }}>
+-			<div>
+-				<img src={product.image} alt={product.name} style={{ width: "100%", height: "auto" }} />
+-			</div>
+-			<div>
+-				<h1 style={{ marginBottom: 8 }}>{product.name}</h1>
+-				<p style={{ color: "#666", marginBottom: 8 }}>{product.fabricType}</p>
+-				<p style={{ fontWeight: 600, marginBottom: 16 }}>${price.toFixed(2)}</p>
+-				<button
+-					disabled={!product.inStock}
+-					onClick={() => addToCart({ id: product.id, name: product.name, quantity: 1, price, image: product.image })}
+-					className="product-item-button"
+-				>
+-					{product.inStock ? "Add to Cart" : "Out of Stock"}
+-				</button>
+-			</div>
+-		</div>
+-	);
+-};
++  const { slug } = useParams<{ slug: string }>();
++  const location = useLocation();
++  /** React Router provides `key` at runtime; typings omit it in some versions. */
++  const locationNavKey =
++    typeof (location as { key?: string }).key === "string"
++      ? (location as { key: string }).key
++      : "";
++  const [row, setRow] = useState<CatalogProductDetail | null>(null);
++  const [loading, setLoading] = useState<boolean>(true);
++  const [error, setError] = useState<string | null>(null);
++  const { addToCart } = useCart();
++  const [selSize, setSelSize] = useState<string | null>(null);
++  const [selColor, setSelColor] = useState<string | null>(null);
+ 
+-export default ProductDetail;
++  useEffect(() => {
++    const load = async () => {
++      if (!slug) {
++        setError("Product not found");
++        setLoading(false);
++        return;
++      }
++      try {
++        const adapter = getDefaultCatalogAdapter();
++        const found = await adapter.getProductBySlug(slug);
++        if (!found) {
++          setError("Product not found");
++        } else {
++          setRow(found);
++        }
++      } catch {
++        setError("Failed to load product");
++      } finally {
++        setLoading(false);
++      }
++    };
++    void load();
++  }, [slug]);
++
++  useEffect(() => {
++    if (!slug || !row?.product) return;
++    const storageKey = `analytics_product_view:${slug}:${locationNavKey}`;
++    try {
++      if (sessionStorage.getItem(storageKey)) return;
++      sessionStorage.setItem(storageKey, "1");
++    } catch {
++      /* ignore */
++    }
++    const productId = row.product.id;
++    dispatchAnalyticsEvent({
++      name: ANALYTICS_EVENTS.product_view,
++      payload: {
++        slug,
++        ...(productId ? { product_id: productId } : {}),
++      },
++    });
++  }, [slug, row, locationNavKey]);
++
++  const product = row?.product;
++
++  const catalogGallery = useMemo(() => {
++    if (!row) {
++      return {
++        galleryImages: [] as string[],
++        displayGalleryUrls: [] as string[],
++        variantPrimaryImageBySku: {} as Partial<Record<string, string>>,
++      };
++    }
++    return {
++      galleryImages: row.galleryImages,
++      displayGalleryUrls: row.displayGalleryUrls,
++      variantPrimaryImageBySku: row.variantPrimaryImageBySku,
++    };
++  }, [row]);
++
++  const purchasable = useMemo(
++    () => (product ? getPurchasableVariants(product.variants) : []),
++    [product]
++  );
++  const layout = useMemo(
++    () => computeOptionLayout(purchasable),
++    [purchasable]
++  );
++
++  const purchasableSkuKey = useMemo(
++    () => purchasable.map((v) => v.sku).sort().join(","),
++    [purchasable]
++  );
++
++  useEffect(() => {
++    if (!product) {
++      return;
++    }
++    if (layout.autoSelectSingle && purchasable.length === 1) {
++      const v = purchasable[0];
++      setSelSize(v.size != null ? String(v.size) : null);
++      setSelColor(v.color != null ? String(v.color) : null);
++    } else {
++      setSelSize(null);
++      setSelColor(null);
++    }
++  }, [product, layout.autoSelectSingle, purchasableSkuKey, purchasable]);
++
++  useEffect(() => {
++    if (!layout.showSize || !layout.showColor) {
++      return;
++    }
++    if (!selSize) {
++      return;
++    }
++    const valid = colorsForSize(purchasable, selSize);
++    if (selColor && !valid.includes(selColor)) {
++      setSelColor(null);
++    }
++  }, [selSize, purchasable, layout.showSize, layout.showColor, selColor]);
++
++  const selectionRes = useMemo(
++    () =>
++      product
++        ? resolveSelection(
++            product.variants,
++            purchasable,
++            layout,
++            { size: selSize, color: selColor }
++          )
++        : { kind: "incomplete" as const },
++    [product, purchasable, layout, selSize, selColor]
++  );
++
++  const selectedVariant: ProductVariant | null =
++    selectionRes.kind === "purchasable" ? selectionRes.variant : null;
++
++  const gallerySelectionKey = `${selectedVariant?.sku ?? "none"}|${selSize ?? ""}|${selColor ?? ""}`;
++
++  const { min: pMin, max: pMax } = useMemo(
++    () => (product ? minMaxPriceCentsFromPurchasable(purchasable) : { min: 0, max: 0 }),
++    [product, purchasable]
++  );
++
++  const cta = product
++    ? pdpCtaState(purchasable, layout, product.variants, selSize, selColor)
++    : {
++        disabled: true,
++        text: "Add to cart",
++        hint: "",
++      };
++
++  const resolvedHeroUrl = useMemo(() => {
++    if (!product) {
++      return "";
++    }
++    return resolvePdpHeroImageUrl({
++      selectedVariant,
++      productLevelGallery: catalogGallery.galleryImages,
++      displayGalleryUrls: catalogGallery.displayGalleryUrls,
++      variantPrimaryImageBySku: catalogGallery.variantPrimaryImageBySku,
++      fallbackVariant: purchasable[0] ?? null,
++    });
++  }, [
++    product,
++    selectedVariant,
++    catalogGallery.galleryImages,
++    catalogGallery.displayGalleryUrls,
++    catalogGallery.variantPrimaryImageBySku,
++    purchasable,
++  ]);
++
++  const originBase =
++    getPublicSiteBaseUrl()
++    || (typeof globalThis !== "undefined" &&
++      "location" in globalThis &&
++      globalThis.location
++      ? globalThis.location.origin
++      : "http://localhost:5173");
+ 
++  const selectionForJsonLd: ProductSelectionForJsonLd = useMemo(() => {
++    if (selectionRes.kind === "purchasable" || selectionRes.kind === "not_purchasable") {
++      return selectionRes;
++    }
++    if (selectionRes.kind === "incomplete") {
++      return { kind: "incomplete" };
++    }
++    return { kind: "unavailable" };
++  }, [selectionRes]);
+ 
++  const pageMeta = useMemo(() => {
++    const path = slug ? `/product/${slug}` : "/product";
++    const origin = originBase.replace(/\/$/, "");
++    if (loading) {
++      return {
++        title: `${SITE_BRAND} — Loading`,
++        description: DEFAULT_META_DESCRIPTION,
++        canonicalPath: path,
++        ogType: "website",
++        ogTitle: SITE_BRAND,
++        ogDescription: DEFAULT_META_DESCRIPTION,
++        ogUrl: `${origin}${path}`,
++      };
++    }
++    if (error) {
++      const notFound = /not found/i.test(error);
++      return {
++        title: notFound ? `Not found — ${SITE_BRAND}` : `Error — ${SITE_BRAND}`,
++        description: notFound
++          ? "This product could not be found."
++          : "Something went wrong loading this product.",
++        canonicalPath: path,
++        ogType: "website",
++        ogTitle: notFound ? `Not found — ${SITE_BRAND}` : SITE_BRAND,
++        ogDescription: notFound
++          ? "This product could not be found."
++          : DEFAULT_META_DESCRIPTION,
++        ogUrl: `${origin}${path}`,
++        ogImage: null as string | null,
++      };
++    }
++    if (!row || !product) {
++      return {
++        title: SITE_BRAND,
++        description: DEFAULT_META_DESCRIPTION,
++        canonicalPath: path,
++        ogType: "website",
++      };
++    }
++    let ogImage: string | null = null;
++    if (resolvedHeroUrl) {
++      if (resolvedHeroUrl.includes("://")) {
++        ogImage = isLikelyUnstableImageUrl(resolvedHeroUrl) ? null : resolvedHeroUrl;
++      } else {
++        ogImage = toPublicAbsoluteUrl(resolvedHeroUrl, origin);
++      }
++    }
++    const desc =
++      product.description?.trim()
++      || product.fabric_type?.trim()
++      || DEFAULT_META_DESCRIPTION;
++    return {
++      title: `${product.title} — ${SITE_BRAND}`,
++      description: desc,
++      canonicalPath: path,
++      ogType: "product",
++      ogTitle: `${product.title} — ${SITE_BRAND}`,
++      ogDescription: desc,
++      ogUrl: `${origin}${path}`,
++      ogImage,
++    };
++  }, [
++    loading,
++    error,
++    slug,
++    row,
++    product,
++    resolvedHeroUrl,
++    originBase,
++  ]);
++
++  usePageMeta(pageMeta);
++
++  const siteForLd = originBase.replace(/\/$/, "");
++
++  const productJsonLdPayload = useMemo(() => {
++    if (loading || error || !row?.product || !slug) {
++      return null;
++    }
++    return buildProductJsonLd({
++      product: row.product,
++      slug,
++      siteBaseUrl: siteForLd,
++      purchasable,
++      selection: selectionForJsonLd,
++      minPurchasableCents: pMin,
++      maxPurchasableCents: pMax,
++    });
++  }, [
++    loading,
++    error,
++    row?.product,
++    slug,
++    purchasable,
++    selectionForJsonLd,
++    pMin,
++    pMax,
++    siteForLd,
++  ]);
++
++  useProductJsonLd(productJsonLdPayload);
++
++  if (loading) {
++    return (
++      <div role="status" aria-live="polite" style={{ padding: 16 }}>
++        Loading…
++      </div>
++    );
++  }
++  if (error) {
++    const isNotFound = /not found/i.test(error);
++    return (
++      <div
++        data-testid={
++          isNotFound ? "product-detail-not-found" : "product-detail-load-error"
++        }
++        role="alert"
++        style={{ padding: 16 }}
++      >
++        <h1>{isNotFound ? "Product not found" : "Something went wrong"}</h1>
++        <p>{error}</p>
++        <Link to="/products">Back to products</Link>
++      </div>
++    );
++  }
++  if (!row || !product) {
++    return null;
++  }
++
++  const { storefrontProductId } = row;
++  const showPriceRange = selectionRes.kind === "incomplete" && pMin !== pMax;
++  const showSelectCopy = selectionRes.kind === "incomplete" && pMin === pMax;
++
++  const addHandler = () => {
++    if (cta.disabled || !selectedVariant) {
++      return;
++    }
++    const price = selectedVariant.price_cents / 100;
++    const img = resolvePdpHeroImageUrl({
++      selectedVariant,
++      productLevelGallery: catalogGallery.galleryImages,
++      displayGalleryUrls: catalogGallery.displayGalleryUrls,
++      variantPrimaryImageBySku: catalogGallery.variantPrimaryImageBySku,
++      fallbackVariant: purchasable[0] ?? null,
++    });
++    addToCart({
++      id: storefrontProductId,
++      name: `${product.title}${variantNameSuffix(selectedVariant)}`,
++      quantity: 1,
++      price,
++      image: img,
++      sku: selectedVariant.sku,
++      variant_id: selectedVariant.id,
++      product_slug: product.slug,
++    });
++  };
++
++  return (
++    <div
++      data-testid="pdp"
++      className="grid grid-cols-1 gap-6 p-4 lg:grid-cols-2 lg:gap-10 lg:p-8 max-w-6xl mx-auto"
++    >
++      <div>
++        <ProductImageGallery
++          urls={catalogGallery.displayGalleryUrls}
++          resolvedHeroUrl={resolvedHeroUrl}
++          alt={product.title}
++          selectionKey={gallerySelectionKey}
++        />
++      </div>
++      <div className="flex flex-col min-w-0">
++        <h1 className="text-2xl font-semibold tracking-tight text-stone-900 mb-2">
++          {product.title}
++        </h1>
++        {selectedVariant && (
++          <p data-testid="pdp-selected-price" className="font-semibold text-lg mb-2">
++            ${(selectedVariant.price_cents / 100).toFixed(2)}
++          </p>
++        )}
++        {showPriceRange && (
++          <p data-testid="pdp-price-range" className="font-semibold text-lg mb-2">
++            ${(pMin / 100).toFixed(2)}&nbsp;–&nbsp;${(pMax / 100).toFixed(2)}
++          </p>
++        )}
++        {showSelectCopy && purchasable.length > 0 && (
++          <p
++            data-testid="pdp-price-select"
++            className="text-stone-600 text-sm mb-2"
++          >
++            ${(pMin / 100).toFixed(2)} — select options to confirm price.
++          </p>
++        )}
++
++        {selectedVariant && (
++          <p data-testid="pdp-stock-message" className="text-stone-800 text-sm mb-3">
++            {selectedVariant.inventory_quantity === 0
++              ? "Out of stock for this color and size."
++              : lowStockMessage(selectedVariant) ?? "In stock."}
++          </p>
++        )}
++        {purchasable.length === 0 && (
++          <p data-testid="pdp-oos" className="text-stone-800 text-sm mb-3">
++            Unavailable. No purchasable variants.
++          </p>
++        )}
++
++        <VariantSelector
++          purchasable={purchasable}
++          layout={layout}
++          selectedSize={selSize}
++          selectedColor={selColor}
++          onSizeChange={setSelSize}
++          onColorChange={setSelColor}
++        />
++
++        {product.fabric_type ? (
++          <p className="text-stone-600 text-sm mt-3 mb-4">{product.fabric_type}</p>
++        ) : (
++          <div className="mb-4" />
++        )}
++
++        <div className="flex flex-col gap-2 mb-8">
++          <button
++            type="button"
++            data-testid="pdp-add-to-cart"
++            disabled={cta.disabled}
++            onClick={addHandler}
++            className="product-item-button"
++            aria-describedby="pdp-add-hint"
++            aria-label={
++              cta.disabled
++                ? `Add to cart. ${cta.hint} Currently disabled.`
++                : "Add to cart"
++            }
++          >
++            {cta.text}
++          </button>
++          <p id="pdp-add-hint" className="sr-only">
++            {cta.hint}
++          </p>
++        </div>
++
++        <section
++          className="border-t border-stone-200 pt-6 text-sm text-stone-600 space-y-2"
++          aria-labelledby="pdp-trust-heading"
++        >
++          <h2 id="pdp-trust-heading" className="text-base font-medium text-stone-900">
++            Shipping &amp; returns
++          </h2>
++          <p>
++            Standard processing is typically 1–2 business days. Read our{" "}
++            <Link to="/policies/shipping" className="underline text-stone-900 font-medium">
++              shipping policy
++            </Link>{" "}
++            and{" "}
++            <Link to="/policies/returns" className="underline text-stone-900 font-medium">
++              returns policy
++            </Link>
++            .
++          </p>
++        </section>
++
++        {product.description ? (
++          <section className="mt-8" aria-labelledby="pdp-desc-heading">
++            <h2
++              id="pdp-desc-heading"
++              className="text-base font-medium text-stone-900 mb-3"
++            >
++              Details
++            </h2>
++            <PlainTextBlocks text={product.description} />
++          </section>
++        ) : null}
++
++        {product.care_instructions ? (
++          <section className="mt-8" aria-labelledby="pdp-care-heading">
++            <h2
++              id="pdp-care-heading"
++              className="text-base font-medium text-stone-900 mb-3"
++            >
++              Care
++            </h2>
++            <PlainTextBlocks text={product.care_instructions} />
++          </section>
++        ) : null}
++      </div>
++    </div>
++  );
++};
++
++export default ProductDetail;
+diff --git a/src/components/ProductList/ProductList.tsx b/src/components/ProductList/ProductList.tsx
+index 22b8ac0..b588744 100644
+--- a/src/components/ProductList/ProductList.tsx
++++ b/src/components/ProductList/ProductList.tsx
+@@ -1,77 +1,72 @@
+ import { useEffect, useState } from "react";
+ import { Link } from "react-router-dom";
+-import { useCart } from "../../context/CartContext";
++import { getDefaultCatalogAdapter } from "../../catalog/factory";
++import type { CatalogListItem } from "../../catalog/types";
++import { usePageMeta, formatPageTitleWithBrand } from "../../seo/meta";
++import CatalogProductGrid from "../CatalogProductGrid/CatalogProductGrid";
+ import "./ProductList.css";
+-interface Product{
+-  id: number;
+-  slug: string;
+-  name: string;
+-  price?: number;
+-  priceRange?: { min: number; max: number };
+-  fabricType: string;
+-  image: string;
+-  inStock: boolean;
+-}
+ 
+ const ProductList: React.FC = () => {
+-  const [products, setProducts] = useState<Product[]>([]);
+-  const { addToCart } = useCart();
++  const [products, setProducts] = useState<CatalogListItem[]>([]);
++  const [loading, setLoading] = useState(true);
++  const [loadError, setLoadError] = useState<string | null>(null);
+ 
++  usePageMeta({
++    title: formatPageTitleWithBrand("All products"),
++    description: "Browse the full Zephyr Lux catalog.",
++    canonicalPath: "/products",
++  });
+ 
+   useEffect(() => {
+-    const fetchProducts = async () => {
++    const run = async () => {
+       try {
+-        // Try full catalog under /assets first; fallback to single-sample /products.json
+-        let data: Product[] = [] as Product[];
+-        try {
+-          const resAssets = await fetch('/assets/products.json');
+-          if (resAssets.ok) {
+-            data = await resAssets.json();
+-          }
+-        } catch {}
+-        if (!data?.length) {
+-          const response = await fetch('/products.json');
+-          data = await response.json();
+-        }
+-        setProducts(data);
++        setLoadError(null);
++        const adapter = getDefaultCatalogAdapter();
++        const list = await adapter.listProducts();
++        setProducts(list);
+       } catch (error) {
+-        console.error('Error fetching products: ', error);
++        console.error("Error loading products from catalog: ", error);
++        setLoadError("Could not load products. Please try again later.");
++      } finally {
++        setLoading(false);
+       }
+     };
+-    fetchProducts();
++    void run();
+   }, []);
+ 
++  if (loading && !loadError) {
++    return (
++      <div className="product-list">
++        <h1>Product List</h1>
++        <div style={{ padding: 16 }}>Loading…</div>
++      </div>
++    );
++  }
++
+   return (
+     <div className="product-list">
+       <h1>Product List</h1>
+-      <div style={{ display: 'grid', gap: '20px', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
+-        {products.map((product) => (
+-          <div key={product.id} className="product-item">
+-            <Link to={`/product/${product.slug}`}>
+-              <img src={product.image} alt={product.name} style={{ width: '100%', height: 'auto' }} />
+-            </Link>
+-            <h3>
+-              <Link to={`/product/${product.slug}`}>{product.name}</Link>
+-            </h3>
+-            <p>{product.fabricType}</p>
+-            <p>
+-              {product.price !== undefined
+-                ? <>Price: ${product.price.toFixed(2)}</>
+-                : <>Price: ${product.priceRange?.min} - ${product.priceRange?.max}</>
+-              }
+-            </p>
+-            <button
+-              disabled={!product.inStock}
+-              className="product-item-button"
+-              onClick={() =>
+-              addToCart({ id: product.id, name: product.name, quantity: 1 ,price: (product.price ?? product.priceRange?.min ?? 0), image: product.image })
+-              }
+-            >
+-              {product.inStock ? 'Add to Cart' : 'Out of Stock'}
+-            </button>
+-          </div>
+-        ))}
+-      </div>
++      {loadError && (
++        <p style={{ color: "#b00020", marginBottom: 16 }} role="alert">
++          {loadError}
++        </p>
++      )}
++      {!loadError && products.length === 0 && (
++        <div style={{ padding: "24px 0", maxWidth: 420 }}>
++          <p style={{ marginBottom: 16, color: "#333" }}>
++            There are no products available right now.
++          </p>
++          <Link
++            to="/"
++            style={{ color: "#1a1a1a", textDecoration: "underline" }}
++          >
++            Return home
++          </Link>
++        </div>
++      )}
++      {!loadError && products.length > 0 && (
++        <CatalogProductGrid products={products} />
++      )}
+     </div>
+   );
+ };
+diff --git a/src/vite-env.d.ts b/src/vite-env.d.ts
+index 11f02fe..0019838 100644
+--- a/src/vite-env.d.ts
++++ b/src/vite-env.d.ts
+@@ -1 +1,19 @@
+ /// <reference types="vite/client" />
++
++interface ImportMetaEnv {
++  readonly VITE_PUBLIC_SITE_URL?: string;
++  readonly VITE_STRIPE_PUBLIC_KEY?: string;
++  readonly VITE_USE_MOCK_STRIPE?: string;
++  readonly VITE_API_URL?: string;
++  readonly VITE_CATALOG_BACKEND?: string;
++  readonly VITE_SUPABASE_URL?: string;
++  readonly VITE_SUPABASE_ANON_KEY?: string;
++  /** Plausible domain as configured in Plausible (e.g. zephyrlux.com); loads `window.plausible`. */
++  readonly VITE_ANALYTICS_PLAUSIBLE_DOMAIN?: string;
++  /** GA4 measurement ID (G-XXXXXXXX); forward via `gtag` when present on `window`. */
++  readonly VITE_ANALYTICS_GA_MEASUREMENT_ID?: string;
++}
++
++interface ImportMeta {
++  readonly env: ImportMetaEnv;
++}
+diff --git a/src/seo/site.ts b/src/seo/site.ts
+new file mode 100644
+index 0000000..511f78f
+--- /dev/null
++++ b/src/seo/site.ts
+@@ -0,0 +1,56 @@
++/** Storefront branding and public URL helpers (story 6-5). */
++
++export const SITE_BRAND = "Zephyr Lux";
++
++export const DEFAULT_META_DESCRIPTION =
++  "Zephyr Lux: soft bamboo essentials for everyday comfort.";
++
++/** Default OG image path (served from site origin). */
++export const DEFAULT_OG_IMAGE_PATH = "/assets/img/Lifestyle.jpeg";
++
++/**
++ * Canonical public origin for absolute URLs (Open Graph, JSON-LD).
++ * Prefer `VITE_PUBLIC_SITE_URL` in deployed env; falls back to `window.location.origin` in the browser.
++ */
++export function getPublicSiteBaseUrl(): string {
++  const raw = import.meta.env.VITE_PUBLIC_SITE_URL?.trim();
++  if (raw) {
++    return raw.replace(/\/$/, "");
++  }
++  if (typeof window !== "undefined" && window.location?.origin) {
++    return window.location.origin;
++  }
++  return "";
++}
++
++export function absoluteStorefrontUrl(pathname: string): string {
++  const base = getPublicSiteBaseUrl();
++  const path = pathname.startsWith("/") ? pathname : `/${pathname}`;
++  if (!base) {
++    return path;
++  }
++  return `${base}${path}`;
++}
++
++/** Signed / tokenized storage URLs are a poor fit for `og:image`; crawlers often cannot refetch them. */
++export function isLikelyUnstableImageUrl(url: string): boolean {
++  const u = url.toLowerCase();
++  return u.includes("/object/sign/") || u.includes("token=");
++}
++
++export function toPublicAbsoluteUrl(
++  href: string | null | undefined,
++  siteBase: string
++): string | null {
++  if (!href) {
++    return null;
++  }
++  if (isLikelyUnstableImageUrl(href)) {
++    return null;
++  }
++  try {
++    return new URL(href, siteBase).href;
++  } catch {
++    return null;
++  }
++}
+diff --git a/src/seo/meta.ts b/src/seo/meta.ts
+new file mode 100644
+index 0000000..41f3716
+--- /dev/null
++++ b/src/seo/meta.ts
+@@ -0,0 +1,131 @@
++import { useEffect, useId } from "react";
++import {
++  absoluteStorefrontUrl,
++  DEFAULT_META_DESCRIPTION,
++  DEFAULT_OG_IMAGE_PATH,
++  getPublicSiteBaseUrl,
++  SITE_BRAND,
++  toPublicAbsoluteUrl,
++} from "./site";
++
++const OWNER_ATTR = "data-zephyr-seo-owner";
++
++function escapeAttrValue(value: string): string {
++  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
++}
++
++function upsertMeta(
++  owner: string,
++  attr: "name" | "property",
++  key: string,
++  content: string
++): void {
++  const sel = `meta[${attr}="${escapeAttrValue(key)}"]`;
++  let el = document.head.querySelector(sel) as HTMLMetaElement | null;
++  if (!el) {
++    el = document.createElement("meta");
++    el.setAttribute(attr, key);
++    document.head.appendChild(el);
++  }
++  el.setAttribute(OWNER_ATTR, owner);
++  el.setAttribute("content", content);
++}
++
++function removeOwnerNodes(owner: string): void {
++  document.head
++    .querySelectorAll(`[${OWNER_ATTR}="${escapeAttrValue(owner)}"]`)
++    .forEach((n) => n.remove());
++}
++
++export type PageMetaConfig = {
++  title: string;
++  description?: string;
++  /** Path only, e.g. `/products` — used for `og:url` if `ogUrl` omitted. */
++  canonicalPath?: string;
++  ogTitle?: string;
++  ogDescription?: string;
++  ogType?: string;
++  /** Absolute URL, or site-relative path resolved against public base. Null/undefined skips `og:image`. */
++  ogImage?: string | null;
++  /** Full URL preferred; if omitted, derived from `canonicalPath` and site base. */
++  ogUrl?: string;
++  twitterCard?: "summary" | "summary_large_image";
++};
++
++/**
++ * Upserts document title and meta tags; removes managed nodes on unmount (StrictMode-safe).
++ */
++export function usePageMeta(config: PageMetaConfig): void {
++  const owner = useId().replace(/:/g, "");
++
++  useEffect(() => {
++    document.title = config.title;
++
++    const base = getPublicSiteBaseUrl();
++    const desc = config.description ?? DEFAULT_META_DESCRIPTION;
++    upsertMeta(owner, "name", "description", desc);
++
++    const ogTitle = config.ogTitle ?? config.title;
++    const ogDesc = config.ogDescription ?? desc;
++    upsertMeta(owner, "property", "og:title", ogTitle);
++    upsertMeta(owner, "property", "og:description", ogDesc);
++    upsertMeta(owner, "property", "og:type", config.ogType ?? "website");
++
++    const ogUrl =
++      config.ogUrl
++      ?? (config.canonicalPath != null
++        ? absoluteStorefrontUrl(config.canonicalPath)
++        : absoluteStorefrontUrl("/"));
++    upsertMeta(owner, "property", "og:url", ogUrl);
++
++    const twitterCard = config.twitterCard ?? "summary_large_image";
++    upsertMeta(owner, "name", "twitter:card", twitterCard);
++    upsertMeta(owner, "name", "twitter:title", ogTitle);
++    upsertMeta(owner, "name", "twitter:description", ogDesc);
++
++    let ogImageAbs: string | null = null;
++    if (config.ogImage === undefined) {
++      ogImageAbs =
++        base
++          ? toPublicAbsoluteUrl(DEFAULT_OG_IMAGE_PATH, base)
++          : toPublicAbsoluteUrl(DEFAULT_OG_IMAGE_PATH, "http://localhost:5173");
++    } else if (config.ogImage) {
++      ogImageAbs = config.ogImage.includes("://")
++        ? config.ogImage
++        : base
++          ? toPublicAbsoluteUrl(config.ogImage, base)
++          : null;
++    }
++
++    if (ogImageAbs) {
++      upsertMeta(owner, "property", "og:image", ogImageAbs);
++      upsertMeta(owner, "name", "twitter:image", ogImageAbs);
++    } else {
++      document.head
++        .querySelectorAll(
++          `meta[property="og:image"][${OWNER_ATTR}="${escapeAttrValue(owner)}"], meta[name="twitter:image"][${OWNER_ATTR}="${escapeAttrValue(owner)}"]`
++        )
++        .forEach((n) => n.remove());
++    }
++
++    return () => {
++      removeOwnerNodes(owner);
++    };
++  }, [
++    owner,
++    config.title,
++    config.description,
++    config.canonicalPath,
++    config.ogTitle,
++    config.ogDescription,
++    config.ogType,
++    config.ogImage,
++    config.ogUrl,
++    config.twitterCard,
++  ]);
++}
++
++/** @internal exported for tests */
++export function formatPageTitleWithBrand(page: string): string {
++  return `${page} — ${SITE_BRAND}`;
++}
+diff --git a/src/seo/productJsonLd.ts b/src/seo/productJsonLd.ts
+new file mode 100644
+index 0000000..d90873b
+--- /dev/null
++++ b/src/seo/productJsonLd.ts
+@@ -0,0 +1,183 @@
++import { useEffect, useId } from "react";
++import type { Product, ProductVariant } from "../domain/commerce";
++import {
++  isLikelyUnstableImageUrl,
++  toPublicAbsoluteUrl,
++} from "./site";
++
++const JSON_LD_SCRIPT_ID = "zephyr-seo-product-jsonld";
++const OWNER_ATTR = "data-zephyr-seo-owner";
++
++export type ProductSelectionForJsonLd =
++  | { kind: "purchasable"; variant: ProductVariant }
++  | { kind: "not_purchasable"; variant: ProductVariant }
++  | { kind: "incomplete" }
++  | { kind: "unavailable" };
++
++function moneyFromCents(cents: number): string {
++  return (cents / 100).toFixed(2);
++}
++
++function availabilityForVariant(v: ProductVariant): string {
++  if (v.inventory_quantity <= 0) {
++    return "https://schema.org/OutOfStock";
++  }
++  return "https://schema.org/InStock";
++}
++
++export function collectStableProductImages(
++  product: Product,
++  siteBaseUrl: string
++): string[] {
++  const out: string[] = [];
++  const seen = new Set<string>();
++  for (const v of product.variants) {
++    if (!v.image_url || isLikelyUnstableImageUrl(v.image_url)) {
++      continue;
++    }
++    const abs = toPublicAbsoluteUrl(v.image_url, siteBaseUrl);
++    if (abs && !seen.has(abs)) {
++      seen.add(abs);
++      out.push(abs);
++    }
++  }
++  return out;
++}
++
++export function buildProductJsonLd(args: {
++  product: Product;
++  slug: string;
++  siteBaseUrl: string;
++  purchasable: ProductVariant[];
++  selection: ProductSelectionForJsonLd;
++  minPurchasableCents: number;
++  maxPurchasableCents: number;
++}): Record<string, unknown> {
++  const {
++    product,
++    slug,
++    siteBaseUrl,
++    purchasable,
++    selection,
++    minPurchasableCents,
++    maxPurchasableCents,
++  } = args;
++
++  const base = siteBaseUrl.replace(/\/$/, "");
++  const pageUrl = `${base}/product/${encodeURIComponent(slug)}`;
++
++  const images = collectStableProductImages(product, siteBaseUrl);
++  const textDescription =
++    product.description?.trim()
++    || product.fabric_type?.trim()
++    || product.subtitle?.trim();
++
++  const node: Record<string, unknown> = {
++    "@context": "https://schema.org",
++    "@type": "Product",
++    name: product.title,
++    url: pageUrl,
++  };
++
++  if (textDescription) {
++    node.description = textDescription;
++  }
++  if (images.length > 0) {
++    node.image = images;
++  }
++
++  if (purchasable.length === 0) {
++    const v0 = product.variants[0];
++    const cur = (v0?.currency ?? "USD").toUpperCase();
++    node.offers = {
++      "@type": "Offer",
++      url: pageUrl,
++      priceCurrency: cur,
++      price: v0 ? moneyFromCents(v0.price_cents) : "0.00",
++      availability: "https://schema.org/OutOfStock",
++    };
++    return node;
++  }
++
++  if (selection.kind === "purchasable") {
++    const v = selection.variant;
++    node.sku = v.sku;
++    node.offers = {
++      "@type": "Offer",
++      url: pageUrl,
++      priceCurrency: v.currency.toUpperCase(),
++      price: moneyFromCents(v.price_cents),
++      availability: availabilityForVariant(v),
++    };
++    return node;
++  }
++
++  if (selection.kind === "not_purchasable") {
++    const v = selection.variant;
++    node.sku = v.sku;
++    node.offers = {
++      "@type": "Offer",
++      url: pageUrl,
++      priceCurrency: v.currency.toUpperCase(),
++      price: moneyFromCents(v.price_cents),
++      availability: "https://schema.org/OutOfStock",
++    };
++    return node;
++  }
++
++  const cur = (purchasable[0]?.currency ?? "USD").toUpperCase();
++  if (minPurchasableCents !== maxPurchasableCents) {
++    node.offers = {
++      "@type": "AggregateOffer",
++      url: pageUrl,
++      priceCurrency: cur,
++      lowPrice: moneyFromCents(minPurchasableCents),
++      highPrice: moneyFromCents(maxPurchasableCents),
++      offerCount: purchasable.length,
++      availability: "https://schema.org/InStock",
++    };
++  } else {
++    node.offers = {
++      "@type": "Offer",
++      url: pageUrl,
++      priceCurrency: cur,
++      price: moneyFromCents(minPurchasableCents),
++      availability: "https://schema.org/InStock",
++    };
++  }
++  return node;
++}
++
++/**
++ * Replaces a single JSON-LD script node for the PDP; removes it on unmount or when `payload` is null.
++ */
++export function useProductJsonLd(payload: Record<string, unknown> | null): void {
++  const owner = useId().replace(/:/g, "");
++  const serialized = payload == null ? null : JSON.stringify(payload);
++
++  useEffect(() => {
++    if (serialized == null) {
++      const cur = document.getElementById(JSON_LD_SCRIPT_ID);
++      if (cur?.getAttribute(OWNER_ATTR) === owner) {
++        cur.remove();
++      }
++      return;
++    }
++
++    let el = document.getElementById(JSON_LD_SCRIPT_ID) as HTMLScriptElement | null;
++    if (!el) {
++      el = document.createElement("script");
++      el.id = JSON_LD_SCRIPT_ID;
++      el.type = "application/ld+json";
++      document.head.appendChild(el);
++    }
++    el.setAttribute(OWNER_ATTR, owner);
++    el.textContent = serialized;
++    return () => {
++      const cur = document.getElementById(JSON_LD_SCRIPT_ID);
++      if (cur?.getAttribute(OWNER_ATTR) === owner) {
++        cur.remove();
++      }
++    };
++  }, [owner, serialized]);
++}
+diff --git a/src/seo/productJsonLd.test.ts b/src/seo/productJsonLd.test.ts
+new file mode 100644
+index 0000000..9d05670
+--- /dev/null
++++ b/src/seo/productJsonLd.test.ts
+@@ -0,0 +1,102 @@
++import { describe, expect, it } from "vitest";
++import type { Product, ProductVariant } from "../domain/commerce";
++import { buildProductJsonLd } from "./productJsonLd";
++
++const variant = (
++  o: Partial<ProductVariant> & { sku: string }
++): ProductVariant => ({
++  sku: o.sku,
++  size: o.size,
++  color: o.color,
++  price_cents: o.price_cents ?? 1999,
++  currency: o.currency ?? "USD",
++  inventory_quantity: o.inventory_quantity ?? 3,
++  status: o.status ?? "active",
++  image_url: o.image_url ?? "https://cdn.example.com/p.jpg",
++});
++
++describe("buildProductJsonLd", () => {
++  const siteBase = "https://shop.example.com";
++
++  it("includes Offer with priceCurrency USD when a purchasable variant is selected", () => {
++    const product: Product = {
++      slug: "bamboo-tee",
++      title: "Bamboo Tee",
++      description: "Soft tee.",
++      status: "active",
++      variants: [variant({ sku: "SKU1", price_cents: 1999 })],
++    };
++    const v = product.variants[0]!;
++    const ld = buildProductJsonLd({
++      product,
++      slug: "bamboo-tee",
++      siteBaseUrl: siteBase,
++      purchasable: [v],
++      selection: { kind: "purchasable", variant: v },
++      minPurchasableCents: 1999,
++      maxPurchasableCents: 1999,
++    });
++    expect(ld["@type"]).toBe("Product");
++    expect(ld.name).toBe("Bamboo Tee");
++    expect(ld.description).toBe("Soft tee.");
++    const offers = ld.offers as Record<string, unknown>;
++    expect(offers["@type"]).toBe("Offer");
++    expect(offers.priceCurrency).toBe("USD");
++    expect(offers.price).toBe("19.99");
++    expect(offers.availability).toBe("https://schema.org/InStock");
++    expect(ld.sku).toBe("SKU1");
++    expect(ld.image).toEqual(["https://cdn.example.com/p.jpg"]);
++  });
++
++  it("uses AggregateOffer with low/high prices when selection is incomplete", () => {
++    const product: Product = {
++      slug: "mix",
++      title: "Mix",
++      status: "active",
++      variants: [
++        variant({ sku: "a", price_cents: 1000 }),
++        variant({ sku: "b", price_cents: 2000 }),
++      ],
++    };
++    const purchasable = product.variants;
++    const ld = buildProductJsonLd({
++      product,
++      slug: "mix",
++      siteBaseUrl: siteBase,
++      purchasable,
++      selection: { kind: "incomplete" },
++      minPurchasableCents: 1000,
++      maxPurchasableCents: 2000,
++    });
++    const offers = ld.offers as Record<string, unknown>;
++    expect(offers["@type"]).toBe("AggregateOffer");
++    expect(offers.priceCurrency).toBe("USD");
++    expect(offers.lowPrice).toBe("10.00");
++    expect(offers.highPrice).toBe("20.00");
++  });
++
++  it("marks OutOfStock when no purchasable variants exist", () => {
++    const product: Product = {
++      slug: "gone",
++      title: "Gone",
++      status: "active",
++      variants: [
++        variant({ sku: "x", inventory_quantity: 0, price_cents: 1500 }),
++      ],
++    };
++    const ld = buildProductJsonLd({
++      product,
++      slug: "gone",
++      siteBaseUrl: siteBase,
++      purchasable: [],
++      selection: { kind: "unavailable" },
++      minPurchasableCents: 0,
++      maxPurchasableCents: 0,
++    });
++    const offers = ld.offers as Record<string, unknown>;
++    expect(offers["@type"]).toBe("Offer");
++    expect(offers.availability).toBe("https://schema.org/OutOfStock");
++    expect(offers.priceCurrency).toBe("USD");
++    expect(offers.price).toBe("15.00");
++  });
++});
+diff --git a/src/components/Home/HomePage.tsx b/src/components/Home/HomePage.tsx
+new file mode 100644
+index 0000000..06f23cf
+--- /dev/null
++++ b/src/components/Home/HomePage.tsx
+@@ -0,0 +1,130 @@
++import { useEffect, useMemo, useState } from "react";
++import { Link, useLocation } from "react-router-dom";
++import { productCategoryMatchesCanonical } from "../../catalog/categoryNormalize";
++import { COLLECTION_ROUTES } from "../../catalog/collections";
++import { getDefaultCatalogAdapter } from "../../catalog/factory";
++import type { CatalogListItem } from "../../catalog/types";
++import { usePageMeta } from "../../seo/meta";
++import { SITE_BRAND } from "../../seo/site";
++import Hero from "../Hero/Hero";
++
++export default function HomePage() {
++  const location = useLocation();
++  const [products, setProducts] = useState<CatalogListItem[]>([]);
++  const [loading, setLoading] = useState(true);
++  const [loadError, setLoadError] = useState<string | null>(null);
++
++  useEffect(() => {
++    const run = async () => {
++      try {
++        setLoadError(null);
++        const adapter = getDefaultCatalogAdapter();
++        const list = await adapter.listProducts();
++        setProducts(list);
++      } catch (error) {
++        console.error("HomePage catalog load:", error);
++        setLoadError(
++          "We couldn't load the catalog right now. You can still browse collections below."
++        );
++      } finally {
++        setLoading(false);
++      }
++    };
++    void run();
++  }, []);
++
++  const featuredCollection = useMemo(() => {
++    for (const c of COLLECTION_ROUTES) {
++      if (
++        products.some((row) =>
++          productCategoryMatchesCanonical(row.product.category, c.categoryKey)
++        )
++      ) {
++        return c;
++      }
++    }
++    return COLLECTION_ROUTES[0];
++  }, [products]);
++
++  const heroDescription =
++    loadError
++      ? "Discover thoughtfully crafted comfort. Explore collections below or open the full catalog."
++      : products.length === 0
++        ? "We're preparing our assortment — explore collections below or browse all products when listings go live."
++        : "Discover thoughtfully crafted comfort — elevated basics for everyday confidence.";
++
++  usePageMeta({
++    title: `${SITE_BRAND} — Premium essentials`,
++    description: heroDescription,
++    canonicalPath: location.pathname,
++    ogTitle: `${SITE_BRAND} — Premium essentials`,
++    ogDescription: heroDescription,
++  });
++
++  if (loading && !loadError) {
++    return (
++      <main style={{ padding: 24 }}>
++        <p>Loading…</p>
++      </main>
++    );
++  }
++
++  return (
++    <main>
++      <Hero
++        title={
++          <>
++            Zephyr Lux
++            <br />
++            <span className="text-indigo-400">Premium essentials</span>
++          </>
++        }
++        description={heroDescription}
++        primaryTo="/products"
++        primaryLabel="Shop all products"
++        secondaryTo={featuredCollection.path}
++        secondaryLabel={`Shop ${featuredCollection.navLabel}`}
++      />
++      {loadError && (
++        <p style={{ padding: "0 24px 16px", color: "#b00020" }} role="alert">
++          {loadError}
++        </p>
++      )}
++      <section
++        style={{ padding: "24px 16px 48px", maxWidth: 720, margin: "0 auto" }}
++      >
++        <h2 className="text-xl font-semibold text-gray-900 mb-3">
++          Browse by collection
++        </h2>
++        <ul
++          style={{
++            display: "flex",
++            flexWrap: "wrap",
++            gap: 12,
++            listStyle: "none",
++            padding: 0,
++            margin: 0,
++          }}
++        >
++          {COLLECTION_ROUTES.map((c) => (
++            <li key={c.path}>
++              <Link
++                to={c.path}
++                style={{
++                  display: "inline-block",
++                  padding: "8px 14px",
++                  borderRadius: 6,
++                  border: "1px solid #e5e7eb",
++                  color: "#111",
++                  textDecoration: "none",
++                }}
++              >
++                {c.navLabel}
++              </Link>
++            </li>
++          ))}
++        </ul>
++      </section>
++    </main>
++  );
++}

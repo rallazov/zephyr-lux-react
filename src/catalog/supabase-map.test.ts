@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  orderedProductLevelGalleryUrls,
   resolveVariantImageUrl,
   supabaseBundleToCatalogDetail,
   supabaseRowsToProduct,
@@ -94,9 +95,36 @@ describe("supabase-map", () => {
     expect(() => supabaseBundleToCatalogDetail(row)).toThrow(/legacy_storefront_id/);
   });
 
-  it("builds CatalogProductDetail with storefront id", () => {
+  it("builds CatalogProductDetail with storefront id and gallery fields", () => {
     const detail = supabaseBundleToCatalogDetail(baseProduct);
     expect(detail.storefrontProductId).toBe(101);
     expect(detail.product.title).toContain("Boxer Briefs");
+    expect(detail.galleryImages).toEqual(["/assets/p.jpg"]);
+    expect(detail.variantPrimaryImageBySku["ZLX-BLK-S"]).toBe("/assets/v.jpg");
+    expect(detail.displayGalleryUrls).toContain("/assets/p.jpg");
+    expect(detail.displayGalleryUrls).toContain("/assets/v.jpg");
+  });
+
+  it("orders product-level gallery by primary then sort_order", () => {
+    const urls = orderedProductLevelGalleryUrls(
+      [
+        {
+          product_id: "a0000001-0000-4000-8000-000000000001",
+          variant_id: null,
+          storage_path: "/second.jpg",
+          sort_order: 1,
+          is_primary: false,
+        },
+        {
+          product_id: "a0000001-0000-4000-8000-000000000001",
+          variant_id: null,
+          storage_path: "/first.jpg",
+          sort_order: 0,
+          is_primary: true,
+        },
+      ],
+      "a0000001-0000-4000-8000-000000000001"
+    );
+    expect(urls).toEqual(["/first.jpg", "/second.jpg"]);
   });
 });

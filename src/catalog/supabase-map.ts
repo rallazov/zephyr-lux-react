@@ -1,8 +1,6 @@
-import {
-  productSchema,
-  productVariantSchema,
-  type Product,
-} from "../domain/commerce";
+import type { Product } from "../domain/commerce/product";
+import { productSchema, productVariantSchema } from "../domain/commerce";
+import { buildDisplayGalleryUrls } from "./pdpImage";
 import type { CatalogProductDetail } from "./types";
 import { catalogListItemFromProduct } from "./parse";
 import type { CatalogListItem } from "./types";
@@ -66,6 +64,36 @@ function sortImageCandidates(
 function pickStoragePath(candidates: SupabaseProductImageRow[]): string | undefined {
   const sorted = sortImageCandidates(candidates);
   return sorted[0]?.storage_path;
+}
+
+function pickVariantOnlyPrimary(
+  variantId: string | undefined,
+  images: SupabaseProductImageRow[]
+): string | undefined {
+  if (!variantId) return undefined;
+  return pickStoragePath(
+    images.filter((i) => i.variant_id === variantId)
+  );
+}
+
+export function orderedProductLevelGalleryUrls(
+  images: SupabaseProductImageRow[],
+  productId: string
+): string[] {
+  const rows = sortImageCandidates(
+    images.filter(
+      (i) => i.variant_id === null && i.product_id === productId
+    )
+  );
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const r of rows) {
+    const p = r.storage_path.trim();
+    if (!p || seen.has(p)) continue;
+    seen.add(p);
+    out.push(p);
+  }
+  return out;
 }
 
 export function resolveVariantImageUrl(
@@ -143,7 +171,25 @@ export function supabaseBundleToCatalogDetail(
     row,
     "Supabase catalog"
   );
-  return { product, storefrontProductId };
+  const images = row.product_images ?? [];
+  const galleryImages = orderedProductLevelGalleryUrls(images, row.id);
+  const variantPrimaryImageBySku: Partial<Record<string, string>> = {};
+  for (const v of product.variants) {
+    const path = pickVariantOnlyPrimary(v.id, images);
+    if (path) variantPrimaryImageBySku[v.sku] = path;
+  }
+  const displayGalleryUrls = buildDisplayGalleryUrls(
+    product.variants,
+    galleryImages,
+    variantPrimaryImageBySku
+  );
+  return {
+    product,
+    storefrontProductId,
+    galleryImages,
+    displayGalleryUrls,
+    variantPrimaryImageBySku,
+  };
 }
 
 export function supabaseBundleToListItem(

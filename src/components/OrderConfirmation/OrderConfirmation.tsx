@@ -1,4 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { ANALYTICS_EVENTS } from "../../analytics/events";
+import { consumePurchaseAnalyticsSlot } from "../../analytics/purchaseDedupe";
+import { dispatchAnalyticsEvent } from "../../analytics/sink";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import {
   formatLineSubtotalDollars,
@@ -7,6 +10,8 @@ import {
   resolveConfirmationView,
   type ConfirmationItemLine,
 } from "../../order-confirmation/confirmationViewModel";
+import { formatPageTitleWithBrand, usePageMeta } from "../../seo/meta";
+import { SITE_BRAND } from "../../seo/site";
 
 const SUPPORT_MAIL = "mailto:support@zephyrlux.com";
 
@@ -35,6 +40,46 @@ const OrderConfirmation: React.FC = () => {
   const paymentIntentForLookup =
     view.stripeQuery.paymentIntentId ??
     (view.paymentRef?.startsWith("pi_") ? view.paymentRef : null);
+
+  const orderConfirmMeta = useMemo(() => {
+    const path = location.pathname || "/order-confirmation";
+    if (view.mode === "fallback") {
+      return {
+        title: `Order help — ${SITE_BRAND}`,
+        description:
+          "We could not load full order details. Check your email or return to your bag.",
+        canonicalPath: path,
+      };
+    }
+    if (paidOrder?.order_number && paymentIntentForLookup) {
+      return {
+        title: `Order ${paidOrder.order_number} confirmed — ${SITE_BRAND}`,
+        description: "Your payment was recorded. Thank you for shopping with Zephyr Lux.",
+        canonicalPath: path,
+      };
+    }
+    if (view.mode === "queryPartial") {
+      const head = queryPartialHeading(view.stripeQuery.redirectStatus);
+      return {
+        title: `${head} — ${SITE_BRAND}`,
+        description: queryPartialSubtitle(view.stripeQuery.redirectStatus),
+        canonicalPath: path,
+      };
+    }
+    return {
+      title: formatPageTitleWithBrand("Order confirmation"),
+      description: "Your Zephyr Lux order confirmation.",
+      canonicalPath: path,
+    };
+  }, [
+    location.pathname,
+    view.mode,
+    view.stripeQuery.redirectStatus,
+    paidOrder?.order_number,
+    paymentIntentForLookup,
+  ]);
+
+  usePageMeta(orderConfirmMeta);
 
   useEffect(() => {
     if (!paymentIntentForLookup) return;
@@ -71,6 +116,20 @@ const OrderConfirmation: React.FC = () => {
       cancelled = true;
     };
   }, [paymentIntentForLookup]);
+
+  useEffect(() => {
+    const orderNumRaw = paidOrder?.order_number;
+    if (!orderNumRaw) return;
+    const orderNum = orderNumRaw.trim();
+    if (!orderNum) return;
+
+    if (!consumePurchaseAnalyticsSlot(orderNum)) return;
+
+    dispatchAnalyticsEvent({
+      name: ANALYTICS_EVENTS.purchase,
+      payload: { order_number: orderNum },
+    });
+  }, [paidOrder?.order_number]);
 
   if (view.mode === "fallback") {
     return (

@@ -72,6 +72,7 @@ describe("ProductList", () => {
   it("shows an empty state when the active catalog list is empty", async () => {
     vi.mocked(getDefaultCatalogAdapter).mockReturnValue({
       listProducts: async () => [],
+      listProductsByCategory: async () => [],
       getProductBySlug: async () => null,
     });
 
@@ -88,6 +89,7 @@ describe("ProductList", () => {
   it("does not show list add-to-cart when there are multiple purchasable variants", async () => {
     vi.mocked(getDefaultCatalogAdapter).mockReturnValue({
       listProducts: async () => multiRow,
+      listProductsByCategory: async () => [],
       getProductBySlug: async () => null,
     });
 
@@ -104,6 +106,7 @@ describe("ProductList", () => {
   it("shows add-to-cart when there is exactly one purchasable variant", async () => {
     vi.mocked(getDefaultCatalogAdapter).mockReturnValue({
       listProducts: async () => singleRow,
+      listProductsByCategory: async () => [],
       getProductBySlug: async () => null,
     });
 
@@ -123,6 +126,7 @@ describe("ProductList", () => {
         await new Promise((r) => setTimeout(r, 60));
         return singleRow;
       },
+      listProductsByCategory: async () => [],
       getProductBySlug: async () => null,
     });
 
@@ -137,6 +141,7 @@ describe("ProductList", () => {
       listProducts: async () => {
         throw new Error("catalog down");
       },
+      listProductsByCategory: async () => [],
       getProductBySlug: async () => null,
     });
 

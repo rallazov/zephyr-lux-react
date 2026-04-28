@@ -1,7 +1,9 @@
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { ANALYTICS_EVENTS } from "../../analytics/events";
+import { dispatchAnalyticsEvent } from "../../analytics/sink";
 import {
   isCartOkForCheckout,
   validateStorefrontCartLines,
@@ -12,6 +14,8 @@ import type { CatalogListItem } from "../../catalog/types";
 import { useCartQuote } from "../../hooks/useCartQuote";
 import { checkoutSchema } from "../../lib/validation";
 import { IS_MOCK_PAYMENT } from "../../utils/config";
+import { formatPageTitleWithBrand, usePageMeta } from "../../seo/meta";
+import { SITE_BRAND } from "../../seo/site";
 
 interface PaymentIntentResult {
     paymentIntent?: {
@@ -97,17 +101,23 @@ const InnerCheckoutForm: React.FC<{
     };
 
     return (
-        <form onSubmit={onSubmit}>
-            <PaymentElement />
+        <form onSubmit={onSubmit} className="space-y-4 pb-4">
+            <div
+                className="rounded-lg border border-gray-600 bg-gray-900/40 p-3 sm:p-4 relative z-0 isolate"
+                data-testid="checkout-payment-element-shell"
+            >
+                <PaymentElement />
+            </div>
             {paymentError && (
-                <p className="text-red-500 mt-2" role="alert">
+                <p className="text-red-500 mt-2 break-words" role="alert">
                     {paymentError}
                 </p>
             )}
             <button
                 type="submit"
+                id="checkout-submit-pay"
                 disabled={!formValid || !readyToPay || processing}
-                className={`w-full p-3 rounded font-bold text-lg ${processing ? "bg-gray-600" : "bg-green-500 hover:bg-green-600"}`}
+                className={`w-full min-h-12 scroll-mt-32 rounded px-4 py-3 font-bold text-lg ${processing ? "bg-gray-600" : "bg-green-500 hover:bg-green-600"}`}
             >
                 {processing ? "Processing..." : "Pay Now"}
             </button>
@@ -118,6 +128,7 @@ const InnerCheckoutForm: React.FC<{
 const CheckoutPage = () => {
     const { cartItems, clearCart } = useContext(CartContext);
     const navigate = useNavigate();
+    const location = useLocation();
     const [searchParams] = useSearchParams();
     const checkoutCanceled = searchParams.get("checkout") === "canceled";
 
@@ -144,6 +155,52 @@ const CheckoutPage = () => {
         validations != null &&
         cartItems.length > 0 &&
         isCartOkForCheckout(validations);
+
+    const checkoutSeo = useMemo(() => {
+        const path = location.pathname || "/checkout";
+        if (cartItems.length === 0) {
+            return {
+                title: formatPageTitleWithBrand("Checkout"),
+                description: "Secure checkout for Zephyr Lux orders.",
+                canonicalPath: path,
+            };
+        }
+        if (catalogList === null && !catalogError) {
+            return {
+                title: `Verifying your bag — ${SITE_BRAND}`,
+                description: "Verifying your cart before secure checkout.",
+                canonicalPath: path,
+            };
+        }
+        if (catalogError) {
+            return {
+                title: `Checkout unavailable — ${SITE_BRAND}`,
+                description: "We could not verify your cart against the catalog.",
+                canonicalPath: path,
+            };
+        }
+        if (!checkoutOk && validations) {
+            return {
+                title: `Update your bag — ${SITE_BRAND}`,
+                description: "Resolve cart line issues before completing checkout.",
+                canonicalPath: path,
+            };
+        }
+        return {
+            title: formatPageTitleWithBrand("Checkout"),
+            description: "Secure checkout for Zephyr Lux orders.",
+            canonicalPath: path,
+        };
+    }, [
+        location.pathname,
+        cartItems.length,
+        catalogList,
+        catalogError,
+        checkoutOk,
+        validations,
+    ]);
+
+    usePageMeta(checkoutSeo);
 
     const stripePromise = useMemo(() => {
         if (!checkoutOk) return null;
@@ -241,6 +298,25 @@ const CheckoutPage = () => {
             navigate("/cart", { replace: true });
         }
     }, [cartItems.length, navigate]);
+
+    /**
+     * Funnel: once per checkout entry for this `location.key` (browser Back → Checkout may fire again — acceptable).
+     * Skips when bag is empty (`line_item_count === 0`). `sessionStorage` dedupes React Strict Mode remounts.
+     */
+    useEffect(() => {
+        if (cartItems.length === 0) return;
+        const storageKey = `analytics_checkout_start_fired:${location.key}`;
+        try {
+            if (sessionStorage.getItem(storageKey)) return;
+            sessionStorage.setItem(storageKey, "1");
+        } catch {
+            /* private mode — may duplicate */
+        }
+        dispatchAnalyticsEvent({
+            name: ANALYTICS_EVENTS.checkout_start,
+            payload: { line_item_count: cartItems.length },
+        });
+    }, [location.key, cartItems.length]);
 
     useEffect(() => {
         let cancelled = false;
@@ -469,7 +545,7 @@ const CheckoutPage = () => {
         return (
             <div className="relative bg-black text-white min-h-screen">
                 <div className="h-56" />
-                <main className="max-w-4xl mx-auto p-6">
+                <main className="max-w-4xl mx-auto w-full min-w-0 px-4 py-6 sm:px-6 pb-24">
                     <p className="text-gray-400">Verifying your bag…</p>
                 </main>
             </div>
@@ -480,7 +556,7 @@ const CheckoutPage = () => {
         return (
             <div className="relative bg-black text-white min-h-screen">
                 <div className="h-56" />
-                <main className="max-w-4xl mx-auto p-6" role="alert">
+                <main className="max-w-4xl mx-auto w-full min-w-0 px-4 py-6 sm:px-6 pb-24" role="alert">
                     <h1 className="text-2xl font-bold mb-4">Checkout unavailable</h1>
                     <p className="text-gray-300 mb-4">
                         We could not verify your cart against the catalog. Return to your bag and try again.
@@ -502,7 +578,7 @@ const CheckoutPage = () => {
                     </div>
                 </header>
                 <div className="h-56" />
-                <main className="max-w-4xl mx-auto p-6" role="alert">
+                <main className="max-w-4xl mx-auto w-full min-w-0 px-4 py-6 sm:px-6 pb-24" role="alert">
                     <h1 className="text-3xl font-extrabold mb-4">Update your bag</h1>
                     <p className="text-gray-300 mb-4">
                         One or more items need attention before you can pay. Fix the issues below in your bag, then try checkout again.
@@ -519,7 +595,7 @@ const CheckoutPage = () => {
                     </ul>
                     <Link
                         to="/cart"
-                        className="inline-block bg-green-600 text-white px-6 py-3 rounded font-semibold hover:bg-green-500"
+                        className="inline-flex min-h-12 items-center justify-center bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-500"
                     >
                         Return to bag
                     </Link>
@@ -564,7 +640,7 @@ const CheckoutPage = () => {
 
             <div className="h-56" />
 
-            <main className="max-w-4xl mx-auto p-6">
+            <main className="max-w-4xl mx-auto w-full min-w-0 px-4 py-6 sm:px-6 pb-28 md:pb-10">
                 {checkoutCanceled && (
                     <div
                         role="status"
@@ -603,9 +679,16 @@ const CheckoutPage = () => {
                         </p>
                     )}
                     {orderLineDisplay.map((row, idx) => (
-                        <div key={`${idx}-${row.name}`} className="flex justify-between items-center mb-2">
-                            <span className="text-gray-400">{row.name} x {row.quantity}</span>
-                            <span className="text-gray-400">${row.lineTotal.toFixed(2)}</span>
+                        <div
+                            key={`${idx}-${row.name}`}
+                            className="flex justify-between items-start gap-3 mb-2 min-w-0"
+                        >
+                            <span className="text-gray-400 flex-1 min-w-0 break-words">
+                                {row.name} × {row.quantity}
+                            </span>
+                            <span className="text-gray-400 shrink-0 tabular-nums">
+                                ${row.lineTotal.toFixed(2)}
+                            </span>
                         </div>
                     ))}
                     <hr className="border-gray-700 my-2" />
@@ -636,9 +719,9 @@ const CheckoutPage = () => {
                     )}
                 </div>
 
-                <div className="bg-gray-800 p-4 rounded mb-6">
+                <div className="bg-gray-800 p-4 rounded mb-6 w-full min-w-0 overflow-x-hidden">
                     <h2 className="text-lg font-bold mb-3">Contact &amp; shipping</h2>
-                    <div className="space-y-3 max-w-md">
+                    <div className="space-y-3 w-full max-w-full sm:max-w-xl md:max-w-2xl">
                         <div>
                             <label htmlFor="ck-name" className="block text-sm text-gray-400 mb-1">
                                 Full name
@@ -648,7 +731,7 @@ const CheckoutPage = () => {
                                 name="name"
                                 value={formData.name}
                                 onChange={handleFormChange}
-                                className="w-full p-2 rounded bg-gray-900 border border-gray-600 text-white"
+                                className="w-full min-h-11 box-border p-2 rounded bg-gray-900 border border-gray-600 text-white"
                                 autoComplete="name"
                             />
                             {errors.name && <p className="text-red-400 text-sm mt-1">{errors.name}</p>}
@@ -663,7 +746,7 @@ const CheckoutPage = () => {
                                 type="email"
                                 value={formData.email}
                                 onChange={handleFormChange}
-                                className="w-full p-2 rounded bg-gray-900 border border-gray-600 text-white"
+                                className="w-full min-h-11 box-border p-2 rounded bg-gray-900 border border-gray-600 text-white"
                                 autoComplete="email"
                             />
                             {errors.email && <p className="text-red-400 text-sm mt-1">{errors.email}</p>}
@@ -678,7 +761,7 @@ const CheckoutPage = () => {
                                 value={formData.address}
                                 onChange={handleFormChange}
                                 rows={3}
-                                className="w-full p-2 rounded bg-gray-900 border border-gray-600 text-white"
+                                className="w-full min-h-11 box-border p-2 rounded bg-gray-900 border border-gray-600 text-white"
                                 autoComplete="street-address"
                             />
                             {errors.address && <p className="text-red-400 text-sm mt-1">{errors.address}</p>}
@@ -692,7 +775,7 @@ const CheckoutPage = () => {
                                 name="city"
                                 value={formData.city}
                                 onChange={handleFormChange}
-                                className="w-full p-2 rounded bg-gray-900 border border-gray-600 text-white"
+                                className="w-full min-h-11 box-border p-2 rounded bg-gray-900 border border-gray-600 text-white"
                                 autoComplete="address-level2"
                             />
                             {errors.city && <p className="text-red-400 text-sm mt-1">{errors.city}</p>}
@@ -707,7 +790,7 @@ const CheckoutPage = () => {
                                     name="state"
                                     value={formData.state}
                                     onChange={handleFormChange}
-                                    className="w-full p-2 rounded bg-gray-900 border border-gray-600 text-white"
+                                    className="w-full min-h-11 box-border p-2 rounded bg-gray-900 border border-gray-600 text-white"
                                     autoComplete="address-level1"
                                 />
                                 {errors.state && <p className="text-red-400 text-sm mt-1">{errors.state}</p>}
@@ -721,7 +804,7 @@ const CheckoutPage = () => {
                                     name="postal_code"
                                     value={formData.postal_code}
                                     onChange={handleFormChange}
-                                    className="w-full p-2 rounded bg-gray-900 border border-gray-600 text-white"
+                                    className="w-full min-h-11 box-border p-2 rounded bg-gray-900 border border-gray-600 text-white"
                                     autoComplete="postal-code"
                                 />
                                 {errors.postal_code && (
@@ -738,7 +821,7 @@ const CheckoutPage = () => {
                                 name="country"
                                 value={formData.country}
                                 onChange={handleFormChange}
-                                className="w-full p-2 rounded bg-gray-900 border border-gray-600 text-white"
+                                className="w-full min-h-11 box-border p-2 rounded bg-gray-900 border border-gray-600 text-white"
                                 autoComplete="country-name"
                             />
                             {errors.country && <p className="text-red-400 text-sm mt-1">{errors.country}</p>}
@@ -769,7 +852,7 @@ const CheckoutPage = () => {
                                 !quote ||
                                 Boolean(cartQuoteError)
                             }
-                            className={`w-full p-3 rounded font-bold text-lg ${processing ? "bg-gray-600" : "bg-green-500 hover:bg-green-600"}`}
+                            className={`w-full min-h-12 scroll-mt-32 rounded px-4 py-3 font-bold text-lg ${processing ? "bg-gray-600" : "bg-green-500 hover:bg-green-600"}`}
                         >
                             {processing ? "Processing..." : "Pay Now"}
                         </button>

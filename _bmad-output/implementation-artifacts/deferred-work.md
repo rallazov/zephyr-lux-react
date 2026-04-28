@@ -1,5 +1,33 @@
 # Deferred work (from reviews and triage)
 
+## Deferred from: code review of 6-5-metadata-product-structured-data.md (2026-04-27)
+
+- **`CollectionPage` missing from unified review diff artifact** — The generated `6-5-code-review-scoped.diff` did not include `git diff --no-index` for `CollectionPage.tsx`; the file in the workspace does call `usePageMeta`. Treat as tooling gap; widen the generator next time if story file list includes untracked paths.
+- **Cart/checkout edge cases flagged in layered review** — Full-catalog refetch tied to cart mutations, stale catalog after failing refresh while a previous list exists, increment button before validations settle, positional quote-vs-line risks, thumbnail `alt` empty strings, and related items: triage grouped under Epic 6-4 / cart polish rather than Story 6-5 SEO acceptance.
+- **Order confirmation lookup + analytics** — `sessionStorage` bridge absent, purchase event gated on `/api/order-by-payment-intent` success, and lookup error visibility—deferred to order/confirmation hardening when those stories are active.
+- **PDP analytics over-firing** — `product_view` effect tied to `row` reference churn; revisit with analytics epic dedupe semantics.
+- **Checkout telemetry** — Bare `catch` without structured logging deferred to observability pass.
+- **JSON-LD `Discontinued`** — Schema path not implemented until variants expose discontinued lifecycle.
+- **PDP keyed paragraphs** — `key={index}` on split blocks deferred to content/PDP refactor.
+- **Mixed-scope `vite-env.d.ts`** — Analytics env augmentations coexist with Story 6-5 public URL typings; harmless; split barrels only if module boundaries tighten.
+
+## Deferred from: code review of 6-6-basic-analytics-events.md (2026-04-27)
+
+- **`sessionStorage` unavailable / duplicate storefront events** — `page_view` and `checkout_start` dedupe relies on keys in `sessionStorage`; when storage throws, Strict Mode may emit duplicates (handlers document the risk). Revisit ref-based guards if private-mode fidelity becomes a KPI.
+- **`CartPage.tsx` / `supabase-map.ts` bulk changes bundled with Story 6-6** — Mechanical `tsc`/JSX fixes are necessary but increase review noise; optional future split for analytics-only merges.
+
+## Deferred from: code review of 6-3-product-page-gallery-variant-ux.md (2026-04-27)
+
+- **PLP list hero vs PDP hero** — `catalogListItemFromProduct` still sets `heroImageUrl` from `product.variants[0]?.image_url` only (`parse.ts`). Story 6-3 guarantees PDP/add-to-cart alignment via `resolvePdpHeroImageUrl`, not grid cards. Revisit when list tiles must match multi-image primary selection.
+
+## Deferred from: code review of 6-1-real-homepage-category-routes.md (2026-04-27)
+
+- **`SupabaseCatalogAdapter.listProductsByCategory` full-list filtering** — Current implementation awaits `listProducts()` then filters locally; satisfies “no per-product N+1” guidance but ships full payloads on every navigation. Prefer a narrowed Supabase query with `.eq('category')`/`or()` once catalogs grow beyond small static fixtures.
+
+## Deferred from: code review of 6-2-policy-pages-footer-links.md (2026-04-27)
+
+- **Footer `SubscriptionForm` newsletter POST** — Still submits email to `/api/subscribe` via `VITE_API_URL`; Story 6-2 scoped contact to mailto MVP. Revisit when clarifying “honest MVP” for marketing capture vs backend readiness.
+
 ## Deferred from: code review of 5-7-internal-notes-order-timeline.md (2026-04-27)
 
 - **Stale Vitest totals in Story 5-7 Dev Agent Record** (“256 tests”) — reconcile with CI when convenient; harmless until numbers mislead onboarding.

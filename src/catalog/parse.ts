@@ -1,4 +1,5 @@
 import { type Product, productSchema } from "../domain/commerce";
+import { buildDisplayGalleryUrls } from "./pdpImage";
 import { type CatalogListItem, type CatalogProductDetail } from "./types";
 import { staticSeedCatalogSchema, type StaticSeedProductRow } from "./raw-static";
 
@@ -78,9 +79,19 @@ export function parseStaticCatalogData(input: unknown) {
     }
     products.push(product);
     listItems.push(catalogListItemFromProduct(product, raw.id));
+    const galleryImages: string[] = [];
+    const variantPrimaryImageBySku: Partial<Record<string, string>> = {};
+    const displayGalleryUrls = buildDisplayGalleryUrls(
+      product.variants,
+      galleryImages,
+      variantPrimaryImageBySku
+    );
     bySlug.set(product.slug, {
       product,
       storefrontProductId: raw.id,
+      galleryImages,
+      displayGalleryUrls,
+      variantPrimaryImageBySku,
     });
   }
 

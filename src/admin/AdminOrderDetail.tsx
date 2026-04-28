@@ -706,14 +706,14 @@ export default function AdminOrderDetail() {
             ) : fulfillmentActionTargets.length === 0 ? (
               <p className="text-slate-600 text-sm">No further fulfillment steps for this order.</p>
             ) : (
-              <ul className="flex flex-wrap gap-2 list-none p-0 m-0">
+              <ul className="flex flex-col sm:flex-row sm:flex-wrap gap-2 list-none p-0 m-0">
                 {fulfillmentActionTargets.map((target) => (
                   <li key={target}>
                     <button
                       type="button"
                       disabled={fulfillmentSaving}
                       onClick={() => void applyFulfillment(target)}
-                      className="min-h-[44px] min-w-[44px] px-4 rounded-lg border border-slate-300 bg-white font-medium text-slate-900 hover:bg-slate-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="w-full sm:w-auto min-h-11 px-4 rounded-lg border border-slate-300 bg-white font-medium text-slate-900 hover:bg-slate-50 disabled:opacity-60 disabled:cursor-not-allowed text-left sm:text-center"
                     >
                       {target === "canceled" ? "Cancel fulfillment" : `Mark as ${humanizeEnum(target)}`}
                     </button>
@@ -756,8 +756,8 @@ export default function AdminOrderDetail() {
             <h2 id="shipping-heading" className="text-lg font-semibold mb-3">
               Shipping address
             </h2>
-            <div className="flex flex-wrap items-start gap-3">
-              <pre className="whitespace-pre-wrap rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm flex-1 min-w-[12rem] max-w-xl">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-start">
+              <pre className="whitespace-pre-wrap rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm flex-1 min-w-0 w-full sm:max-w-xl">
                 {shippingSnapshot?.lines.join("\n") ??
                   "(No address snapshot.)"}
               </pre>
@@ -765,7 +765,7 @@ export default function AdminOrderDetail() {
                 type="button"
                 disabled={!addressBlock}
                 onClick={() => void copyAddress()}
-                className={`min-h-[44px] rounded-lg border px-4 text-sm font-medium ${
+                className={`w-full sm:w-auto shrink-0 min-h-11 rounded-lg border px-4 text-sm font-medium sm:self-start ${
                   addressBlock
                     ? "border-slate-300 bg-white hover:bg-slate-50"
                     : "border-slate-200 text-slate-400 cursor-not-allowed"

@@ -1,5 +1,9 @@
 import type { ProductVariant } from "../../domain/commerce";
-import { colorsForSize, formatOptionLabel, type OptionLayout } from "./variantSelection";
+import {
+  colorsForSize,
+  formatOptionLabel,
+  type OptionLayout,
+} from "./variantSelection";
 
 type Props = {
   purchasable: ProductVariant[];
@@ -22,6 +26,7 @@ const VariantSelector: React.FC<Props> = (props) => {
 
   const sizeId = "pdp-variant-size";
   const colorId = "pdp-variant-color";
+  const colorHintId = "pdp-variant-color-hint";
   const sizeOptions = layout.showSize ? layout.uniqueSizes : [];
   const colorOptions = layout.showColor
     ? layout.showSize
@@ -29,8 +34,20 @@ const VariantSelector: React.FC<Props> = (props) => {
       : layout.uniqueColors
     : [];
 
+  const colorBlocked = Boolean(
+    layout.showSize && layout.showColor && !selectedSize
+  );
+
+  if (!layout.showSize && !layout.showColor) {
+    return null;
+  }
+
   return (
-    <div className="flex flex-col gap-3" data-testid="pdp-variant-selector">
+    <fieldset
+      className="flex flex-col gap-3 border-0 p-0 m-0"
+      data-testid="pdp-variant-selector"
+    >
+      <legend className="sr-only">Size and color</legend>
       {layout.showSize && (
         <div>
           <label htmlFor={sizeId} className="block text-sm font-medium mb-1">
@@ -40,7 +57,7 @@ const VariantSelector: React.FC<Props> = (props) => {
             id={sizeId}
             name="size"
             data-testid="pdp-select-size"
-            className="border rounded px-2 py-1 min-w-[120px] focus:outline focus:ring-2"
+            className="border border-stone-300 rounded-md px-2 py-2 min-w-[140px] bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2"
             value={selectedSize ?? ""}
             onChange={(e) =>
               onSizeChange(e.target.value === "" ? null : e.target.value)
@@ -61,26 +78,28 @@ const VariantSelector: React.FC<Props> = (props) => {
           <label htmlFor={colorId} className="block text-sm font-medium mb-1">
             Color
           </label>
+          {colorBlocked ? (
+            <p id={colorHintId} className="text-xs text-stone-500 mb-1">
+              Select a size to see available colors.
+            </p>
+          ) : null}
           <select
             id={colorId}
             name="color"
             data-testid="pdp-select-color"
-            className="border rounded px-2 py-1 min-w-[120px] focus:outline focus:ring-2"
+            className="border border-stone-300 rounded-md px-2 py-2 min-w-[140px] bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed"
             value={selectedColor ?? ""}
-            disabled={layout.showSize && layout.showColor && !selectedSize}
+            disabled={colorBlocked}
             onChange={(e) =>
               onColorChange(e.target.value === "" ? null : e.target.value)
             }
             aria-label={
-              layout.showSize && layout.showColor && !selectedSize
-                ? "Color — first select a size"
-                : "Color"
+              colorBlocked ? "Color — select a size first" : "Color"
             }
+            aria-describedby={colorBlocked ? colorHintId : undefined}
           >
             <option value="">
-              {layout.showSize && layout.showColor && !selectedSize
-                ? "Select a size first"
-                : "Select color"}
+              {colorBlocked ? "Select a size first" : "Select color"}
             </option>
             {colorOptions.map((c) => (
               <option key={c} value={c}>
@@ -90,8 +109,7 @@ const VariantSelector: React.FC<Props> = (props) => {
           </select>
         </div>
       )}
-
-    </div>
+    </fieldset>
   );
 };
 

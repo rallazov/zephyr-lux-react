@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { parseStaticCatalogData } from "./parse";
+import { filterListItemsByCategoryKey } from "./filterByCategory";
 import type { CatalogListItem, CatalogProductDetail } from "./types";
 import type { BundledStaticCatalog } from "./static-bundled";
 import {
@@ -11,6 +12,8 @@ import {
 
 export interface CatalogAdapter {
   listProducts(): Promise<CatalogListItem[]>;
+  /** Active products whose normalized category matches the route canonical key (see `collections.ts`). */
+  listProductsByCategory(categoryKey: string): Promise<CatalogListItem[]>;
   getProductBySlug(slug: string): Promise<CatalogProductDetail | null>;
 }
 
@@ -65,6 +68,10 @@ export class StaticCatalogAdapter implements CatalogAdapter {
     return this._list;
   }
 
+  async listProductsByCategory(categoryKey: string): Promise<CatalogListItem[]> {
+    return filterListItemsByCategoryKey(this._list, categoryKey);
+  }
+
   async getProductBySlug(slug: string): Promise<CatalogProductDetail | null> {
     return this._bySlug.get(slug) ?? null;
   }
@@ -94,6 +101,11 @@ export class SupabaseCatalogAdapter implements CatalogAdapter {
 
     const rows = (data ?? []) as unknown as SupabaseProductWithRelations[];
     return rows.map((r) => supabaseBundleToListItem(r));
+  }
+
+  async listProductsByCategory(categoryKey: string): Promise<CatalogListItem[]> {
+    const all = await this.listProducts();
+    return filterListItemsByCategoryKey(all, categoryKey);
   }
 
   async getProductBySlug(slug: string): Promise<CatalogProductDetail | null> {

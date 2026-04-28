@@ -258,7 +258,62 @@ export default function AdminOrderList() {
           </label>
         </div>
       </div>
-      <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+      <div className="md:hidden space-y-3" data-testid="admin-order-list-mobile">
+        {rows.map((r) => {
+          const itemCount = getLineItemCount(r.order_items);
+          const hasName = Boolean(r.customer_name && r.customer_name.trim());
+          const nameLine = hasName ? r.customer_name!.trim() : "—";
+          const showFail = failedOwnerPaid.has(r.id);
+          return (
+            <div
+              key={r.id}
+              className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+              data-testid={`admin-order-card-${r.id}`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <Link
+                  className="text-blue-700 hover:underline font-mono text-sm font-semibold truncate min-w-0"
+                  to={`/admin/orders/${r.id}`}
+                >
+                  {r.order_number}
+                </Link>
+                <span className="text-xs text-slate-500 whitespace-nowrap shrink-0">
+                  {formatOrderDateUtc(r.created_at)}
+                </span>
+              </div>
+              {showFail ? (
+                <span
+                  className="inline-block mt-2 text-xs font-medium text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded"
+                  title="Latest owner order-paid email attempt failed"
+                  data-testid={`admin-order-notify-failed-${r.id}`}
+                >
+                  Email failed
+                </span>
+              ) : null}
+              <div className="mt-2 text-sm text-slate-800">
+                <span className="font-medium text-slate-600">Customer: </span>
+                <span className="break-words">{nameLine}</span>
+              </div>
+              <div className="text-xs text-slate-500 mt-1 break-all">{r.customer_email}</div>
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-700">
+                <span className="tabular-nums font-medium">{formatOrderMoney(r.total_cents, r.currency)}</span>
+                <span>{humanizeEnum(r.payment_status)}</span>
+                <span>{humanizeEnum(r.fulfillment_status)}</span>
+                <span className="text-slate-600">
+                  {itemCount} item{itemCount === 1 ? "" : "s"}
+                </span>
+              </div>
+              <Link
+                to={`/admin/orders/${r.id}`}
+                className="mt-4 inline-flex min-h-11 items-center text-sm font-medium text-blue-700 hover:underline"
+              >
+                View order details
+              </Link>
+            </div>
+          );
+        })}
+      </div>
+      <div className="hidden md:block bg-white border border-slate-200 rounded-lg overflow-x-auto">
         <table className="w-full text-left text-sm min-w-[720px]">
           <caption className="sr-only">Admin orders, newest first</caption>
           <thead className="bg-slate-50 text-slate-600">

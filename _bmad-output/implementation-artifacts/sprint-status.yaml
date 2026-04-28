@@ -25,7 +25,7 @@
 #   - Dev moves story to 'review', then runs code-review
 
 generated: 2026-04-26T00:00:00Z
-last_updated: 2026-04-27T12:00:00Z
+last_updated: 2026-04-27T23:30:00Z
 project: zephyr-lux-react
 project_key: zlx
 tracking_system: file-system
@@ -89,10 +89,10 @@ development_status:
   epic-6: in-progress
   6-1-real-homepage-category-routes: review
   6-2-policy-pages-footer-links: done
-  6-3-product-page-gallery-variant-ux: review
-  6-4-mobile-cart-checkout-admin-layouts: in-progress
-  6-5-metadata-product-structured-data: review
-  6-6-basic-analytics-events: review
+  6-3-product-page-gallery-variant-ux: done
+  6-4-mobile-cart-checkout-admin-layouts: review
+  6-5-metadata-product-structured-data: done
+  6-6-basic-analytics-events: done
   epic-6-retrospective: optional
 
   epic-7: in-progress
@@ -102,7 +102,7 @@ development_status:
   7-4-show-tracking-when-shipped: ready-for-dev
   epic-7-retrospective: optional
 
-  epic-6-7-implementation-follow-ups: review
+  epic-6-7-implementation-follow-ups: done
   epic-8: backlog
   8-1-subscription-capable-products: backlog
   8-2-stripe-subscription-checkout: backlog

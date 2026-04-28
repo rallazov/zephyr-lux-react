@@ -8,17 +8,23 @@ import AdminOrderList from "../../admin/AdminOrderList";
 import AdminProductForm from "../../admin/AdminProductForm";
 import AdminProductList from "../../admin/AdminProductList";
 import RequireAdmin from "../../admin/RequireAdmin";
+import { COLLECTION_ROUTES } from "../../catalog/collections";
 import { CartProvider } from "../../context/CartContext";
 import CartPage from '../Cart/CartPage';
 import CheckoutPage from "../Cart/CheckoutPage";
+import CollectionPage from "../Collection/CollectionPage";
 // import StripeProvider from '../Cart/StripeProvider';
-import DiscountMessage from '../DiscountMessages/DiscountMessage';
-import GridSection from '../GridSection/GridSection';
-import Hero from '../Hero/Hero';
+import HomePage from "../Home/HomePage";
 import OrderConfirmation from '../OrderConfirmation/OrderConfirmation';
 import ProductDetail from '../ProductDetail/ProductDetail';
 import ProductList from '../ProductList/ProductList';
 import './App.css';
+import ContactPage from "../Contact/ContactPage";
+import PoliciesIndex from "../Policies/PoliciesIndex";
+import PolicyPrivacyPage from "../Policies/PolicyPrivacyPage";
+import PolicyReturnsPage from "../Policies/PolicyReturnsPage";
+import PolicyShippingPage from "../Policies/PolicyShippingPage";
+import PolicyTermsPage from "../Policies/PolicyTermsPage";
 import Layout from './Layout';
 
 
@@ -27,35 +33,6 @@ import Layout from './Layout';
  * Admin uses its own layout (no storefront chrome); see Epics E2-S6, UX-DR2.
  */
 export function AppRoutes() {
-  const womenItems = [
-    { imgSrc: "/assets/img/Lifestyle.jpeg", description: "Women Product 1" },
-    { imgSrc: "assets/img/Lifestyle.jpeg", description: "Women Product 2" },
-    { saleText: "New Arrivals!", isSale: true },
-    { imgSrc: "assets/img/Lifestyle.jpeg", description: "Women Product 3" },
-  ];
-
-  const menItems = [
-    { imgSrc: "/assets/img/Lifestyle.jpeg", description: "Men Product 1" },
-    { imgSrc: "/assets/img/Lifestyle.jpeg", description: "Men Product 2" },
-    { saleText: "Exclusive Offer!", isSale: true },
-    { imgSrc: "/assets/img/Lifestyle.jpeg", description: "Men Product 3" },
-  ];
-
-  const kidsItems = [
-    { imgSrc: "/assets/img/Lifestyle.jpeg", description: "Kids Product 1" },
-    { imgSrc: "/assets/img/Lifestyle.jpeg", description: "Kids Product 2" },
-    { saleText: "Limited Edition!", isSale: true },
-    { imgSrc: "/assets/img/Lifestyle.jpeg", description: "Kids Product 3" },
-  ];
-
-  const saleItems = [
-    { imgSrc: "/assets/img/Infographic.jpeg", description: "Sale Product 1" },
-    { imgSrc: "/assets/img/Infographic.jpeg", description: "Sale Product 2" },
-    { saleText: "Best Deals!", isSale: true },
-    { imgSrc: "/assets/img/Lifestyle.jpeg", description: "Sale Product 3" },
-  ];
-
-
   return (
         <div className="App">
           {/* <StripeProvider> */}
@@ -74,83 +51,26 @@ export function AppRoutes() {
             <Route element={<Layout />}>
 
             {/* Home Page */}
-            <Route
-              path="/"
-              element={
-                <Navigate to="/products" />
-              }
-            />
+            <Route path="/" element={<HomePage />} />
             <Route path='/products' element={
               <>
                 <ProductList />
               </>
             }
             />
-            {/* Women Page */}
-            <Route
-              path="/women"
-              element={
-                <>
-                  <Hero
-                    image="/assets/img/women_placeholder.jpeg"
-                    title="Empower Your Style"
-                    description="Elegant, timeless, and coming soon."
-                  />
-                  <GridSection items={womenItems} />
-                </>
-              }
-            />
+            {COLLECTION_ROUTES.map((c) => (
+              <Route
+                key={c.path}
+                path={c.path}
+                element={<CollectionPage collection={c} />}
+              />
+            ))}
             {/* Cart Page */}
             <Route path="/cart" element={
               <>
                 <CartPage />
               </>
             }
-            />
-            {/* Men Page */}
-            <Route
-              path="/men"
-              element={
-                <>
-                  <Hero
-                    image="/assets/img/Lifestyle.jpeg"
-                    title="For the Modern Man"
-                    description="Comfort meets style."
-                  />
-                  <GridSection items={menItems} />
-                </>
-              }
-            />
-
-            {/* Kids Page */}
-            <Route
-              path="/kids"
-              element={
-                <>
-                  <Hero
-                    image="/assets/img/kids_placeholder.jpeg"
-                    title="Fun & Functional"
-                    description="Comfort for the little ones."
-                  />
-                  <GridSection items={kidsItems} />
-                </>
-              }
-            />
-
-            {/* Sale Page */}
-            <Route
-              path="/sale"
-              element={
-                <>
-                  <DiscountMessage />
-                  <Hero
-                    image="/assets/img/sale_placeholder.jpeg"
-                    title="Limited Time Offers"
-                    description="Grab the deals before they're gone!"
-                  />
-                  <GridSection items={saleItems} />
-                </>
-              }
             />
 
             <Route path="/checkout" element={<CheckoutPage />} />
@@ -163,8 +83,16 @@ export function AppRoutes() {
                 </>
               } />
 
-            {/* Product Detail */}
             <Route path="/product/:slug" element={<ProductDetail />} />
+
+            <Route path="/policies" element={<PoliciesIndex />} />
+            <Route path="/policies/shipping" element={<PolicyShippingPage />} />
+            <Route path="/policies/returns" element={<PolicyReturnsPage />} />
+            <Route path="/policies/privacy" element={<PolicyPrivacyPage />} />
+            <Route path="/policies/terms" element={<PolicyTermsPage />} />
+            <Route path="/policies/*" element={<Navigate to="/policies" replace />} />
+
+            <Route path="/contact" element={<ContactPage />} />
             </Route>
 
           </Routes>

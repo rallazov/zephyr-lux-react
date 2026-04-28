@@ -15,6 +15,14 @@ it("getProductBySlug returns null for unknown slug", async () => {
   ).toBeNull();
 });
 
+it("listProductsByCategory filters bundled underwear row", async () => {
+  const adapter = getDefaultCatalogAdapter();
+  const underwear = await adapter.listProductsByCategory("underwear");
+  expect(underwear.map((l) => l.product.slug)).toContain("boxer-briefs");
+  const women = await adapter.listProductsByCategory("women");
+  expect(women).toHaveLength(0);
+});
+
 it("listProducts returns bundled active rows with list invariants", async () => {
   const adapter = getDefaultCatalogAdapter();
   const list = await adapter.listProducts();

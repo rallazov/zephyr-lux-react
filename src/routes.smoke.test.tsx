@@ -65,17 +65,30 @@ describe("storefront route smoke (App.tsx router tree)", () => {
   });
 
   const cases: [string, RegExp][] = [
-    ["/", /Product List/i],
+    ["/", /Premium essentials/i],
     ["/products", /Product List/i],
     ["/women", /Empower Your Style/i],
     ["/men", /For the Modern Man/i],
     ["/kids", /Fun & Functional/i],
     ["/sale", /Limited Time Offers/i],
+    ["/underwear", /Foundation Essentials/i],
     ["/cart", /SHOPPING/i],
     ["/checkout", /^Checkout$/i],
     ["/order-confirmation", /Order confirmed|We couldn|processing your payment|Payment reference/i],
     [`/product/${SMOKE_PRODUCT_SLUG}`, /Zephyr Lux Boxer Briefs/i],
+    ["/policies", /^Policies$/i],
+    ["/policies/shipping", /^Shipping$/i],
+    ["/policies/returns", /^Returns$/i],
+    ["/policies/privacy", /^Privacy$/i],
+    ["/policies/terms", /Terms of use/i],
+    ["/contact", /Contact us/i],
   ];
+
+  it("redirects unknown policy subpath to policy index", async () => {
+    renderRoute("/policies/__no_such_policy__");
+    expect(await screen.findByTestId("storefront-layout")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /^Policies$/i })).toBeInTheDocument();
+  });
 
   it.each(cases)("mounts %s without uncaught render failure", async (path, textMatcher) => {
     localStorage.clear();
@@ -100,8 +113,9 @@ describe("storefront route smoke (App.tsx router tree)", () => {
     }
     renderRoute(path);
     expect(await screen.findByTestId("storefront-layout")).toBeInTheDocument();
-    const waitOpts = path === "/checkout" ? { timeout: 15_000 } : {};
-    expect(await screen.findByText(textMatcher, {}, waitOpts)).toBeInTheDocument();
+    const headingOpts =
+      path === "/checkout" ? { name: textMatcher, timeout: 15_000 } : { name: textMatcher };
+    expect(await screen.findByRole("heading", headingOpts)).toBeInTheDocument();
     if (path.startsWith("/product/")) {
       expect(await screen.findByTestId("pdp")).toBeInTheDocument();
       expect(await screen.findByTestId("pdp-variant-selector")).toBeInTheDocument();
