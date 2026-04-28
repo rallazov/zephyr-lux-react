@@ -1,6 +1,6 @@
 # Story 6.4: Mobile layouts — cart, checkout, admin
 
-Status: review
+Status: done
 
 <!-- Ultimate context engine analysis completed - comprehensive developer guide created -->
 
@@ -59,6 +59,12 @@ so that **FR-CART-005**, checkout usability (FR-CHK family), **FR-ADM-007**, **U
 - [x] [Review][Resolved] Cart/checkout meta + `checkout_start` vs story **6-4** guardrails — **Accept coordinated overlap.** **[6-5](6-5-metadata-product-structured-data.md)** Task 3 explicitly wires **`usePageMeta`** from **`CartPage`** and **`CheckoutPage`** (AC 1 lists `/cart` and `/checkout`). **[6-6](6-6-basic-analytics-events.md)** AC 1 normatively requires **`checkout_start`** on **`CheckoutPage`** mount with **`sessionStorage`** scoped to **`location.key`** (matches implemented effect). Those edits are **not** arbitrary scope creep; they satisfy **sibling stories** that share files with **6-4**. What **6-4** still owns is **responsive layout / tap targets / overflow** on those screens + admin — **do not** mix payment quote/API changes. Refine guardrails (below): say **layout-first**, not “meta/analytics forbidden.”
 
 - [x] [Review][Patch] Track layout regression test in git [`src/admin/AdminLayout.test.tsx`] — Staged (`git add`) so Vitest coverage for AC 5 is tracked; commit with your epic branch.
+
+- [x] [Review][Patch] Prefer Testing Library `toHaveClass("min-h-11")` on the Orders nav link — [`src/admin/AdminLayout.test.tsx`](../../src/admin/AdminLayout.test.tsx) asserts `expect(ordersLink).toHaveClass("min-h-11")` (applied 2026-04-28).
+
+- [x] [Review][Defer] Automated layout coverage is admin-only — [`AdminLayout.test.tsx`](../../src/admin/AdminLayout.test.tsx); **Cart**/**Checkout** responsive behavior still relies on manual QA per Dev Agent Record — acceptable under AC5 minimal bar; optional future RTL tests deferred.
+
+- [x] [Review][Defer] **Mobile admin order list** — Two links per row target the same route (mono order id + “View order details”); harmless but slightly redundant for assistive tech — defer as low-priority UX polish.
 
 ## Dev Notes
 

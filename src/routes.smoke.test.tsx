@@ -75,6 +75,7 @@ describe("storefront route smoke (App.tsx router tree)", () => {
     ["/cart", /SHOPPING/i],
     ["/checkout", /^Checkout$/i],
     ["/order-confirmation", /Order confirmed|We couldn|processing your payment|Payment reference/i],
+    ["/order-status", /^Order status$/i],
     [`/product/${SMOKE_PRODUCT_SLUG}`, /Zephyr Lux Boxer Briefs/i],
     ["/policies", /^Policies$/i],
     ["/policies/shipping", /^Shipping$/i],

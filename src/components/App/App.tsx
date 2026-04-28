@@ -16,6 +16,7 @@ import CollectionPage from "../Collection/CollectionPage";
 // import StripeProvider from '../Cart/StripeProvider';
 import HomePage from "../Home/HomePage";
 import OrderConfirmation from '../OrderConfirmation/OrderConfirmation';
+import OrderStatusLookup from "../../order-status/OrderStatusLookup";
 import ProductDetail from '../ProductDetail/ProductDetail';
 import ProductList from '../ProductList/ProductList';
 import './App.css';
@@ -82,6 +83,7 @@ export function AppRoutes() {
                   <OrderConfirmation />
                 </>
               } />
+            <Route path="/order-status" element={<OrderStatusLookup />} />
 
             <Route path="/product/:slug" element={<ProductDetail />} />
 
