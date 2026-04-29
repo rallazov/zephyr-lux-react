@@ -1,5 +1,11 @@
 # Deferred work (from reviews and triage)
 
+## Deferred from: code review of 8-1-subscription-capable-products.md (2026-04-29)
+
+- **Sprint status YAML mixed Epic 8 updates** — The same change set updates `8-1` alongside other Epic 8 story rows (e.g. 8-2/8-3/8-4 statuses). Defer splitting or reverting non-8-1 tracking until the team wants a single-story PR hygiene pass.
+- **`.env.example` 8-4 PWA comment** — `VITE_DISABLE_SERVICE_WORKER` note is outside story 8-1 scope; keep or relocate when carving 8-1-only PRs.
+- **`commerce/index.ts` barrel mixing** — Re-export of `shipmentImage` landed with subscription exports; optional cleanup when splitting epic branches.
+
 ## Exploratory UI QA (process; 2026-04-27)
 
 - **Charter & logging:** [exploratory-ui-qa-charter.md](exploratory-ui-qa-charter.md) (feel-and-touch first), [exploratory-ui-qa-findings.md](exploratory-ui-qa-findings.md) (issue log), [exploratory-ui-qa-e2e-handoff.md](exploratory-ui-qa-e2e-handoff.md) (after triage → `bmad-qa-generate-e2e-tests`).

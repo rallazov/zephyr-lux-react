@@ -27,6 +27,9 @@ import PolicyPrivacyPage from "../Policies/PolicyPrivacyPage";
 import PolicyReturnsPage from "../Policies/PolicyReturnsPage";
 import PolicyShippingPage from "../Policies/PolicyShippingPage";
 import PolicyTermsPage from "../Policies/PolicyTermsPage";
+import SubscriptionsPage from "../../pages/SubscriptionsPage";
+import SubscriptionCheckoutCanceledPage from "../../pages/SubscriptionCheckoutCanceledPage";
+import SubscriptionCheckoutSuccessPage from "../../pages/SubscriptionCheckoutSuccessPage";
 import Layout from './Layout';
 
 
@@ -97,6 +100,16 @@ export function AppRoutes() {
             <Route path="/policies/*" element={<Navigate to="/policies" replace />} />
 
             <Route path="/contact" element={<ContactPage />} />
+
+            <Route path="/subscriptions" element={<SubscriptionsPage />} />
+            <Route
+              path="/subscription/checkout/success"
+              element={<SubscriptionCheckoutSuccessPage />}
+            />
+            <Route
+              path="/subscription/checkout/canceled"
+              element={<SubscriptionCheckoutCanceledPage />}
+            />
             </Route>
 
           </Routes>

@@ -14,7 +14,7 @@ const Footer: React.FC = () => {
           <h4>Promotions</h4>
           <ul>
             <li>
-              <Link to="/contact">Gift cards &amp; offers</Link>
+              <Link to="/subscriptions">Subscribe &amp; save</Link>
             </li>
             <li>
               <Link to="/contact">Store information</Link>

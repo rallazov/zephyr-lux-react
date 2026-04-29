@@ -25,7 +25,7 @@
 #   - Dev moves story to 'review', then runs code-review
 
 generated: 2026-04-26T00:00:00Z
-last_updated: 2026-04-27T21:23:00Z
+last_updated: 2026-04-28T22:00:00Z
 project: zephyr-lux-react
 project_key: zlx
 tracking_system: file-system
@@ -103,11 +103,11 @@ development_status:
   epic-7-retrospective: optional
 
   epic-6-7-implementation-follow-ups: done
-  epic-8: backlog
-  8-1-subscription-capable-products: backlog
-  8-2-stripe-subscription-checkout: backlog
-  8-3-subscription-lifecycle-webhooks: backlog
-  8-4-admin-pwa-shell: backlog
-  8-5-camera-upload-shipment-photos: backlog
-  8-6-owner-push-notification-prototype: backlog
+  epic-8: in-progress
+  8-1-subscription-capable-products: done
+  8-2-stripe-subscription-checkout: done
+  8-3-subscription-lifecycle-webhooks: review
+  8-4-admin-pwa-shell: review
+  8-5-camera-upload-shipment-photos: review
+  8-6-owner-push-notification-prototype: review
   epic-8-retrospective: optional

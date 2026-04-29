@@ -22,6 +22,7 @@ import {
 } from "../../seo/site";
 import ProductImageGallery from "./ProductImageGallery";
 import { pdpCtaState } from "./pdpCta";
+import { PdpSubscriptionBlock } from "../subscription/PdpSubscriptionBlock";
 import {
   colorsForSize,
   computeOptionLayout,
@@ -464,6 +465,11 @@ const ProductDetail: React.FC = () => {
           selectedColor={selColor}
           onSizeChange={setSelSize}
           onColorChange={setSelColor}
+        />
+
+        <PdpSubscriptionBlock
+          plans={row.subscriptionPlans}
+          selectedVariant={selectedVariant}
         />
 
         {product.fabric_type ? (

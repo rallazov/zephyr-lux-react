@@ -97,6 +97,7 @@ describe("customerOrderStatus serializer", () => {
     expect(json).not.toContain("internal_note");
     expect(json).not.toContain("Call customer before shipping");
     expect(json).not.toContain("Fulfillment:");
+    expect(json).not.toMatch(/shipment_images|shipment-evidence/i);
   });
 
   it("omits tracking when fulfillment is not shipped or delivered", () => {

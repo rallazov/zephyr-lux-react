@@ -1,4 +1,8 @@
 import type { Product } from "../domain/commerce/product";
+import {
+  subscriptionPlansPurchasableFromEmbed,
+  type SubscriptionPlanEmbedRow,
+} from "../domain/commerce/subscription";
 import { productSchema, productVariantSchema } from "../domain/commerce";
 import { buildDisplayGalleryUrls } from "./pdpImage";
 import type { CatalogProductDetail } from "./types";
@@ -47,9 +51,12 @@ export type SupabaseProductRow = {
   legacy_storefront_id: number | null;
 };
 
+export type SupabaseSubscriptionPlanRow = SubscriptionPlanEmbedRow;
+
 export type SupabaseProductWithRelations = SupabaseProductRow & {
   product_variants?: SupabaseProductVariantRow[] | null;
   product_images?: SupabaseProductImageRow[] | null;
+  product_subscription_plans?: SubscriptionPlanEmbedRow[] | null;
 };
 
 function sortImageCandidates(
@@ -183,18 +190,25 @@ export function supabaseBundleToCatalogDetail(
     galleryImages,
     variantPrimaryImageBySku
   );
+  const subscriptionPlans = subscriptionPlansPurchasableFromEmbed(
+    row.product_subscription_plans,
+  );
   return {
     product,
     storefrontProductId,
     galleryImages,
     displayGalleryUrls,
     variantPrimaryImageBySku,
+    subscriptionPlans,
   };
 }
 
 export function supabaseBundleToListItem(
   row: SupabaseProductWithRelations
 ): CatalogListItem {
-  const { product, storefrontProductId } = supabaseBundleToCatalogDetail(row);
-  return catalogListItemFromProduct(product, storefrontProductId);
+  const detail = supabaseBundleToCatalogDetail(row);
+  return {
+    ...catalogListItemFromProduct(detail.product, detail.storefrontProductId),
+    subscriptionPlans: detail.subscriptionPlans,
+  };
 }

@@ -5,4 +5,6 @@ export * from "./fulfillmentTransitions";
 export * from "./order";
 export * from "./product";
 export * from "./shipment";
+export * from "./shipmentImage";
+export * from "./subscription";
 export * from "./trackingUrl";

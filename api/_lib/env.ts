@@ -26,7 +26,26 @@ export const ENV = {
   ENABLE_CUSTOMER_SHIPMENT_NOTIFICATION: ["1", "true", "yes"].includes(
     (process.env.ENABLE_CUSTOMER_SHIPMENT_NOTIFICATION || "").trim().toLowerCase(),
   ),
+  /**
+   * Story 8-6: optional owner push prototype. Requires VAPID_* and web-push on the server.
+   */
+  ENABLE_OWNER_PUSH_NOTIFICATIONS: ["1", "true", "yes"].includes(
+    (process.env.ENABLE_OWNER_PUSH_NOTIFICATIONS || "").trim().toLowerCase(),
+  ),
+  /** VAPID public key (URL-safe base64). Server + client `PushManager.subscribe` use the same public material. */
+  VAPID_PUBLIC_KEY: (process.env.VAPID_PUBLIC_KEY || "").trim(),
+  /** VAPID private key (URL-safe base64). Server only — never expose to Vite or the browser. */
+  VAPID_PRIVATE_KEY: (process.env.VAPID_PRIVATE_KEY || "").trim(),
+  /** VAPID subject contact per RFC 8292 (`mailto:` or `https:` URL). */
+  VAPID_SUBJECT: (process.env.VAPID_SUBJECT || "").trim(),
 };
+
+export function isOwnerPushNotificationsConfigured(): boolean {
+  return (
+    ENV.ENABLE_OWNER_PUSH_NOTIFICATIONS &&
+    Boolean(ENV.VAPID_PUBLIC_KEY && ENV.VAPID_PRIVATE_KEY && ENV.VAPID_SUBJECT)
+  );
+}
 
 export function isSupabaseOrderPersistenceConfigured(): boolean {
   return Boolean(ENV.SUPABASE_URL && ENV.SUPABASE_SERVICE_ROLE_KEY);

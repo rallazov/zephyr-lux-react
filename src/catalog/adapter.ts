@@ -51,6 +51,21 @@ const PRODUCTS_CATALOG_SELECT = `
     storage_path,
     sort_order,
     is_primary
+  ),
+  product_subscription_plans (
+    id,
+    product_id,
+    variant_id,
+    slug,
+    name,
+    description,
+    interval,
+    interval_count,
+    price_cents,
+    currency,
+    stripe_price_id,
+    trial_period_days,
+    status
   )
 `;
 

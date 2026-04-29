@@ -5,6 +5,7 @@ import { useAuth } from "../auth/AuthContext";
 import {
   adminImageRowSchema,
   adminSaveBundleSchema,
+  adminSubscriptionPlanRowSchema,
   adminVariantRowSchema,
   bundleToRpcPayload,
   formatZodError,
@@ -15,6 +16,37 @@ import type { ProductStatus, ProductVariantStatus } from "../domain/commerce/enu
 
 type VRow = z.infer<typeof adminVariantRowSchema>;
 type IRow = z.infer<typeof adminImageRowSchema>;
+type SubscriptionPlanAdminRow = z.infer<typeof adminSubscriptionPlanRowSchema>;
+
+function newSubscriptionPlanRow(): SubscriptionPlanAdminRow {
+  return {
+    id: crypto.randomUUID(),
+    slug: "",
+    name: "",
+    description: "",
+    stripe_product_id: null,
+    stripe_price_id: null,
+    variant_id: null,
+    interval: "month",
+    interval_count: 1,
+    price_cents: 0,
+    currency: "USD",
+    trial_period_days: null,
+    status: "draft",
+  };
+}
+
+const subscriptionPlanIntervals: SubscriptionPlanAdminRow["interval"][] = [
+  "day",
+  "week",
+  "month",
+  "year",
+];
+const billingPlanStatuses: SubscriptionPlanAdminRow["status"][] = [
+  "draft",
+  "active",
+  "archived",
+];
 
 function newVariantRow(): VRow {
   return {
@@ -73,6 +105,7 @@ export default function AdminProductForm() {
   const [status, setStatus] = useState<ProductStatus>("draft");
   const [variants, setVariants] = useState<VRow[]>(() => [newVariantRow()]);
   const [images, setImages] = useState<IRow[]>([]);
+  const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlanAdminRow[]>(() => []);
 
   useEffect(() => {
     if (isNew || !productId || !supabase) {
@@ -86,7 +119,7 @@ export default function AdminProductForm() {
       setLoading(true);
       const { data, error } = await supabase
         .from("products")
-        .select("*, product_variants(*), product_images(*)")
+        .select("*, product_variants(*), product_images(*), product_subscription_plans(*)")
         .eq("id", productId)
         .single();
       if (error) {
@@ -141,6 +174,33 @@ export default function AdminProductForm() {
           variant_id: (r.variant_id as string | null) ?? null,
         })) as IRow[];
       setImages(iRows);
+
+      const planRows = (data as { product_subscription_plans?: Record<string, unknown>[] })
+        .product_subscription_plans;
+      if (planRows && planRows.length > 0) {
+        setSubscriptionPlans(
+          planRows
+            .slice()
+            .map((r) => ({
+              id: r.id as string,
+              slug: String((r.slug as string) ?? ""),
+              name: String((r.name as string) ?? ""),
+              description: (r.description as string | null) ?? "",
+              stripe_product_id: (r.stripe_product_id as string | null) ?? null,
+              stripe_price_id: (r.stripe_price_id as string | null) ?? null,
+              variant_id: (r.variant_id as string | null) ?? null,
+              interval: (r.interval as SubscriptionPlanAdminRow["interval"]) ?? "month",
+              interval_count: (r.interval_count as number) ?? 1,
+              price_cents: (r.price_cents as number) ?? 0,
+              currency: ((r.currency as string) ?? "usd").toUpperCase(),
+              trial_period_days: (r.trial_period_days as number | null) ?? null,
+              status: (r.status as SubscriptionPlanAdminRow["status"]) ?? "draft",
+            }))
+            .sort((a, b) => a.slug.localeCompare(b.slug)),
+        );
+      } else {
+        setSubscriptionPlans([]);
+      }
       setLoading(false);
     })();
   }, [isNew, productId, supabase]);
@@ -184,6 +244,12 @@ export default function AdminProductForm() {
           sort_order: im.sort_order ?? 0,
           is_primary: im.is_primary ?? false,
         })),
+        subscription_plans: subscriptionPlans.map((p) => ({
+          ...p,
+          slug: p.slug.trim().toLowerCase(),
+          name: p.name,
+          description: p.description || undefined,
+        })),
       });
       if (!parse.success) {
         setFormErr(formatZodError(parse.error));
@@ -204,9 +270,9 @@ export default function AdminProductForm() {
           const m = (error as { message?: string }).message ?? String(error);
           if (/duplicate|unique|23505|slug/i.test(m)) {
             setFormErr(
-              m.includes("slug")
+              m.includes("slug") || /subscription/i.test(m)
                 ? m
-                : "Slug or SKU must be unique. Check for a duplicate slug in products or sku on another variant."
+                : "Slug, SKU, or billing-plan slug must be unique. Check product slug, variant SKUs, and active billing plan slugs."
             );
           } else {
             setFormErr(m);
@@ -241,6 +307,7 @@ export default function AdminProductForm() {
       status,
       variants,
       images,
+      subscriptionPlans,
       isNew,
       nav,
     ]
@@ -543,6 +610,252 @@ export default function AdminProductForm() {
                 Remove variant
               </button>
             ) : null}
+          </div>
+        ))}
+      </section>
+
+      <section
+        className="bg-white border border-slate-200 rounded-lg p-4 space-y-3"
+        data-testid="admin-product-subscribe-save-section"
+      >
+        <div className="flex flex-wrap justify-between items-center gap-2">
+          <div>
+            <h2 className="font-semibold text-slate-800">Subscribe & save (Stripe Billing)</h2>
+            <p className="text-xs text-slate-500 mt-1 max-w-xl">
+              Optional recurring billing plans. Marking <span className="font-medium">active</span> requires a valid
+              Stripe <span className="font-medium">price</span> id (<span className="font-mono">price_…</span>) plus
+              name, cadence, currency, and list price; Stripe <span className="font-medium">product</span> id (
+              <span className="font-mono">prod_…</span>) is optional. Use a lowercase plan slug unique among active
+              plans for this product.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="text-sm text-blue-700 shrink-0"
+            onClick={() => setSubscriptionPlans((p) => [...p, newSubscriptionPlanRow()])}
+          >
+            + Add billing plan
+          </button>
+        </div>
+        {subscriptionPlans.length === 0 ? (
+          <p className="text-sm text-slate-500">No billing plans. One-time catalog and checkout are unchanged.</p>
+        ) : null}
+        {subscriptionPlans.map((pl, pi) => (
+          <div key={pl.id} className="border border-slate-100 rounded p-3 space-y-3">
+            <div className="text-xs text-slate-500 font-mono break-all">plan id: {pl.id}</div>
+            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+              <label className="md:col-span-1">
+                Plan slug *
+                <input
+                  className="mt-0.5 w-full border border-slate-300 rounded px-1 py-1 font-mono"
+                  placeholder="monthly-save"
+                  value={pl.slug}
+                  onChange={(e) => {
+                    const arr = subscriptionPlans.slice();
+                    arr[pi] = {
+                      ...arr[pi]!,
+                      slug: e.target.value,
+                    };
+                    setSubscriptionPlans(arr);
+                  }}
+                />
+              </label>
+              <label className="md:col-span-1">
+                Plan name *
+                <input
+                  className="mt-0.5 w-full border border-slate-300 rounded px-1 py-1"
+                  value={pl.name}
+                  onChange={(e) => {
+                    const arr = subscriptionPlans.slice();
+                    arr[pi] = { ...arr[pi]!, name: e.target.value };
+                    setSubscriptionPlans(arr);
+                  }}
+                />
+              </label>
+              <label className="md:col-span-1">
+                Billing plan status
+                <select
+                  className="mt-0.5 w-full border border-slate-300 rounded px-1 py-1"
+                  value={pl.status}
+                  onChange={(e) => {
+                    const arr = subscriptionPlans.slice();
+                    arr[pi] = {
+                      ...arr[pi]!,
+                      status: e.target.value as SubscriptionPlanAdminRow["status"],
+                    };
+                    setSubscriptionPlans(arr);
+                  }}
+                >
+                  {billingPlanStatuses.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="sm:col-span-2 md:col-span-3">
+                Description
+                <input
+                  className="mt-0.5 w-full border border-slate-300 rounded px-1 py-1"
+                  value={pl.description ?? ""}
+                  onChange={(e) => {
+                    const arr = subscriptionPlans.slice();
+                    arr[pi] = { ...arr[pi]!, description: e.target.value };
+                    setSubscriptionPlans(arr);
+                  }}
+                />
+              </label>
+              <label>
+                Stripe price id ({pl.status === "active" ? "required" : "optional"})
+                <input
+                  className="mt-0.5 w-full border border-slate-300 rounded px-1 py-1 font-mono text-xs"
+                  placeholder="price_…"
+                  value={pl.stripe_price_id ?? ""}
+                  onChange={(e) => {
+                    const arr = subscriptionPlans.slice();
+                    arr[pi] = {
+                      ...arr[pi]!,
+                      stripe_price_id: e.target.value.trim() === "" ? null : e.target.value.trim(),
+                    };
+                    setSubscriptionPlans(arr);
+                  }}
+                />
+              </label>
+              <label>
+                Stripe product id
+                <input
+                  className="mt-0.5 w-full border border-slate-300 rounded px-1 py-1 font-mono text-xs"
+                  placeholder="prod_…"
+                  value={pl.stripe_product_id ?? ""}
+                  onChange={(e) => {
+                    const arr = subscriptionPlans.slice();
+                    arr[pi] = {
+                      ...arr[pi]!,
+                      stripe_product_id: e.target.value.trim() === "" ? null : e.target.value.trim(),
+                    };
+                    setSubscriptionPlans(arr);
+                  }}
+                />
+              </label>
+              <label>
+                Scope variant
+                <select
+                  className="mt-0.5 w-full border border-slate-300 rounded px-1 py-1 font-mono text-xs"
+                  value={pl.variant_id ?? ""}
+                  onChange={(e) => {
+                    const arr = subscriptionPlans.slice();
+                    arr[pi] = {
+                      ...arr[pi]!,
+                      variant_id: e.target.value ? e.target.value : null,
+                    };
+                    setSubscriptionPlans(arr);
+                  }}
+                >
+                  <option value="">All variants (product-wide)</option>
+                  {variants.map((vr) => (
+                    <option key={vr.id} value={vr.id}>
+                      {vr.sku || vr.id.slice(0, 8)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Interval
+                <select
+                  className="mt-0.5 w-full border border-slate-300 rounded px-1 py-1"
+                  value={pl.interval}
+                  onChange={(e) => {
+                    const arr = subscriptionPlans.slice();
+                    arr[pi] = {
+                      ...arr[pi]!,
+                      interval: e.target.value as SubscriptionPlanAdminRow["interval"],
+                    };
+                    setSubscriptionPlans(arr);
+                  }}
+                >
+                  {subscriptionPlanIntervals.map((iv) => (
+                    <option key={iv} value={iv}>
+                      {iv}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Interval count
+                <input
+                  type="number"
+                  min={1}
+                  className="mt-0.5 w-full border border-slate-300 rounded px-1 py-1"
+                  value={pl.interval_count}
+                  onChange={(e) => {
+                    const arr = subscriptionPlans.slice();
+                    arr[pi] = {
+                      ...arr[pi]!,
+                      interval_count: Math.max(1, Number(e.target.value) || 1),
+                    };
+                    setSubscriptionPlans(arr);
+                  }}
+                />
+              </label>
+              <label>
+                Price (cents, info)
+                <input
+                  type="number"
+                  min={0}
+                  className="mt-0.5 w-full border border-slate-300 rounded px-1 py-1"
+                  value={pl.price_cents}
+                  onChange={(e) => {
+                    const arr = subscriptionPlans.slice();
+                    arr[pi] = {
+                      ...arr[pi]!,
+                      price_cents: Math.max(0, Number(e.target.value) || 0),
+                    };
+                    setSubscriptionPlans(arr);
+                  }}
+                />
+              </label>
+              <label>
+                Currency *
+                <input
+                  maxLength={3}
+                  className="mt-0.5 w-full border border-slate-300 rounded px-1 py-1 font-mono"
+                  value={pl.currency}
+                  onChange={(e) => {
+                    const arr = subscriptionPlans.slice();
+                    arr[pi] = {
+                      ...arr[pi]!,
+                      currency: e.target.value.toUpperCase(),
+                    };
+                    setSubscriptionPlans(arr);
+                  }}
+                />
+              </label>
+              <label>
+                Trial days
+                <input
+                  type="number"
+                  min={0}
+                  className="mt-0.5 w-full border border-slate-300 rounded px-1 py-1"
+                  value={pl.trial_period_days ?? ""}
+                  onChange={(e) => {
+                    const arr = subscriptionPlans.slice();
+                    const raw = e.target.value;
+                    arr[pi] = {
+                      ...arr[pi]!,
+                      trial_period_days: raw === "" ? null : Number(raw),
+                    };
+                    setSubscriptionPlans(arr);
+                  }}
+                />
+              </label>
+            </div>
+            <button
+              type="button"
+              className="text-sm text-red-700"
+              onClick={() => setSubscriptionPlans((ar) => ar.filter((_, j) => j !== pi))}
+            >
+              Remove billing plan
+            </button>
           </div>
         ))}
       </section>

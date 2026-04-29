@@ -55,6 +55,7 @@ export function catalogListItemFromProduct(
     heroImageUrl: hero,
     inStock,
     purchasableVariantCount: purchasableVariantCount(product),
+    subscriptionPlans: [],
   };
 }
 
@@ -92,6 +93,7 @@ export function parseStaticCatalogData(input: unknown) {
       galleryImages,
       displayGalleryUrls,
       variantPrimaryImageBySku,
+      subscriptionPlans: [],
     });
   }
 
