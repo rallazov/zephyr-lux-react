@@ -17,6 +17,10 @@ vi.mock("./logger", () => ({
   log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
+vi.mock("./ownerPushSend", () => ({
+  maybeSendOwnerOrderPaidPush: vi.fn().mockResolvedValue(undefined),
+}));
+
 import {
   buildOwnerOrderPaidEmail,
   formatMoneyCents,

@@ -8,6 +8,7 @@ import {
   markNotificationLogSent,
   NOTIFICATION_TEMPLATE_OWNER_ORDER_PAID,
 } from "./notificationLog";
+import { maybeSendOwnerOrderPaidPush } from "./ownerPushSend";
 import { sendViaResendApi } from "./transactionalEmail";
 
 /**
@@ -262,6 +263,13 @@ export async function maybeSendOwnerOrderPaidNotification(args: {
       },
       "owner_order_paid_notification: skipped — missing RESEND_API_KEY, RESEND_FROM, or OWNER_NOTIFICATION_EMAIL",
     );
+    await maybeSendOwnerOrderPaidPush({
+      admin,
+      orderId: row.id,
+      orderNumber: row.order_number,
+      totalCents: row.total_cents,
+      currency: row.currency,
+    });
     await releaseOwnerNotifyInFlight(admin, row);
     return;
   }
@@ -293,6 +301,13 @@ export async function maybeSendOwnerOrderPaidNotification(args: {
       },
       "owner_order_paid_notification: could not load order_items",
     );
+    await maybeSendOwnerOrderPaidPush({
+      admin,
+      orderId: row.id,
+      orderNumber: row.order_number,
+      totalCents: row.total_cents,
+      currency: row.currency,
+    });
     await releaseOwnerNotifyInFlight(admin, row);
     return;
   }
@@ -358,6 +373,13 @@ export async function maybeSendOwnerOrderPaidNotification(args: {
       },
       "owner_order_paid_notification: Resend send failed (order remains paid)",
     );
+    await maybeSendOwnerOrderPaidPush({
+      admin,
+      orderId: row.id,
+      orderNumber: row.order_number,
+      totalCents: row.total_cents,
+      currency: row.currency,
+    });
     await releaseOwnerNotifyInFlight(admin, row);
     return;
   }
@@ -389,6 +411,14 @@ export async function maybeSendOwnerOrderPaidNotification(args: {
       "owner_order_paid_notification: Resend send succeeded but could not mark notification log sent; finalizing order anyway to avoid duplicate owner emails (see notification_logs for mismatch)",
     );
   }
+
+  await maybeSendOwnerOrderPaidPush({
+    admin,
+    orderId: row.id,
+    orderNumber: row.order_number,
+    totalCents: row.total_cents,
+    currency: row.currency,
+  });
 
   const doneAt = new Date().toISOString();
   const { error: updErr } = await admin

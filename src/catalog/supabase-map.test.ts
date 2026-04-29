@@ -103,6 +103,52 @@ describe("supabase-map", () => {
     expect(detail.variantPrimaryImageBySku["ZLX-BLK-S"]).toBe("/assets/v.jpg");
     expect(detail.displayGalleryUrls).toContain("/assets/p.jpg");
     expect(detail.displayGalleryUrls).toContain("/assets/v.jpg");
+    expect(detail.subscriptionPlans).toEqual([]);
+  });
+
+  it("maps active subscription embeds to storefront plan views (Stripe price id withheld)", () => {
+    const detail = supabaseBundleToCatalogDetail({
+      ...baseProduct,
+      product_subscription_plans: [
+        {
+          id: "c0000001-0000-4000-8000-000000000099",
+          product_id: "a0000001-0000-4000-8000-000000000001",
+          variant_id: null,
+          slug: "save-monthly",
+          name: "Subscribe monthly",
+          description: null,
+          interval: "month",
+          interval_count: 1,
+          price_cents: 2000,
+          currency: "usd",
+          stripe_price_id: "price_from_stripe_dashboard",
+          trial_period_days: null,
+          status: "active",
+        },
+        {
+          id: "d0000001-0000-4000-8000-000000000098",
+          product_id: "a0000001-0000-4000-8000-000000000001",
+          variant_id: null,
+          slug: "draft",
+          name: "Hidden",
+          description: null,
+          interval: "month",
+          interval_count: 1,
+          price_cents: 2000,
+          currency: "usd",
+          stripe_price_id: null,
+          trial_period_days: null,
+          status: "draft",
+        },
+      ],
+    });
+    expect(detail.subscriptionPlans).toHaveLength(1);
+    expect(detail.subscriptionPlans[0]).toMatchObject({
+      slug: "save-monthly",
+      intervalCount: 1,
+      priceCents: 2000,
+    });
+    expect(detail.subscriptionPlans[0]).not.toHaveProperty("stripe_price_id");
   });
 
   it("orders product-level gallery by primary then sort_order", () => {

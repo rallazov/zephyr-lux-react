@@ -5,6 +5,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 const claimPaymentEvent = vi.hoisted(() => vi.fn());
 const applyPaymentIntentSucceeded = vi.hoisted(() => vi.fn());
 const mockConstructEvent = vi.hoisted(() => vi.fn());
+const markPaymentEventProcessed = vi.hoisted(() => vi.fn());
 
 vi.mock("raw-body", () => ({
   default: vi.fn().mockResolvedValue(Buffer.from("payload")),
@@ -32,11 +33,17 @@ vi.mock("./_lib/applyPaymentSuccess", () => ({
   applyPaymentIntentSucceeded,
 }));
 
+const processSubscriptionStripeEvent = vi.hoisted(() => vi.fn());
+
 vi.mock("./_lib/paymentEventLedger", () => ({
   claimPaymentEvent,
   markPaymentEventFailed: vi.fn(),
   markPaymentEventIgnored: vi.fn(),
-  markPaymentEventProcessed: vi.fn(),
+  markPaymentEventProcessed,
+}));
+
+vi.mock("./_lib/subscriptionLifecycle", () => ({
+  processSubscriptionStripeEvent,
 }));
 
 vi.mock("./_lib/paymentIntentOrder", () => ({
@@ -67,6 +74,9 @@ describe("stripe-webhook handler", () => {
     applyPaymentIntentSucceeded.mockReset();
     applyPaymentIntentSucceeded.mockResolvedValue({ outcome: "ledger" });
     mockConstructEvent.mockReset();
+    processSubscriptionStripeEvent.mockReset();
+    processSubscriptionStripeEvent.mockResolvedValue({ ledger: "finalize_processed" });
+    markPaymentEventProcessed.mockReset();
   });
 
   it("returns 200 with duplicate when claim outcome is skip_ok (already finalized)", async () => {
@@ -140,5 +150,44 @@ describe("stripe-webhook handler", () => {
     expect(resSend).toHaveBeenCalledWith(
       expect.stringContaining("Payment-intent handling incomplete"),
     );
+  });
+
+  it("subscription invoice.paid invokes processSubscriptionStripeEvent (not PI apply)", async () => {
+    mockConstructEvent.mockReturnValue({
+      id: "evt_inv_1",
+      type: "invoice.paid",
+      data: { object: { id: "in_1", subscription: "sub_1" } },
+    });
+    claimPaymentEvent.mockResolvedValue({
+      outcome: "process" as const,
+      row: {
+        id: "ledger-sub",
+        provider: "stripe",
+        provider_event_id: "evt_inv_1",
+        event_type: "invoice.paid",
+        status: "received",
+        payload_hash: "h",
+        processed_at: null,
+        error_message: null,
+        created_at: new Date().toISOString(),
+      },
+    });
+
+    const resJson = vi.fn();
+    const res = {
+      status: vi.fn().mockReturnValue({ json: resJson, send: vi.fn() }),
+    } as unknown as VercelResponse;
+
+    const req = {
+      method: "POST",
+      headers: { "stripe-signature": "t=0,v1=mock" },
+    } as unknown as VercelRequest;
+
+    await defaultHandler(req, res);
+
+    expect(applyPaymentIntentSucceeded).not.toHaveBeenCalled();
+    expect(processSubscriptionStripeEvent).toHaveBeenCalled();
+    expect(markPaymentEventProcessed).toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(200);
   });
 });

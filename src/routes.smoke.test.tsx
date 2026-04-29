@@ -84,6 +84,9 @@ describe("storefront route smoke (App.tsx router tree)", () => {
     ["/policies/privacy", /^Privacy$/i],
     ["/policies/terms", /Terms of use/i],
     ["/contact", /Contact us/i],
+    ["/subscriptions", /^Subscribe.{0,120}save$/i],
+    ["/subscription/checkout/success", /Thank you/i],
+    ["/subscription/checkout/canceled", /Checkout canceled/i],
   ];
 
   it("redirects unknown policy subpath to policy index", async () => {

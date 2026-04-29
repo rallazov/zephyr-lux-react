@@ -12,6 +12,7 @@ import {
   markPaymentEventFailed,
 } from "./_lib/paymentEventLedger";
 import { sanitizeWebhookErrorMessage } from "./_lib/paymentIntentOrder";
+import { processSubscriptionStripeEvent } from "./_lib/subscriptionLifecycle";
 import { getSupabaseAdmin } from "./_lib/supabaseAdmin";
 
 export const config = { api: { bodyParser: false } };
@@ -111,6 +112,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           "Payment failed",
         );
         await markPaymentEventProcessed(admin, ledger.row.id);
+        break;
+      }
+      case "checkout.session.completed":
+      case "customer.subscription.created":
+      case "customer.subscription.updated":
+      case "customer.subscription.deleted":
+      case "invoice.paid":
+      case "invoice.payment_failed": {
+        const outcome = await processSubscriptionStripeEvent({ admin, stripe, event });
+        if (outcome.ledger === "finalize_ignored") {
+          await markPaymentEventIgnored(admin, ledger.row.id);
+        } else {
+          await markPaymentEventProcessed(admin, ledger.row.id);
+        }
         break;
       }
       default: {

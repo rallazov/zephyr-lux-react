@@ -23,6 +23,7 @@ import {
   type TimelineEntry,
 } from "./adminOrderDetailFormat";
 import { formatOrderDateUtc, humanizeEnum } from "./adminOrderListHelpers";
+import { ShipmentEvidencePanel } from "./ShipmentEvidencePanel";
 
 /** Keep in sync with `INTERNAL_NOTE_MAX_CHARS` in `api/admin-order-internal-note.ts`. */
 const INTERNAL_NOTE_MAX_CHARS = 8000;
@@ -165,6 +166,9 @@ export default function AdminOrderDetail() {
   const [internalNoteErr, setInternalNoteErr] = useState<string | null>(null);
   const [internalNoteSaving, setInternalNoteSaving] = useState(false);
   const [internalNoteOk, setInternalNoteOk] = useState(false);
+
+  /** Present once a `shipments` row exists for this order (Story 8-5). */
+  const [shipmentId, setShipmentId] = useState<string | null>(null);
 
   /** Minimal row for shipment form + gate copy */
   const orderGate: OrderShipmentGate | null = order;
@@ -347,16 +351,19 @@ export default function AdminOrderDetail() {
       setCarrier("");
       setTrackingNumber("");
       setTrackingUrl("");
+      setShipmentId(null);
     } else {
       const parsedShip = shipmentRowSchema.safeParse(sRaw);
       if (parsedShip.success) {
         setCarrier(parsedShip.data.carrier ?? "");
         setTrackingNumber(parsedShip.data.tracking_number ?? "");
         setTrackingUrl(parsedShip.data.tracking_url ?? "");
+        setShipmentId(parsedShip.data.id);
       } else {
         setCarrier("");
         setTrackingNumber("");
         setTrackingUrl("");
+        setShipmentId(null);
       }
     }
 
@@ -366,6 +373,10 @@ export default function AdminOrderDetail() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    setShipmentId(null);
+  }, [orderId]);
 
   const shippingSnapshot = order ? parseShippingAddressJson(order.shipping_address_json) : null;
   const addressBlock = shippingSnapshot ? shippingSnapshot.lines.join("\n") : "";
@@ -1067,6 +1078,15 @@ export default function AdminOrderDetail() {
             ) : null}
           </div>
         </form>
+
+        {orderId ? (
+          <ShipmentEvidencePanel
+            orderId={orderId}
+            shipmentId={shipmentId}
+            canUpload={canEditShipment}
+            accessToken={session?.access_token ?? null}
+          />
+        ) : null}
       </section>
       {(loadErr && order) || cargoErr ? (
         <p className="text-amber-800 text-sm mt-6" role="status">

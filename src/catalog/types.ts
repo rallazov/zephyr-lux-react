@@ -1,4 +1,5 @@
 import type { Product } from "../domain/commerce";
+import type { SubscriptionPlanPublic } from "../domain/commerce/subscription";
 
 /** Storefront list row: canonical product plus list-specific fields (derived). */
 export type CatalogListItem = {
@@ -11,6 +12,8 @@ export type CatalogListItem = {
   inStock: boolean;
   /** Variants with `active` status and `inventory_quantity > 0` (list ATC rule). */
   purchasableVariantCount: number;
+  /** Supabase Billing plans only (`[]` when static catalog). */
+  subscriptionPlans: SubscriptionPlanPublic[];
 };
 
 export type CatalogProductDetail = {
@@ -22,4 +25,6 @@ export type CatalogProductDetail = {
   displayGalleryUrls: string[];
   /** Primary storage path per SKU from variant-attached `product_images` rows only (Supabase). */
   variantPrimaryImageBySku: Partial<Record<string, string>>;
+  /** Supabase Billing plans only (`[]` when static catalog). Stripe ids never appear here — checkout uses opaque `plan_id`. */
+  subscriptionPlans: SubscriptionPlanPublic[];
 };

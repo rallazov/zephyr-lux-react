@@ -44,6 +44,7 @@ vi.mock("../../catalog/factory", () => ({
         "SKU-S": "/primary-s.jpg",
         "SKU-M": "/primary-m.jpg",
       },
+      subscriptionPlans: [],
     }),
   }),
 }));
