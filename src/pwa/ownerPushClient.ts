@@ -1,5 +1,6 @@
 /** Browser push helpers for Story 8-6 (admin owner alerts). */
 
+import { apiUrl } from "../lib/apiBase";
 export type OwnerPushStatusResponse = {
   serverPushEnabled: boolean;
   vapidPublicKey: string | null;
@@ -33,7 +34,7 @@ export async function subscribeOwnerPush(vapidPublicKey: string): Promise<PushSu
 }
 
 export async function revokeOwnerPushOnServer(accessToken: string): Promise<void> {
-  const res = await fetch("/api/admin-push-subscription", {
+  const res = await fetch(apiUrl("/api/admin-push-subscription"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

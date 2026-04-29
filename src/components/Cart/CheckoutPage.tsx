@@ -12,6 +12,7 @@ import { CartContext } from "../../context/CartContext";
 import { getDefaultCatalogAdapter } from "../../catalog/factory";
 import type { CatalogListItem } from "../../catalog/types";
 import { useCartQuote } from "../../hooks/useCartQuote";
+import { apiUrl } from "../../lib/apiBase";
 import { checkoutSchema } from "../../lib/validation";
 import { IS_MOCK_PAYMENT } from "../../utils/config";
 import { formatPageTitleWithBrand, usePageMeta } from "../../seo/meta";
@@ -409,7 +410,7 @@ const CheckoutPage = () => {
             setClientSecret(null);
             setPaymentError(null);
             try {
-                const res = await fetch("/api/create-payment-intent", {
+                const res = await fetch(apiUrl("/api/create-payment-intent"), {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({

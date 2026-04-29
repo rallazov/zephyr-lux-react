@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { shipmentImageTypeSchema, type ShipmentImageType } from "../domain/commerce/shipmentImage";
+import { apiUrl } from "../lib/apiBase";
 
 export type ShipmentEvidenceItem = {
   id: string;
@@ -52,7 +53,7 @@ export function ShipmentEvidencePanel (props: {
     setListErr(null);
     try {
       const res = await fetch(
-        `/api/admin-shipment-images?order_id=${encodeURIComponent(orderId)}`,
+        apiUrl(`/api/admin-shipment-images?order_id=${encodeURIComponent(orderId)}`),
         {
           method: "GET",
           headers: { Authorization: `Bearer ${accessToken}` },
@@ -126,7 +127,7 @@ export function ShipmentEvidencePanel (props: {
       fd.set("image_type", imageType);
       fd.set("file", file);
 
-      const res = await fetch("/api/admin-shipment-image", {
+      const res = await fetch(apiUrl("/api/admin-shipment-image"), {
         method: "POST",
         headers: { Authorization: `Bearer ${accessToken}` },
         body: fd,

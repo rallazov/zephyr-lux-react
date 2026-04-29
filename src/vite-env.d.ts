@@ -8,6 +8,8 @@ interface ImportMetaEnv {
   readonly VITE_CATALOG_BACKEND?: string;
   readonly VITE_SUPABASE_URL?: string;
   readonly VITE_SUPABASE_ANON_KEY?: string;
+  /** Public origin of the Railway (or other) API — e.g. https://your-service.up.railway.app — no trailing slash. */
+  readonly VITE_PUBLIC_API_URL?: string;
   /** Plausible domain as configured in Plausible (e.g. zephyrlux.com); loads `window.plausible`. */
   readonly VITE_ANALYTICS_PLAUSIBLE_DOMAIN?: string;
   /** GA4 measurement ID (G-XXXXXXXX); forward via `gtag` when present on `window`. */

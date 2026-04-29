@@ -20,7 +20,7 @@ export const ENV = {
   VERCEL_BLOB_RW_TOKEN: process.env.VERCEL_BLOB_READ_WRITE_TOKEN || "",
   LOG_LEVEL: process.env.LOG_LEVEL || "info",
   /**
-   * When true, `api/admin-order-fulfillment` may send the customer “shipped” notification (Story 5-6).
+   * When true, `handlers/admin-order-fulfillment` may send the customer “shipped” notification (Story 5-6).
    * Default unset/false keeps Story 5-4 fulfillment-only until email is explicitly enabled in deploy.
    */
   ENABLE_CUSTOMER_SHIPMENT_NOTIFICATION: ["1", "true", "yes"].includes(

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toCheckoutLines } from "../cart/checkoutLines";
 import type { StorefrontCartLine } from "../cart/cartLine";
 import { isServerCartQuote, type ServerCartQuote } from "../lib/cartQuoteTypes";
+import { apiUrl } from "../lib/apiBase";
 
 /**
  * Fetches server catalog quote for current cart. Skips when there are no checkout SKUs.
@@ -32,7 +33,7 @@ export function useCartQuote(cartItems: StorefrontCartLine[]) {
         setLoading(true);
         setError(null);
         try {
-          const res = await fetch("/api/cart-quote", {
+          const res = await fetch(apiUrl("/api/cart-quote"), {
             method: "POST",
             signal: ctrl.signal,
             headers: { "Content-Type": "application/json" },

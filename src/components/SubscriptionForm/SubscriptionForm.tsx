@@ -2,9 +2,7 @@
 
 import React, { useState } from 'react';
 import './SubscriptionForm.css';
-
-// Explicitly define API_URL
-const API_URL: string = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import { apiUrl } from '../../lib/apiBase';
 
 interface SubscriptionFormProps {
   buttonText?: string;
@@ -31,7 +29,7 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/api/subscribe`, {
+      const response = await fetch(apiUrl('/api/subscribe'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
