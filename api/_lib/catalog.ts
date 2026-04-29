@@ -1,8 +1,9 @@
-import fs from "node:fs";
-import { createRequire } from "node:module";
-import path from "node:path";
 import { parseStaticCatalogData } from "../../src/catalog/parse";
 import type { Product, ProductVariant } from "../../src/domain/commerce";
+/**
+ * Bundled at compile time so lambdas always have catalog data (avoids `fs` / `import.meta` on Vercel CJS output).
+ */
+import rawCatalogJson from "../../data/products.json";
 
 let _cache: { products: Product[]; bySku: Map<string, { product: Product; variant: ProductVariant }> } | null = null;
 
@@ -12,32 +13,15 @@ export const FLAT_SHIPPING_CENTS = 500;
 /** 7% of merchandise subtotal (pre-shipping) — matches prior checkout UI. */
 export const TAX_BPS = 700;
 
-const CATALOG_DISK_PATH = path.join(process.cwd(), "data", "products.json");
-
-function readCatalogJson(): unknown {
-  try {
-    return JSON.parse(fs.readFileSync(CATALOG_DISK_PATH, "utf-8")) as unknown;
-  } catch {
-    const requireJson = createRequire(import.meta.url);
-    return requireJson("../../data/products.json") as unknown;
-  }
-}
-
 function loadCatalogData() {
   if (_cache) return _cache;
-  let json: unknown;
-  try {
-    json = readCatalogJson();
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    throw new Error(`Catalog load failed (${CATALOG_DISK_PATH} or bundled): ${msg}`);
-  }
+  const json: unknown = rawCatalogJson;
   let products: Product[];
   try {
     ({ products } = parseStaticCatalogData(json));
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    throw new Error(`Catalog validation failed (${CATALOG_DISK_PATH}): ${msg}`);
+    throw new Error(`Catalog validation failed (data/products.json): ${msg}`);
   }
   const bySku = new Map<string, { product: Product; variant: ProductVariant }>();
   for (const product of products) {

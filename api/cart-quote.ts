@@ -24,31 +24,48 @@ function cors(res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  cors(res);
-  if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
-
-  const parsed = bodySchema.safeParse(req.body);
-  if (!parsed.success) {
-    return res.status(400).json({
-      code: "INVALID_BODY",
-      error: "Invalid request body",
-      details: z.treeifyError(parsed.error),
-    });
-  }
-  const { items } = parsed.data;
+/** Sync handler + outer try/catch so nothing escapes as an unhandled rejection (FUNCTION_INVOCATION_FAILED). */
+export default function handler(req: VercelRequest, res: VercelResponse): void {
   try {
-    const q = quoteCartLines(items);
-    return res.status(200).json(q);
-  } catch (e) {
-    if (isQuoteError(e)) {
-      if (e.code === "UNKNOWN_SKU") {
-        return res.status(400).json({ code: e.code, error: e.message });
-      }
-      return res.status(400).json({ code: e.code, error: e.message });
+    cors(res);
+    if (req.method === "OPTIONS") {
+      res.status(200).end();
+      return;
     }
-    log.error({ err: e }, "cart-quote failed");
-    return res.status(500).json({ error: "Could not get price quote. Please try again." });
+    if (req.method !== "POST") {
+      res.status(405).json({ error: "Method not allowed" });
+      return;
+    }
+
+    const parsed = bodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({
+        code: "INVALID_BODY",
+        error: "Invalid request body",
+        details: z.treeifyError(parsed.error),
+      });
+      return;
+    }
+    const { items } = parsed.data;
+    try {
+      const q = quoteCartLines(items);
+      res.status(200).json(q);
+    } catch (e) {
+      if (isQuoteError(e)) {
+        if (e.code === "UNKNOWN_SKU") {
+          res.status(400).json({ code: e.code, error: e.message });
+          return;
+        }
+        res.status(400).json({ code: e.code, error: e.message });
+        return;
+      }
+      log.error({ err: e }, "cart-quote failed");
+      res.status(500).json({ error: "Could not get price quote. Please try again." });
+    }
+  } catch (fatal) {
+    console.error("cart-quote fatal", fatal);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Could not get price quote. Please try again." });
+    }
   }
 }
