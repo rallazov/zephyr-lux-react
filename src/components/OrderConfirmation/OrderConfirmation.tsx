@@ -12,6 +12,7 @@ import {
 } from "../../order-confirmation/confirmationViewModel";
 import { formatPageTitleWithBrand, usePageMeta } from "../../seo/meta";
 import { SITE_BRAND } from "../../seo/site";
+import { apiUrl } from "../../lib/apiBase";
 
 const SUPPORT_MAIL = "mailto:support@zephyrlux.com";
 
@@ -99,7 +100,7 @@ const OrderConfirmation: React.FC = () => {
     }
     const lq = encodeURIComponent(lookup);
     fetch(
-      `/api/order-by-payment-intent?payment_intent_id=${q}&order_lookup=${lq}`,
+      apiUrl(`/api/order-by-payment-intent?payment_intent_id=${q}&order_lookup=${lq}`),
     )
       .then(async (r) => {
         if (!r.ok) return null;

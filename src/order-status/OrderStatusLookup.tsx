@@ -6,6 +6,7 @@ import {
   parseOrderLookupRequest,
   type OrderLookupFieldErrors,
 } from "./orderLookupRequest";
+import { apiUrl } from "../lib/apiBase";
 
 const SUPPORT_MAIL = "mailto:support@zephyrlux.com";
 
@@ -43,7 +44,7 @@ const OrderStatusLookup: React.FC = () => {
     setSubmitState("submitting");
 
     try {
-      const response = await fetch("/api/order-lookup-request", {
+      const response = await fetch(apiUrl("/api/order-lookup-request"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parsed.data),

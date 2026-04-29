@@ -1,18 +1,17 @@
 # Zephyr Lux (React + TypeScript + Vite)
 
-E-commerce front end with Vite, React Router, Stripe checkout, and Vercel serverless API routes.
+E-commerce front end with Vite, React Router, Stripe checkout, and a **Node HTTP API** (`handlers/` + `server/`) suited for Railway or any host; **Vercel Hobby** deploys the **static SPA** only (no `/api` folder — avoids the 12 serverless-function cap).
 
 ## Configuration
 
-**Environment variables:** See the committed [`.env.example`](.env.example) for every name the app reads today (client `VITE_*` vs server-only), required vs optional defaults, and where each is used. Copy into `.env.local` for local development and mirror names in the Vercel project for preview/production.
+**Environment variables:** See the committed [`.env.example`](.env.example) for every name the app reads today (client `VITE_*` vs server-only), required vs optional defaults, and where each is used. Copy into `.env.local` for local development.
 
 | Context | What to use |
 |--------|-------------|
-| **Local** | Vite on port `5173` and `vercel dev` for API routes (see `npm run dev:full`). Use **Stripe test** keys (`pk_test_` / `sk_test_`); point `FRONTEND_URL` at `http://localhost:5173`. |
-| **Vercel Preview** | **Test** Stripe keys; set `FRONTEND_URL` to the preview URL (`https://…vercel.app`). Webhook secret must match the preview webhook endpoint. |
-| **Vercel Production** | **Live** Stripe keys only; `FRONTEND_URL` must be your real customer-facing domain. Configure a **production** Stripe webhook and signing secret. |
-
-**`VITE_API_URL` (subscription / newsletter):** [SubscriptionForm](src/components/SubscriptionForm/SubscriptionForm.tsx) uses `VITE_API_URL` and falls back to `http://localhost:5000` in code when unset. For **`npm run dev:full`** (Vite + `vercel dev`), set `VITE_API_URL` in `.env.local` to the **API origin printed by `vercel dev`** in your terminal—commonly `http://localhost:3000` unless you change the listen port. Do not assume the code default matches `vercel dev` unless you run the API on port 5000.
+| **Local** | `npm run dev:full` — Vite on `5173` proxies `/api` to `npm run api:dev` (default **:3333**). Set server env in `.env.local` for the API process; `FRONTEND_URL=http://localhost:5173`. |
+| **Railway** | Deploy from this repo; start command uses `npm start` (`tsx server/index.ts`). Optional [`railway.toml`](railway.toml) sets `/health` for deploy checks. Set all server secrets from `.env.example` (see `handlers/_lib/env.ts`). `FRONTEND_URL` = your live Vercel storefront URL. Stripe webhook: `https://<railway-host>/api/stripe-webhook`. |
+| **Vercel (storefront)** | Build the Vite app. Set **`VITE_PUBLIC_API_URL`** to your Railway API origin (no trailing slash) so the browser calls the API cross-origin. **No** server secrets on Vercel. |
+| **Vercel Preview** | Same as production for split: preview URL in `FRONTEND_URL` on Railway (or use prod API — your choice). |
 
 Payment-focused setup (Stripe CLI, webhook forwarding) is in [README-payments.md](README-payments.md).
 

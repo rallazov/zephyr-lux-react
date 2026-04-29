@@ -5,6 +5,7 @@ import {
   subscriptionPlansForVariant,
   type SubscriptionPlanPublic,
 } from "../../domain/commerce/subscription";
+import { apiUrl } from "../../lib/apiBase";
 
 function formatMoneyEURStyle(cents: number, currency: string): string {
   const amt = cents / 100;
@@ -146,7 +147,7 @@ export function PdpSubscriptionBlock({ plans, selectedVariant }: PdpSubscription
                 }
                 setLoading(true);
                 try {
-                  const res = await fetch("/api/create-subscription-checkout-session", {
+                  const res = await fetch(apiUrl("/api/create-subscription-checkout-session"), {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({

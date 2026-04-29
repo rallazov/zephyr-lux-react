@@ -6,6 +6,7 @@ import {
   type CustomerOrderStatusResponse,
   type CustomerOrderStatusViewModel,
 } from "./customerOrderStatusViewModel";
+import { apiUrl } from "../lib/apiBase";
 
 const SUPPORT_MAIL = "mailto:support@zephyrlux.com";
 
@@ -40,7 +41,7 @@ const CustomerOrderStatusPage: React.FC = () => {
     let cancelled = false;
     setLoadState({ status: "loading" });
 
-    fetch(`/api/customer-order-status?token=${encodeURIComponent(token)}`)
+    fetch(apiUrl(`/api/customer-order-status?token=${encodeURIComponent(token)}`))
       .then(async (response) => {
         if (!response.ok) throw new Error("order status unavailable");
         return response.json() as Promise<CustomerOrderStatusResponse>;

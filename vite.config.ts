@@ -5,10 +5,10 @@ import { defineConfig } from 'vitest/config'
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  // `npm run dev` proxies `/api/*` to `vercel dev` (default :3000). Set `DEV_API_PROXY`
-  // in `.env.local` to match the origin printed when `vercel dev` starts (if not :3000).
+  // `npm run dev` proxies `/api/*` to `npm run api:dev` (default :3333). Override with
+  // `DEV_API_PROXY` in `.env.local` (legacy: `vercel dev` on :3000).
   const devApiProxy =
-    process.env.DEV_API_PROXY ?? env.DEV_API_PROXY ?? 'http://127.0.0.1:3000'
+    process.env.DEV_API_PROXY ?? env.DEV_API_PROXY ?? 'http://127.0.0.1:3333'
 
   return {
     plugins: [react()],
@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => {
     test: {
       environment: 'jsdom',
       setupFiles: ['./src/test/setup.ts'],
-      include: ['src/**/*.{test,spec}.{ts,tsx}', 'api/**/*.test.ts'],
+      include: ['src/**/*.{test,spec}.{ts,tsx}', 'handlers/**/*.test.ts'],
     },
   }
 })

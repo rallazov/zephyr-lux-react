@@ -24,8 +24,9 @@ import {
 } from "./adminOrderDetailFormat";
 import { formatOrderDateUtc, humanizeEnum } from "./adminOrderListHelpers";
 import { ShipmentEvidencePanel } from "./ShipmentEvidencePanel";
+import { apiUrl } from "../lib/apiBase";
 
-/** Keep in sync with `INTERNAL_NOTE_MAX_CHARS` in `api/admin-order-internal-note.ts`. */
+/** Keep in sync with `INTERNAL_NOTE_MAX_CHARS` in `handlers/admin-order-internal-note.ts`. */
 const INTERNAL_NOTE_MAX_CHARS = 8000;
 
 function formatDetailLocalTs(iso: string): string {
@@ -426,7 +427,7 @@ export default function AdminOrderDetail() {
       setFulfillmentSaving(true);
       try {
         const res = await fetch(
-          `/api/admin-order-fulfillment?order_id=${encodeURIComponent(orderId)}`,
+          apiUrl(`/api/admin-order-fulfillment?order_id=${encodeURIComponent(orderId)}`),
           {
             method: "PATCH",
             headers: {
@@ -477,7 +478,7 @@ export default function AdminOrderDetail() {
       }
       setInternalNoteSaving(true);
       try {
-        const res = await fetch("/api/admin-order-internal-note", {
+        const res = await fetch(apiUrl("/api/admin-order-internal-note"), {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -561,7 +562,7 @@ export default function AdminOrderDetail() {
         tracking_number: trackingNumber.trim() || null,
         tracking_url: trackingUrl.trim() ? trackingUrl.trim() : null,
       };
-      const res = await fetch("/api/admin-shipment", {
+      const res = await fetch(apiUrl("/api/admin-shipment"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

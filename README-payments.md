@@ -1,24 +1,22 @@
-# Payments Setup (Stripe + Vercel Serverless)
+# Payments Setup (Stripe + API server)
 
 ## Environment variables
 
-The **canonical list** of variable names, scopes (client vs server), and defaults is in [`.env.example`](.env.example) at the repository root. Copy the values you need into **`.env.local`** (gitignored) for the Vite app and set the same server-side names in the environment used by `vercel dev` / Vercel (Preview vs Production). Do not duplicate long env documentation here; keep it in one place in `.env.example` + the main [README](README.md) configuration table.
+The **canonical list** of variable names, scopes (client vs server), and defaults is in [`.env.example`](.env.example) at the repository root. Copy the values you need into **`.env.local`** (gitignored) for the Vite app and set the same server-side names on **Railway** (or any host running `npm start` / `tsx server/index.ts`). For a static-only Vercel deploy, server env vars live only on the API host, not on Vercel. Do not duplicate long env documentation here; keep it in one place in `.env.example` + the main [README](README.md) configuration table.
 
-**Quick local minimum (server / `vercel dev`):** `FRONTEND_URL`, `STRIPE_SECRET_KEY` (test), `STRIPE_WEBHOOK_SECRET` (from `stripe listen` or Dashboard). Client: set `VITE_STRIPE_PUBLIC_KEY` to your **`pk_test_...`** in `.env.local` if you are exercising real Stripe Elements (see `.env.example`).
+**Quick local minimum (API):** `FRONTEND_URL`, `STRIPE_SECRET_KEY` (test), `STRIPE_WEBHOOK_SECRET` (from `stripe listen` or Dashboard). Client: set `VITE_STRIPE_PUBLIC_KEY` to your **`pk_test_...`** in `.env.local` if you are exercising real Stripe Elements (see `.env.example`).
 
 ## Local dev
 
-- Terminal 1 (frontend):
+- **Recommended:** one command runs Vite (proxies `/api` to the Node server) + API on port **3333**:
 ```
-npm run dev
+npm run dev:full
 ```
-- Terminal 2 (vercel functions):
+- **Or** two terminals: `npm run dev` and `npm run api:dev`.
+- **Legacy:** `vercel dev` still works if you point Vercel at this repo’s `handlers/` layout; prefer `dev:full` for the Railway-aligned flow.
+- Stripe webhook (another terminal; default local API port **3333**):
 ```
-vercel dev
-```
-- Stripe webhook (in another terminal):
-```
-stripe listen --forward-to localhost:3000/api/stripe-webhook
+stripe listen --forward-to localhost:3333/api/stripe-webhook
 ```
 
 ## Flow

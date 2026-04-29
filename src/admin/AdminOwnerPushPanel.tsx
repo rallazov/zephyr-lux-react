@@ -6,6 +6,7 @@ import {
   revokeOwnerPushOnServer,
   type OwnerPushStatusResponse,
 } from "../pwa/ownerPushClient";
+import { apiUrl } from "../lib/apiBase";
 
 type Props = {
   session: Session | null;
@@ -30,7 +31,7 @@ export function AdminOwnerPushPanel({ session, isAdminContext }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin-push-subscription", {
+      const res = await fetch(apiUrl("/api/admin-push-subscription"), {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
       if (!res.ok) {
@@ -121,7 +122,7 @@ export function AdminOwnerPushPanel({ session, isAdminContext }: Props) {
                 return;
               }
               const sub = await subscribeOwnerPush(status.vapidPublicKey);
-              const res = await fetch("/api/admin-push-subscription", {
+              const res = await fetch(apiUrl("/api/admin-push-subscription"), {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",

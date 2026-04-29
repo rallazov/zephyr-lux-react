@@ -13,8 +13,10 @@
     "smoke": "npm run build && vitest run",
     "lint": "eslint .",
     "preview": "vite preview",
+    "api:dev": "tsx server/index.ts",
     "server": "vercel dev --yes",
-    "dev:full": "concurrently -k \"npm run dev\" \"npm run server\""
+    "dev:full": "concurrently -k \"npm run dev\" \"npm run api:dev\"",
+    "start": "tsx server/index.ts"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^6.6.0",
@@ -30,12 +32,14 @@
     "@vercel/blob": "^1.1.1",
     "busboy": "^1.6.0",
     "concurrently": "^9.2.1",
+    "express": "^5.2.1",
     "pino": "^9.11.0",
     "raw-body": "^3.0.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.28.1",
     "stripe": "^17.7.0",
+    "tsx": "^4.21.0",
     "web-push": "^3.6.7",
     "zod": "^4.1.11"
   },
@@ -45,6 +49,7 @@
     "@testing-library/react": "^16.0.1",
     "@testing-library/user-event": "^14.6.1",
     "@types/busboy": "^1.5.4",
+    "@types/express": "^5.0.6",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@types/react-router-dom": "^5.3.3",

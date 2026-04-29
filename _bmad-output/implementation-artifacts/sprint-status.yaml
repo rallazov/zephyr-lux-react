@@ -106,8 +106,8 @@ development_status:
   epic-8: in-progress
   8-1-subscription-capable-products: done
   8-2-stripe-subscription-checkout: done
-  8-3-subscription-lifecycle-webhooks: review
-  8-4-admin-pwa-shell: review
-  8-5-camera-upload-shipment-photos: review
-  8-6-owner-push-notification-prototype: review
+  8-3-subscription-lifecycle-webhooks: done 
+  8-4-admin-pwa-shell: done
+  8-5-camera-upload-shipment-photos: done
+  8-6-owner-push-notification-prototype: done 
   epic-8-retrospective: optional
