@@ -7,14 +7,23 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: "#1E40AF", // Example: Custom primary color
-        secondary: "#9333EA", // Example: Custom secondary color
         zlx: {
+          bg: "var(--zlx-bg)",
+          surface: "var(--zlx-surface)",
+          "surface-2": "var(--zlx-surface-2)",
+          input: "var(--zlx-input)",
+          border: "var(--zlx-border)",
+          text: "var(--zlx-text)",
+          muted: "var(--zlx-muted)",
           action: "var(--zlx-action)",
           "action-hover": "var(--zlx-action-hover)",
           "action-text": "var(--zlx-action-text)",
           danger: "var(--zlx-danger)",
+          "danger-deep": "var(--zlx-danger-deep)",
           "danger-hover": "var(--zlx-danger-hover)",
+          processing: "var(--zlx-processing)",
+          success: "var(--zlx-success)",
+          warning: "var(--zlx-warning)",
           progress: "var(--zlx-progress)",
           "progress-hover": "var(--zlx-progress-hover)",
         },
@@ -30,4 +39,3 @@ export default {
     require("@tailwindcss/aspect-ratio"), // Optional: Aspect ratio utilities
   ],
 }
-

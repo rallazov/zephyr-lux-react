@@ -58,7 +58,7 @@ export function PdpSubscriptionBlock({ plans, selectedVariant }: PdpSubscription
   return (
     <section
       data-testid="pdp-subscription-block"
-      className="mt-8 rounded-lg border border-amber-200/25 bg-neutral-900/70 p-4 sm:p-5"
+      className="zlx-card mt-8 p-4 sm:p-5"
       aria-labelledby="pdp-subscription-heading"
     >
       <h2 id="pdp-subscription-heading" className="text-base font-semibold text-neutral-50">
@@ -132,7 +132,9 @@ export function PdpSubscriptionBlock({ plans, selectedVariant }: PdpSubscription
               type="button"
               data-testid="pdp-subscription-start"
               disabled={loading}
-              className="w-full min-h-11 rounded-md border border-amber-200/55 bg-transparent px-4 py-2.5 text-sm font-semibold text-amber-100 transition hover:bg-amber-200/15 disabled:cursor-not-allowed disabled:opacity-50"
+              className={`w-full min-h-11 rounded-md px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 ${
+                loading ? "zlx-btn-processing" : "zlx-btn-secondary"
+              }`}
               onClick={async () => {
                 const pid = effectivePlanId;
                 const em = email.trim();

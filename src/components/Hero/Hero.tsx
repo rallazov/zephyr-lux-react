@@ -6,7 +6,7 @@ const DEFAULT_TITLE = (
   <>
     Premium Comfort.
     <br />
-    <span className="text-red-400">Bold Style.</span>
+    <span className="text-neutral-200">Bold Style.</span>
   </>
 );
 const DEFAULT_DESCRIPTION =
@@ -56,7 +56,7 @@ export default function Hero({
               </button>
             </Link>
             <Link to={secondaryTo}>
-              <button type="button" className="bg-white/10 border border-white/20 text-white px-6 py-2 rounded-md">
+              <button type="button" className="zlx-btn-secondary px-6 py-2 rounded-md">
                 {secondaryLabel}
               </button>
             </Link>

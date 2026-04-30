@@ -1,44 +1,100 @@
 .product-list {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 16px;
+  padding: 72px 20px 88px;
+}
+
+.product-list h1 {
+  margin: 0 0 28px;
+  color: #ffffff;
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  font-weight: 900;
+  letter-spacing: 0;
 }
 
 .product-item {
-  border: 1px solid #ddd;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #2d2d2d;
+  border-radius: 14px;
+  background: var(--zlx-surface);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
+}
+
+.product-item-image-link {
+  display: block;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #ffffff;
+  aspect-ratio: 4 / 5;
+}
+
+.product-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
   padding: 10px;
-  border-radius: 5px;
 }
-  
-  div .product-item-button {
-    padding: 10px;
-    background-color: var(--zlx-action);
-    color: var(--zlx-action-text);
-    border: 1px solid #525252;
-    border-radius: 5px;
-    cursor: pointer;
-  }
 
-  div .product-item-button:hover:not([disabled]) {
-    background-color: var(--zlx-action-hover);
-  }
-
-  .product-item img {
-    width: 100%;
-    height: auto;
-  }
-  
 .product-item h3 {
-  margin-top: 12px;
+  margin: 4px 0 0;
+  font-size: 1rem;
+  line-height: 1.35;
 }
-  
-  .product-item p {
-    margin-bottom: 5px;
-  }
-  
 
-  
-  div .product-item-button[disabled] {
-    background-color: #ddd;
-    cursor: default;
+.product-item h3 a {
+  color: #ffffff;
+}
+
+.product-item-fabric {
+  min-height: 1.4em;
+  margin: 0;
+  color: var(--zlx-muted);
+  font-size: 0.9rem;
+}
+
+.product-item-price {
+  margin: 0;
+  color: #ffffff;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+div .product-item-button {
+  display: inline-flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 10px 14px;
+  margin-top: auto;
+  background-color: var(--zlx-action);
+  color: var(--zlx-action-text);
+  border: 1px solid var(--zlx-action);
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 800;
+  text-align: center;
+  text-decoration: none;
+}
+
+div .product-item-button:hover:not([disabled]) {
+  background-color: var(--zlx-action-hover);
+}
+
+div .product-item-button[disabled] {
+  background-color: #2a2a2a;
+  border-color: #444444;
+  color: #8f8f8f;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .product-list {
+    padding-inline: 16px;
   }
+}

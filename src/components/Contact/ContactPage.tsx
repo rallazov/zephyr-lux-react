@@ -12,7 +12,7 @@ const ContactPage: React.FC = () => {
   return (
     <main className="contact-page min-h-[50vh] bg-neutral-900 text-neutral-100">
       {/* Template — replace before production: SUPPORT_EMAIL, hours, and address must reflect real operations. */}
-      <div className="prose prose-invert prose-headings:text-neutral-100 prose-a:text-red-400 hover:prose-a:text-red-300 max-w-prose mx-auto px-4 py-10 lg:py-14">
+      <div className="prose prose-invert prose-headings:text-neutral-100 prose-a:text-neutral-200 hover:prose-a:text-white max-w-prose mx-auto px-4 py-10 lg:py-14">
         <h1>Contact us</h1>
         <p>
           For order questions, sizing, or returns, reach out using the email below. Replace the placeholder address

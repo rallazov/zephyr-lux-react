@@ -194,14 +194,14 @@ const CartPage: React.FC = () => {
         {checkoutCanceled && (
           <div
             role="status"
-            className="mb-6 p-3 rounded border border-red-900 bg-neutral-950 text-neutral-200 text-sm max-w-2xl mx-auto text-center"
+            className="mx-auto mb-6 max-w-2xl rounded-lg border border-zlx-border bg-zlx-surface p-3 text-center text-sm text-neutral-200"
           >
             Checkout was canceled — your bag is still saved.
           </div>
         )}
-        <div className="flex justify-center items-center space-x-4">
-          <h1 className="text-4xl font-extrabold">SHOPPING</h1>
-          <h1 className="text-4xl font-bold text-gray-700">BAG</h1>
+        <div className="mb-6 flex justify-center items-baseline space-x-4">
+          <h1 className="text-4xl font-extrabold tracking-tight">SHOPPING</h1>
+          <h1 className="text-4xl font-bold text-neutral-500">BAG</h1>
         </div>
         {cartItems.length === 0 ? (
           <p className="text-center text-gray-400">Your cart is empty.</p>
@@ -210,7 +210,7 @@ const CartPage: React.FC = () => {
             {catalogError && (
               <div
                 role="alert"
-                className="mb-4 p-3 rounded border border-red-700 bg-red-950 text-red-100 text-sm"
+              className="zlx-alert-danger mb-4 p-4 text-sm text-neutral-200"
               >
                 {catalogError}
               </div>
@@ -218,7 +218,7 @@ const CartPage: React.FC = () => {
             {reconcileNotice && (
               <div
                 role="status"
-                className="mb-4 p-3 rounded border border-red-900 bg-neutral-950 text-neutral-200 text-sm"
+                className="mb-4 rounded-lg border border-zlx-border bg-zlx-surface p-3 text-sm text-neutral-200"
               >
                 <p className="mb-2">{reconcileNotice}</p>
                 <button
@@ -233,7 +233,7 @@ const CartPage: React.FC = () => {
             {!checkoutAllowed && validations && catalogList && (
               <div
                 role="alert"
-                className="mb-4 p-3 rounded border border-red-600 bg-red-950/80 text-red-100 text-sm"
+                className="zlx-alert-danger mb-4 p-4 text-sm text-neutral-200"
               >
                 <p className="font-semibold mb-1">Fix your bag before checkout</p>
                 <ul className="list-disc list-inside space-y-1">
@@ -251,13 +251,13 @@ const CartPage: React.FC = () => {
             {quoteError && (
               <div
                 role="alert"
-                className="mb-4 p-3 rounded border border-red-900 bg-neutral-950 text-neutral-200 text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
+                className="zlx-alert-danger mb-4 flex flex-col gap-2 p-4 text-sm text-neutral-200 sm:flex-row sm:items-center sm:justify-between"
               >
                 <span>{quoteError}</span>
                 <button
                   type="button"
                   onClick={refetchQuote}
-                  className="text-amber-300 underline text-sm hover:text-amber-200"
+                  className="zlx-btn-secondary rounded-md px-3 py-2 text-sm"
                 >
                   Retry
                 </button>
@@ -268,13 +268,13 @@ const CartPage: React.FC = () => {
                 Loading prices from catalog…
               </p>
             )}
-            <div className="mb-4 bg-black p-3 rounded shadow border border-gray-600">
+            <div className="zlx-card mb-6 p-4">
               <p className="text-center text-sm font-bold text-neutral-200">
                 {progressMessage}
               </p>
-              <div className="relative h-2 bg-gray-800 rounded mt-2">
+              <div className="relative h-2 overflow-hidden rounded-full bg-neutral-800 mt-3">
                 <div
-                  className="absolute top-0 left-0 h-full rounded bg-zlx-progress"
+                  className="absolute top-0 left-0 h-full rounded-full bg-zlx-progress"
                   style={{ width: `${Math.min((progressSubtotalDollars / 50) * 100, 100)}%` }}
                 />
               </div>
@@ -300,7 +300,7 @@ const CartPage: React.FC = () => {
                   <article
                     key={key}
                     data-testid={`cart-line-mobile-${key}`}
-                    className="rounded-lg border border-gray-600 bg-black p-4 shadow"
+                    className="zlx-card p-4"
                     aria-describedby={v && v.issues.length > 0 ? `issues-m-${key}` : undefined}
                   >
                     <div className="flex gap-3 min-w-0">
@@ -353,7 +353,7 @@ const CartPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => removeFromCart(item.id, item.sku)}
-                          className="min-h-11 min-w-11 shrink-0 rounded bg-gray-700 text-white text-lg leading-none hover:bg-gray-500"
+                          className="min-h-11 min-w-11 shrink-0 rounded-lg border border-zlx-border bg-zlx-surface-2 text-white text-lg leading-none hover:bg-neutral-700"
                           aria-label={`Decrease quantity for ${item.name}`}
                         >
                           −
@@ -365,7 +365,7 @@ const CartPage: React.FC = () => {
                           type="button"
                           onClick={() => addToCart(item)}
                           disabled={plusDisabled}
-                          className="min-h-11 min-w-11 shrink-0 rounded bg-gray-700 text-white text-lg leading-none hover:bg-gray-500 disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="min-h-11 min-w-11 shrink-0 rounded-lg border border-zlx-border bg-zlx-surface-2 text-white text-lg leading-none hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed"
                           aria-label={`Increase quantity for ${item.name}`}
                         >
                           +
@@ -374,7 +374,7 @@ const CartPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => removeFromCart(item.id, item.sku)}
-                        className="min-h-11 rounded bg-zlx-danger px-4 text-sm font-medium text-white hover:bg-zlx-danger-hover"
+                        className="min-h-11 rounded-lg bg-zlx-danger px-4 text-sm font-medium text-white hover:bg-zlx-danger-hover"
                       >
                         Remove
                       </button>
@@ -390,10 +390,10 @@ const CartPage: React.FC = () => {
               )}
             </div>
 
-            <div className="hidden md:block overflow-x-auto">
+            <div className="zlx-card hidden overflow-x-auto md:block">
               <table className="min-w-full table-auto border-collapse">
                 <thead>
-                  <tr className="bg-black text-white uppercase text-sm border-b border-gray-700">
+                  <tr className="text-white uppercase text-sm border-b border-neutral-800">
                     <th className="py-3 px-6 text-left">Product</th>
                     <th className="py-3 px-6 text-center">Price</th>
                     <th className="py-3 px-6 text-center">Quantity</th>
@@ -401,7 +401,7 @@ const CartPage: React.FC = () => {
                     <th className="py-3 px-6 text-center">Action</th>
                   </tr>
                 </thead>
-                <tbody className="bg-black">
+                <tbody>
                   {cartLineRows.map(
                     ({
                       key,
@@ -415,7 +415,7 @@ const CartPage: React.FC = () => {
                     }) => (
                       <tr
                         key={key}
-                        className="border-b border-gray-700 hover:bg-gray-800"
+                        className="border-b border-neutral-800 hover:bg-zlx-surface-2/70"
                         aria-describedby={
                           v && v.issues.length > 0 ? `issues-${key}` : undefined
                         }
@@ -425,7 +425,7 @@ const CartPage: React.FC = () => {
                             <img
                               src={item.image || "/assets/img/Listing.jpeg"}
                               alt=""
-                              className="w-16 h-16 object-contain border border-gray-600 rounded bg-white sm:w-20 sm:h-20"
+                              className="w-16 h-16 object-contain border border-neutral-300 rounded-lg bg-white sm:w-20 sm:h-20"
                             />
                             <div className="text-center sm:text-left min-w-0">
                               <p className="font-medium text-sm text-white break-words">{item.name}</p>
@@ -469,7 +469,7 @@ const CartPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => removeFromCart(item.id, item.sku)}
-                              className="min-h-11 min-w-11 rounded bg-gray-700 text-white hover:bg-gray-500"
+                              className="min-h-11 min-w-11 rounded-lg border border-zlx-border bg-zlx-surface-2 text-white hover:bg-neutral-700"
                               aria-label={`Decrease quantity for ${item.name}`}
                             >
                               −
@@ -481,7 +481,7 @@ const CartPage: React.FC = () => {
                               type="button"
                               onClick={() => addToCart(item)}
                               disabled={plusDisabled}
-                              className="min-h-11 min-w-11 rounded bg-gray-700 text-white hover:bg-gray-500 disabled:opacity-40 disabled:cursor-not-allowed"
+                              className="min-h-11 min-w-11 rounded-lg border border-zlx-border bg-zlx-surface-2 text-white hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed"
                               aria-label={`Increase quantity for ${item.name}`}
                             >
                               +
@@ -505,7 +505,7 @@ const CartPage: React.FC = () => {
                             onClick={() => {
                               removeFromCart(item.id, item.sku);
                             }}
-                            className="min-h-11 rounded bg-zlx-danger px-4 text-white hover:bg-zlx-danger-hover"
+                            className="min-h-11 rounded-lg bg-zlx-danger px-4 text-white hover:bg-zlx-danger-hover"
                           >
                             Remove
                           </button>
@@ -517,8 +517,8 @@ const CartPage: React.FC = () => {
               </table>
             </div>
 
-              <div className="mt-6 bg-black p-4 rounded shadow border border-gray-600">
-                <p className="text-lg font-semibold text-white">
+              <div className="zlx-card mt-6 p-5">
+                <p className="text-xl font-extrabold text-white">
                   Subtotal: {subtotalDisplay}
                 </p>
                 <p className="text-sm text-gray-400">
@@ -528,15 +528,15 @@ const CartPage: React.FC = () => {
                 </p>
               </div>
 
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center bg-black p-4 rounded shadow border border-gray-600">
+              <div className="zlx-card mt-6 flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <input
                   type="text"
                   placeholder="Enter coupon code"
-                  className="w-full sm:flex-1 min-w-0 p-2 min-h-11 border border-gray-600 rounded bg-gray-800 text-white"
+                  className="w-full min-w-0 rounded-lg border border-zlx-border bg-zlx-input p-3 text-white sm:flex-1"
                 />
                 <button
                   type="button"
-                  className="min-h-11 shrink-0 rounded border border-neutral-500 bg-neutral-800 px-4 py-2 text-sm font-medium text-neutral-100 hover:bg-neutral-700"
+                  className="zlx-btn-secondary min-h-11 shrink-0 rounded-lg px-4 py-2 text-sm font-medium"
                 >
                   Apply Coupon
                 </button>
@@ -546,7 +546,7 @@ const CartPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => navigate("/products")}
-                  className="min-h-11 w-full sm:w-auto bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-600"
+                  className="zlx-btn-secondary min-h-11 w-full rounded-lg px-4 py-2 sm:w-auto"
                 >
                   Continue Shopping
                 </button>
@@ -556,7 +556,7 @@ const CartPage: React.FC = () => {
                     navigate("/checkout", { state: { subtotal, items: cartItems } })
                   }
                   disabled={!checkoutAllowed}
-                  className="hidden md:inline-flex min-h-11 items-center justify-center rounded bg-zlx-action px-6 py-2 font-semibold text-zlx-action-text hover:bg-zlx-action-hover disabled:cursor-not-allowed disabled:opacity-40"
+                  className="zlx-btn-primary hidden min-h-12 items-center justify-center rounded-lg px-8 py-3 text-base font-extrabold disabled:cursor-not-allowed disabled:opacity-40 md:inline-flex"
                 >
                   Proceed to Checkout
                 </button>
@@ -592,7 +592,7 @@ const CartPage: React.FC = () => {
               </div>
 
             <div
-              className="md:hidden fixed bottom-0 left-0 right-0 z-20 border-t border-gray-700 bg-black/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_24px_rgba(0,0,0,0.45)]"
+              className="md:hidden fixed bottom-0 left-0 right-0 z-20 border-t border-zlx-border bg-black/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_24px_rgba(0,0,0,0.45)]"
               data-testid="cart-mobile-checkout-bar"
             >
               <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
@@ -606,7 +606,7 @@ const CartPage: React.FC = () => {
                     navigate("/checkout", { state: { subtotal, items: cartItems } })
                   }
                   disabled={!checkoutAllowed}
-                  className="min-h-12 shrink-0 rounded-lg bg-zlx-action px-4 py-2 text-sm font-semibold text-zlx-action-text hover:bg-zlx-action-hover disabled:cursor-not-allowed disabled:opacity-40"
+                  className="zlx-btn-primary min-h-12 shrink-0 rounded-lg px-5 py-2 text-sm font-extrabold disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Checkout
                 </button>

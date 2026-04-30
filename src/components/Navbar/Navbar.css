@@ -159,10 +159,27 @@
         align-items: center;
     }
 
-    .navbar:hover .nav-icons a,
-    .navbar:hover .nav-icons .nav-icon-btn,
-    .navbar:hover .nav-links a {
+    .navbar:not(.scrolled):hover {
+        background-color: #000000;
+    }
+
+    .navbar:not(.scrolled):hover .nav-icons a:not(:hover),
+    .navbar:not(.scrolled):hover .nav-icons .nav-icon-btn,
+    .navbar:not(.scrolled):hover .nav-links a,
+    .navbar:not(.scrolled):hover .hamburger,
+    .navbar:not(.scrolled):hover .cart-container .cart-count {
         color: #ffffff;
+    }
+
+    .navbar.scrolled:hover {
+        background-color: #ffffff;
+    }
+
+    .navbar.scrolled:hover .nav-icons a:not(:hover),
+    .navbar.scrolled:hover .nav-icons .nav-icon-btn,
+    .navbar.scrolled:hover .hamburger,
+    .navbar.scrolled:hover .cart-container .cart-count {
+        color: #000000;
     }
 
     .hamburger {
@@ -228,8 +245,7 @@
         color: #8B0000;
     }
 
-    .navbar.scrolled .hamburger,
-    .navbar:hover .hamburger {
+    .navbar.scrolled .hamburger {
         color: #000000;
     }
 

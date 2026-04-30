@@ -35,12 +35,12 @@ const ProductImageGallery: React.FC<Props> = (props) => {
 
   return (
     <div data-testid="pdp-image-gallery" className="w-full space-y-3">
-      <div className="overflow-hidden rounded-md border border-neutral-800 bg-neutral-950">
+      <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white p-3">
         <img
           data-testid="pdp-gallery-main"
           src={mainSrc}
           alt={alt}
-          className="aspect-[4/5] w-full object-cover"
+          className="aspect-[4/5] w-full object-contain"
           width={800}
           height={1000}
           loading="eager"
@@ -61,9 +61,9 @@ const ProductImageGallery: React.FC<Props> = (props) => {
                 type="button"
                 aria-label={`View image ${i + 1}`}
                 aria-pressed={selected}
-                className={`h-16 w-16 shrink-0 snap-start overflow-hidden rounded border-2 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-black ${
+                className={`h-16 w-16 shrink-0 snap-start overflow-hidden rounded border-2 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-zlx-processing focus-visible:ring-offset-2 focus-visible:ring-offset-black ${
                   selected
-                    ? "border-amber-500/90 opacity-100"
+                    ? "border-zlx-processing opacity-100"
                     : "border-transparent opacity-75 hover:opacity-100"
                 }`}
                 onClick={() => setUserSlide(i)}
