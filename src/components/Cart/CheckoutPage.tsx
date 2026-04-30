@@ -110,7 +110,7 @@ const InnerCheckoutForm: React.FC<{
                 <PaymentElement />
             </div>
             {paymentError && (
-                <p className="text-red-500 mt-2 break-words" role="alert">
+                <p className="zlx-alert-danger mt-3 p-3 text-red-200 break-words" role="alert">
                     {paymentError}
                 </p>
             )}
@@ -119,11 +119,12 @@ const InnerCheckoutForm: React.FC<{
                 id="checkout-submit-pay"
                 disabled={!formValid || !readyToPay || processing}
                 className={`w-full min-h-12 scroll-mt-32 rounded px-4 py-3 font-bold text-lg text-zlx-action-text ${
-                  processing ? "bg-neutral-600 text-neutral-200" : "bg-zlx-action hover:bg-zlx-action-hover"
+                  processing ? "zlx-btn-processing" : "zlx-btn-primary"
                 }`}
             >
                 {processing ? "Processing..." : "Pay Now"}
             </button>
+            <div className="mt-3 text-sm text-neutral-400 text-center">Secure checkout • Free returns • Satisfaction guaranteed</div>
         </form>
     );
 };
@@ -662,7 +663,7 @@ const CheckoutPage = () => {
                     </Link>
                 </div>
                 <h1 className="text-3xl font-extrabold mb-6">Checkout</h1>
-                <div className="bg-gray-800 p-4 rounded mb-6">
+                <div className="zlx-card p-6 mb-6">
                     <h2 className="text-xl font-bold mb-4">Order Summary</h2>
                     {cartQuoteError && (
                         <div className="text-red-400 mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2" role="alert">
@@ -722,7 +723,7 @@ const CheckoutPage = () => {
                     )}
                 </div>
 
-                <div className="bg-gray-800 p-4 rounded mb-6 w-full min-w-0 overflow-x-hidden">
+                <div className="zlx-card p-6 mb-6 w-full min-w-0 overflow-x-hidden">
                     <h2 className="text-lg font-bold mb-3">Contact &amp; shipping</h2>
                     <div className="space-y-3 w-full max-w-full sm:max-w-xl md:max-w-2xl">
                         <div>
@@ -734,7 +735,7 @@ const CheckoutPage = () => {
                                 name="name"
                                 value={formData.name}
                                 onChange={handleFormChange}
-                                className="w-full min-h-11 box-border p-2 rounded bg-gray-900 border border-gray-600 text-white"
+                                className="w-full min-h-11 box-border p-2 zlx-input"
                                 autoComplete="name"
                             />
                             {errors.name && <p className="text-red-400 text-sm mt-1">{errors.name}</p>}
@@ -749,7 +750,7 @@ const CheckoutPage = () => {
                                 type="email"
                                 value={formData.email}
                                 onChange={handleFormChange}
-                                className="w-full min-h-11 box-border p-2 rounded bg-gray-900 border border-gray-600 text-white"
+                                className="w-full min-h-11 box-border p-2 zlx-input"
                                 autoComplete="email"
                             />
                             {errors.email && <p className="text-red-400 text-sm mt-1">{errors.email}</p>}
@@ -764,7 +765,7 @@ const CheckoutPage = () => {
                                 value={formData.address}
                                 onChange={handleFormChange}
                                 rows={3}
-                                className="w-full min-h-11 box-border p-2 rounded bg-gray-900 border border-gray-600 text-white"
+                                className="w-full min-h-11 box-border p-2 zlx-input"
                                 autoComplete="street-address"
                             />
                             {errors.address && <p className="text-red-400 text-sm mt-1">{errors.address}</p>}
@@ -778,7 +779,7 @@ const CheckoutPage = () => {
                                 name="city"
                                 value={formData.city}
                                 onChange={handleFormChange}
-                                className="w-full min-h-11 box-border p-2 rounded bg-gray-900 border border-gray-600 text-white"
+                                className="w-full min-h-11 box-border p-2 zlx-input"
                                 autoComplete="address-level2"
                             />
                             {errors.city && <p className="text-red-400 text-sm mt-1">{errors.city}</p>}
@@ -793,7 +794,7 @@ const CheckoutPage = () => {
                                     name="state"
                                     value={formData.state}
                                     onChange={handleFormChange}
-                                    className="w-full min-h-11 box-border p-2 rounded bg-gray-900 border border-gray-600 text-white"
+                                    className="w-full min-h-11 box-border p-2 zlx-input"
                                     autoComplete="address-level1"
                                 />
                                 {errors.state && <p className="text-red-400 text-sm mt-1">{errors.state}</p>}
@@ -807,7 +808,7 @@ const CheckoutPage = () => {
                                     name="postal_code"
                                     value={formData.postal_code}
                                     onChange={handleFormChange}
-                                    className="w-full min-h-11 box-border p-2 rounded bg-gray-900 border border-gray-600 text-white"
+                                    className="w-full min-h-11 box-border p-2 zlx-input"
                                     autoComplete="postal-code"
                                 />
                                 {errors.postal_code && (
@@ -824,7 +825,7 @@ const CheckoutPage = () => {
                                 name="country"
                                 value={formData.country}
                                 onChange={handleFormChange}
-                                className="w-full min-h-11 box-border p-2 rounded bg-gray-900 border border-gray-600 text-white"
+                                className="w-full min-h-11 box-border p-2 zlx-input"
                                 autoComplete="country-name"
                             />
                             {errors.country && <p className="text-red-400 text-sm mt-1">{errors.country}</p>}
@@ -856,11 +857,12 @@ const CheckoutPage = () => {
                                 Boolean(cartQuoteError)
                             }
                             className={`w-full min-h-12 scroll-mt-32 rounded px-4 py-3 font-bold text-lg text-zlx-action-text ${
-                              processing ? "bg-neutral-600 text-neutral-200" : "bg-zlx-action hover:bg-zlx-action-hover"
+                              processing ? "zlx-btn-processing" : "zlx-btn-primary"
                             }`}
                         >
                             {processing ? "Processing..." : "Pay Now"}
-                        </button>
+            </button>
+            <div className="mt-3 text-sm text-neutral-400 text-center">Secure checkout • Free returns • Satisfaction guaranteed</div>
                     </form>
                 ) : (
                     clientSecret && stripePromise && quote ? (
