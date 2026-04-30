@@ -1,48 +1,44 @@
 # Test Automation Summary
 
-Generated: 2026-04-27
+## Scope
 
-## Framework
+Vitest + Testing Library for fast CI. **Playwright** (`tests/e2e/`) runs manually or via `workflow_dispatch` after major storefront changes—see README **End-to-end tests**.
 
-- **Vitest** + **Testing Library** (`@testing-library/react`) + **jsdom** — matches `package.json` and existing colocated `*.test.ts` / `*.test.tsx` files.
-- **Browser E2E** (Playwright/Cypress) is not in the project; storefront flows are covered with integration-style tests (`routes.smoke.test.tsx`, page-level RTL tests).
+Vitest covers **integrated** behaviors: navbar scroll/menu dismissal, catalog loading placeholders (not shimmer skeletons—the app uses text/busy regions), and pointer hover smoke where CSS `:hover` cannot be asserted in jsdom.
 
-## Generated / Extended Tests
+**Excluded by request:** Non-integrated UI (e.g. disabled Search/Account), checkout/subscriptions flows, and pure CSS hover appearance (needs Playwright-style browser tests).
 
-### API Tests
+## Generated / updated tests
 
-- [x] `api/customer-order-status.test.ts` — Extended the existing handler suite with:
-  - `405` for unsupported HTTP methods (`POST`).
-  - `503` when Supabase order persistence is not configured.
-  - `503` when the Supabase admin client is unavailable (`null`).
-  - GET with repeated `token` query values (first value used; reaches lookup path with `404` for unknown token).
+### Scroll & menu behavior
 
-### UI / workflow tests (existing, referenced)
+- [x] `src/components/Navbar/Navbar.scroll.test.tsx` — `window.scrollY` threshold toggles `.scrolled`; hamburger opens drawer with Shop/Women links; scroll and wheel close drawer; cart/collection links tolerate `userEvent.hover`.
 
-- [x] `src/order-status/CustomerOrderStatusPage.test.tsx` — Order status page (fetch, loading, error, tracking).
-- [x] `src/order-status/OrderStatusLookup.test.tsx` — Secure link request form.
-- [x] `src/routes.smoke.test.tsx` — Includes `/order-status` and tokenized `/order-status/:token` smoke coverage.
+### Mobile-oriented storefront markup
 
-## Coverage (informal)
+- [x] `src/components/Cart/CartPage.mobile.test.tsx` — Tailwind mobile contract: stacked `cart-line-mobile-*`, `cart-mobile-checkout-bar` (`md:hidden`, fixed bottom, safe-area padding), main `pb-28 md:pb-4`, pinned-checkout `role="note"`, `min-h-11` / `min-h-12` tap targets; desktop table shell still mounted (`columnheader` Product).
 
-| Area | Notes |
-|------|--------|
-| Customer order status API | Handler paths: `400`, `404`, `405`, `500`, `503`, `200`; happy path + tracking; cache/security headers on GET/OPTIONS |
-| Order status UI | RTL tests for page + lookup; smoke route mounts |
+### Playwright E2E (manual / major changes)
 
-## Next Steps
+- [x] `tests/e2e/storefront.smoke.spec.ts` — home, `/products`, `/women`; mobile drawer → Shop on narrow viewport only (skipped on desktop project).
+- [x] `.github/workflows/e2e.yml` — `workflow_dispatch` only (artifact upload on failure).
 
-- Run `npm run test` in CI on every push.
-- Optional: add Playwright or Cypress later for true cross-browser E2E if product requires it.
+### Loading placeholders (“skeleton-like” UX)
 
-## Checklist (`bmad-qa-generate-e2e-tests`)
+- [x] `src/components/Home/HomePage.loading.test.tsx` — loading hero copy, `aria-busy` section, “Preparing links…” until adapter resolves.
+- [x] `src/components/Collection/CollectionPage.loading.test.tsx` — grid-area “Loading…” until `listProductsByCategory` resolves.
+- [x] `src/components/ProductList/ProductList.test.tsx` — existing loading test retained; added hover smoke on integrated Add to Cart.
 
-- [x] API tests generated/extended where applicable
-- [x] UI workflow tests exist (RTL + route smoke; no separate `tests/e2e/` folder yet)
-- [x] Standard Vitest/RTL APIs
-- [x] Happy path + critical errors covered for extended API tests
-- [x] Full suite passes (`npm run test`)
-- [x] Semantic roles/labels used in UI tests (existing files)
-- [x] Summary created at this path
+## Coverage notes
 
-**Done:** All tests passing.
+| Area | Covered in CI |
+|------|----------------|
+| Navbar scroll class + dismiss drawer | Yes |
+| Cart mobile markup (`md:hidden`, fixed bar, tap targets) | Yes (class/DOM contract; not real viewport) |
+| Playwright storefront smoke | Yes — run `npm run playwright:install` then `npm run test:e2e:ci` |
+| Home/collection/list loading copy | Yes |
+| CSS navbar/card hover visuals | No (browser-only) |
+
+## Next steps
+
+- Playwright is installed; run `npm run playwright:install` once per machine/CI image, then `npm run test:e2e:ci` after major storefront changes (see README **End-to-end tests**).

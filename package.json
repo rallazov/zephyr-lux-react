@@ -13,6 +13,10 @@
     "smoke": "npm run build && vitest run",
     "lint": "eslint .",
     "preview": "vite preview",
+    "test:e2e": "playwright test",
+    "test:e2e:ci": "npm run build && playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "playwright:install": "playwright install chromium",
     "api:dev": "tsx server/index.ts",
     "server": "vercel dev --yes",
     "dev:full": "concurrently -k \"npm run dev\" \"npm run api:dev\"",
@@ -45,6 +49,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
+    "@playwright/test": "^1.59.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.0.1",
     "@testing-library/user-event": "^14.6.1",
