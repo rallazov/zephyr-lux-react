@@ -57,7 +57,7 @@ const VariantSelector: React.FC<Props> = (props) => {
             id={sizeId}
             name="size"
             data-testid="pdp-select-size"
-            className="min-w-[140px] rounded-md border border-neutral-600 bg-neutral-950 px-3 py-2.5 text-sm text-neutral-100 [color-scheme:dark] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 focus-visible:ring-offset-0 focus-visible:ring-offset-black"
+            className="min-w-[140px] rounded-md border border-neutral-600 bg-neutral-950 px-3 py-2.5 text-sm text-neutral-100 [color-scheme:dark] focus:outline-none focus-visible:ring-2 focus-visible:ring-zlx-processing focus-visible:ring-offset-0 focus-visible:ring-offset-black"
             value={selectedSize ?? ""}
             onChange={(e) =>
               onSizeChange(e.target.value === "" ? null : e.target.value)
@@ -87,7 +87,7 @@ const VariantSelector: React.FC<Props> = (props) => {
             id={colorId}
             name="color"
             data-testid="pdp-select-color"
-            className={`min-w-[140px] rounded-md border px-3 py-2.5 text-sm [color-scheme:dark] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 focus-visible:ring-offset-0 focus-visible:ring-offset-black ${
+            className={`min-w-[140px] rounded-md border px-3 py-2.5 text-sm [color-scheme:dark] focus:outline-none focus-visible:ring-2 focus-visible:ring-zlx-processing focus-visible:ring-offset-0 focus-visible:ring-offset-black ${
               colorBlocked
                 ? "cursor-not-allowed border-neutral-700 bg-neutral-900 text-neutral-400 disabled:opacity-90"
                 : "cursor-pointer border-neutral-600 bg-neutral-950 text-neutral-100"

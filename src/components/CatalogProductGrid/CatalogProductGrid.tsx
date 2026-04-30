@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import type { CatalogListItem } from "../../catalog/types";
 import { useCart } from "../../context/CartContext";
+import "../ProductList/ProductList.css";
 
 type Props = {
   products: CatalogListItem[];
@@ -14,10 +15,11 @@ export default function CatalogProductGrid({ products }: Props) {
 
   return (
     <div
+      className="catalog-product-grid"
       style={{
         display: "grid",
-        gap: "20px",
-        gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+        gap: "24px",
+        gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
       }}
     >
       {products.map((row) => {
@@ -45,18 +47,17 @@ export default function CatalogProductGrid({ products }: Props) {
 
         return (
           <div key={product.slug} className="product-item">
-            <Link to={detailPath}>
+            <Link to={detailPath} className="product-item-image-link">
               <img
                 src={heroImageUrl}
                 alt={product.title}
-                style={{ width: "100%", height: "auto" }}
               />
             </Link>
-            <h3 style={{ marginBottom: 6, marginTop: 12, fontSize: 18 }}>
-              <Link to={detailPath} style={{ color: "#f5f5f5" }}>{product.title}</Link>
+            <h3>
+              <Link to={detailPath}>{product.title}</Link>
             </h3>
-            <p style={{ color: "#a8a8a8", marginTop: 0 }}>{product.fabric_type}</p>
-            <p style={{ fontWeight: 800, fontSize: 20, marginTop: 8 }}>Price: {priceLine}</p>
+            {product.fabric_type ? <p className="product-item-fabric">{product.fabric_type}</p> : null}
+            <p className="product-item-price">{priceLine}</p>
             {singlePurchasable ? (
               <button
                 type="button"
@@ -82,13 +83,6 @@ export default function CatalogProductGrid({ products }: Props) {
               <Link
                 to={detailPath}
                 className="product-item-button"
-                style={{
-                  display: "inline-block",
-                  boxSizing: "border-box",
-                  width: "100%",
-                  textAlign: "center",
-                  textDecoration: "none",
-                }}
               >
                 View details
               </Link>

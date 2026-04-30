@@ -12,24 +12,25 @@
   color: rgba(255, 255, 255, 0.92);
   background-color: #000000;
 
-  /* Semantic UI (storefront): forward actions vs danger vs reward meter */
-  --zlx-action: #f4f4f5;
-  --zlx-action-hover: #e4e4e7;
-  --zlx-action-text: #18181b;
-  --zlx-danger: #dc2626;
-  --zlx-danger-hover: #ef4444;
-  /* Positive incentive (free shipping, goal progress)—not caution amber */
-  --zlx-progress: #059669;
-  --zlx-progress-hover: #047857;
-  --zlx-link-hover: #f87171;
+  --zlx-bg: #000000;
   --zlx-surface: #141414;
   --zlx-surface-2: #1f1f1f;
   --zlx-input: #242424;
   --zlx-border: #3a3a3a;
+  --zlx-text: #f6f6f6;
   --zlx-muted: #a8a8a8;
-  --zlx-blue: #6A9DBB;
-  --zlx-green: #22c55e;
-  --zlx-amber: #f59e0b;
+  --zlx-action: #ffffff;
+  --zlx-action-hover: #e8e8e8;
+  --zlx-action-text: #050505;
+  --zlx-danger: #ef4444;
+  --zlx-danger-deep: #b91c1c;
+  --zlx-danger-hover: #dc2626;
+  --zlx-processing: #6A9DBB;
+  --zlx-success: #22C55E;
+  --zlx-warning: #F59E0B;
+  --zlx-progress: #22C55E;
+  --zlx-progress-hover: #16a34a;
+  --zlx-link-hover: #d4d4d4;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -76,18 +77,58 @@ button:hover {
 }
 button:focus,
 button:focus-visible {
-  outline: 2px solid var(--zlx-blue);
-  outline-offset: 2px;
+  outline: 2px solid var(--zlx-processing);
+  outline-offset: 3px;
 }
 
-.zlx-card { background: var(--zlx-surface); border: 1px solid #2d2d2d; border-radius: 14px; }
-.zlx-input { background: var(--zlx-input); border: 1px solid #464646; color: #fff; border-radius: 8px; }
-.zlx-input:focus { border-color: var(--zlx-blue); box-shadow: 0 0 0 3px rgba(106,157,187,.22); }
-.zlx-btn-primary { background: #fff; color: #050505; border: 1px solid #fff; font-weight: 700; }
-.zlx-btn-primary:hover { background: #e8e8e8; border-color: #e8e8e8; }
-.zlx-btn-secondary { background: #222; color: #fff; border: 1px solid #555; font-weight: 700; }
-.zlx-btn-processing { background: var(--zlx-blue); color: #fff; border-color: var(--zlx-blue); }
-.zlx-alert-danger { background: #151515; border: 1px solid #303030; border-left: 5px solid #ef4444; border-radius: 12px; }
+input:focus,
+textarea:focus,
+select:focus,
+a:focus-visible {
+  outline: 2px solid var(--zlx-processing);
+  outline-offset: 3px;
+}
+
+.zlx-card {
+  background: var(--zlx-surface);
+  border: 1px solid #2d2d2d;
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+.zlx-alert-danger {
+  background: #151515;
+  border: 1px solid #303030;
+  border-left: 5px solid var(--zlx-danger);
+  border-radius: 12px;
+}
+
+.zlx-btn-primary {
+  background: var(--zlx-action);
+  color: var(--zlx-action-text);
+  border: 1px solid var(--zlx-action);
+}
+
+.zlx-btn-primary:hover:not(:disabled) {
+  background: var(--zlx-action-hover);
+}
+
+.zlx-btn-secondary {
+  background: #222222;
+  color: #ffffff;
+  border: 1px solid #555555;
+}
+
+.zlx-btn-secondary:hover:not(:disabled) {
+  background: #2d2d2d;
+  border-color: #777777;
+}
+
+.zlx-btn-processing {
+  background: var(--zlx-processing);
+  color: #ffffff;
+  cursor: wait;
+}
 
 @media (prefers-color-scheme: light) {
   :root {

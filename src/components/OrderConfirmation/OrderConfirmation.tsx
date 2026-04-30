@@ -172,9 +172,11 @@ const OrderConfirmation: React.FC = () => {
     const displayTotalDollars = paidOrder.total_cents / 100;
     const displayEmail = paidOrder.email || view.email;
     return (
-      <div className="min-h-screen bg-black text-white px-4 py-16 max-w-2xl mx-auto">
-        <h1 className="text-2xl font-bold mb-2">Order confirmed</h1>
-        <p className="text-neutral-200 font-medium mb-2" role="status">
+      <div className="min-h-screen bg-black px-4 py-16 text-white">
+        <main className="zlx-card mx-auto max-w-2xl p-6 sm:p-8">
+        <p className="mb-3 font-bold text-zlx-success" role="status">✓ Order confirmed</p>
+        <h1 className="text-3xl font-extrabold mb-2">Thank you for your order</h1>
+        <p className="text-neutral-200 font-medium mb-2">
           Order number: {paidOrder.order_number}
         </p>
         <p className="text-gray-200 mb-1">
@@ -212,9 +214,10 @@ const OrderConfirmation: React.FC = () => {
           Your payment is recorded in our system. You’ll receive a confirmation
           email when fulfillment updates are available.
         </p>
-        <Link to="/products" className="font-medium text-neutral-200 underline decoration-neutral-500 underline-offset-4 hover:text-white">
+        <Link to="/products" className="zlx-btn-primary inline-flex min-h-11 items-center justify-center rounded-lg px-5 py-2 font-extrabold no-underline">
           Continue shopping
         </Link>
+        </main>
       </div>
     );
   }
@@ -266,8 +269,10 @@ const OrderConfirmation: React.FC = () => {
 
   // full
   return (
-    <div className="min-h-screen bg-black text-white px-4 py-16 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-2">Order confirmed</h1>
+    <div className="min-h-screen bg-black px-4 py-16 text-white">
+      <main className="zlx-card mx-auto max-w-2xl p-6 sm:p-8">
+      <p className="mb-3 font-bold text-zlx-success" role="status">✓ Order confirmed</p>
+      <h1 className="text-3xl font-extrabold mb-2">Thank you for your order</h1>
       {paidOrderLoading && (
         <p className="text-sm text-gray-400 mb-4" role="status">
           Loading order details…
@@ -318,9 +323,10 @@ const OrderConfirmation: React.FC = () => {
         we also try to load your store order number from our records once the
         webhook has run.
       </p>
-      <Link to="/products" className="font-medium text-neutral-200 underline decoration-neutral-500 underline-offset-4 hover:text-white">
+      <Link to="/products" className="zlx-btn-primary inline-flex min-h-11 items-center justify-center rounded-lg px-5 py-2 font-extrabold no-underline">
         Continue shopping
       </Link>
+      </main>
     </div>
   );
 };

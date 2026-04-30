@@ -104,27 +104,30 @@ const InnerCheckoutForm: React.FC<{
     return (
         <form onSubmit={onSubmit} className="space-y-4 pb-4">
             <div
-                className="rounded-lg border border-gray-600 bg-gray-900/40 p-3 sm:p-4 relative z-0 isolate"
+                className="relative z-0 isolate rounded-xl border border-zlx-border bg-zlx-input p-3 sm:p-4"
                 data-testid="checkout-payment-element-shell"
             >
                 <PaymentElement />
             </div>
             {paymentError && (
-                <p className="zlx-alert-danger mt-3 p-3 text-red-200 break-words" role="alert">
-                    {paymentError}
-                </p>
+                <div className="zlx-alert-danger mt-4 p-4 text-sm" role="alert">
+                    <strong className="mb-1 block text-white">Payment issue</strong>
+                    <p className="m-0 break-words text-neutral-300">{paymentError}</p>
+                </div>
             )}
             <button
                 type="submit"
                 id="checkout-submit-pay"
                 disabled={!formValid || !readyToPay || processing}
-                className={`w-full min-h-12 scroll-mt-32 rounded px-4 py-3 font-bold text-lg text-zlx-action-text ${
+                className={`w-full min-h-12 scroll-mt-32 rounded-lg px-4 py-3 font-bold text-lg ${
                   processing ? "zlx-btn-processing" : "zlx-btn-primary"
                 }`}
             >
                 {processing ? "Processing..." : "Pay Now"}
             </button>
-            <div className="mt-3 text-sm text-neutral-400 text-center">Secure checkout • Free returns • Satisfaction guaranteed</div>
+            <p className="text-center text-sm text-zlx-muted">
+                Secure checkout • Free returns • Satisfaction guaranteed
+            </p>
         </form>
     );
 };
@@ -635,20 +638,20 @@ const CheckoutPage = () => {
             }));
 
     return (
-        <div className="relative bg-black text-white min-h-screen">
-            <header className="fixed top-0 w-full z-10 bg-black text-white shadow">
-                <div className="max-w-6xl mx-auto p-4 flex justify-between items-center">
+        <div className="relative min-h-screen bg-black text-white">
+            <header className="fixed top-0 z-10 w-full border-b border-neutral-900 bg-black text-white shadow">
+                <div className="mx-auto flex max-w-6xl items-center justify-between p-4">
                     <h1 className="text-xl font-bold">Zephyr Lux</h1>
                 </div>
             </header>
 
             <div className="h-56" />
 
-            <main className="max-w-4xl mx-auto w-full min-w-0 px-4 py-6 sm:px-6 pb-28 md:pb-10">
+            <main className="mx-auto w-full max-w-6xl min-w-0 px-4 py-6 pb-28 sm:px-6 md:pb-14">
                 {checkoutCanceled && (
                     <div
                         role="status"
-                        className="mb-4 p-3 rounded border border-red-900 bg-neutral-950 text-neutral-200 text-sm"
+                        className="mb-4 rounded-lg border border-zlx-border bg-zlx-surface p-3 text-sm text-neutral-200"
                     >
                         Checkout was canceled — your bag is still saved. You can
                         return to it anytime.
@@ -662,70 +665,16 @@ const CheckoutPage = () => {
                         ← Back to bag
                     </Link>
                 </div>
-                <h1 className="text-3xl font-extrabold mb-6">Checkout</h1>
-                <div className="zlx-card p-6 mb-6">
-                    <h2 className="text-xl font-bold mb-4">Order Summary</h2>
-                    {cartQuoteError && (
-                        <div className="text-red-400 mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2" role="alert">
-                            <span>{cartQuoteError}</span>
-                            <button
-                                type="button"
-                                onClick={refetchCartQuote}
-                                className="text-sm text-amber-300 underline decoration-amber-700/70 underline-offset-4 hover:text-amber-100"
-                            >
-                                Retry
-                            </button>
-                        </div>
-                    )}
-                    {cartQuoteLoading && !quote && (
-                        <p className="text-gray-500 text-sm mb-2" role="status">
-                            Loading line items from the catalog…
-                        </p>
-                    )}
-                    {orderLineDisplay.map((row, idx) => (
-                        <div
-                            key={`${idx}-${row.name}`}
-                            className="flex justify-between items-start gap-3 mb-2 min-w-0"
-                        >
-                            <span className="text-gray-400 flex-1 min-w-0 break-words">
-                                {row.name} × {row.quantity}
-                            </span>
-                            <span className="text-gray-400 shrink-0 tabular-nums">
-                                ${row.lineTotal.toFixed(2)}
-                            </span>
-                        </div>
-                    ))}
-                    <hr className="border-gray-700 my-2" />
-                    {quote ? (
-                        <>
-                            <p className="text-gray-400">
-                                Subtotal: ${(quote.subtotal_cents / 100).toFixed(2)}
-                            </p>
-                            <p className="text-gray-400">
-                                Shipping:{" "}
-                                {quote.shipping_cents === 0
-                                    ? "Free"
-                                    : `$${(quote.shipping_cents / 100).toFixed(2)}`}
-                            </p>
-                            <p className="text-gray-400">
-                                Tax: ${(quote.tax_cents / 100).toFixed(2)}
-                            </p>
-                            <p className="font-bold text-lg mt-2">
-                                Total: ${(quote.total_cents / 100).toFixed(2)}
-                            </p>
-                        </>
-                    ) : (
-                        <p className="text-gray-500 text-sm" role="status">
-                            {!cartQuoteError
-                                ? "Calculating your totals from the current catalog…"
-                                : "Fix pricing above to continue."}
-                        </p>
-                    )}
-                </div>
+                <h1 className="mb-2 text-4xl font-extrabold tracking-tight">Checkout</h1>
+                <p className="mb-8 text-zlx-muted">
+                    Secure payment, clean totals, and shipping details in one place.
+                </p>
 
-                <div className="zlx-card p-6 mb-6 w-full min-w-0 overflow-x-hidden">
-                    <h2 className="text-lg font-bold mb-3">Contact &amp; shipping</h2>
-                    <div className="space-y-3 w-full max-w-full sm:max-w-xl md:max-w-2xl">
+                <div className="grid items-start gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+                    <div className="min-w-0">
+                <section className="zlx-card mb-6 w-full min-w-0 overflow-x-hidden p-5 sm:p-6" aria-labelledby="contact-shipping-heading">
+                    <h2 id="contact-shipping-heading" className="mb-4 text-xl font-bold">Contact &amp; shipping</h2>
+                    <div className="space-y-3 w-full max-w-full">
                         <div>
                             <label htmlFor="ck-name" className="block text-sm text-gray-400 mb-1">
                                 Full name
@@ -735,7 +684,7 @@ const CheckoutPage = () => {
                                 name="name"
                                 value={formData.name}
                                 onChange={handleFormChange}
-                                className="w-full min-h-11 box-border p-2 zlx-input"
+                                className="w-full min-h-11 box-border rounded-lg border border-zlx-border bg-zlx-input p-3 text-white"
                                 autoComplete="name"
                             />
                             {errors.name && <p className="text-red-400 text-sm mt-1">{errors.name}</p>}
@@ -750,7 +699,7 @@ const CheckoutPage = () => {
                                 type="email"
                                 value={formData.email}
                                 onChange={handleFormChange}
-                                className="w-full min-h-11 box-border p-2 zlx-input"
+                                className="w-full min-h-11 box-border rounded-lg border border-zlx-border bg-zlx-input p-3 text-white"
                                 autoComplete="email"
                             />
                             {errors.email && <p className="text-red-400 text-sm mt-1">{errors.email}</p>}
@@ -765,7 +714,7 @@ const CheckoutPage = () => {
                                 value={formData.address}
                                 onChange={handleFormChange}
                                 rows={3}
-                                className="w-full min-h-11 box-border p-2 zlx-input"
+                                className="w-full min-h-11 box-border rounded-lg border border-zlx-border bg-zlx-input p-3 text-white"
                                 autoComplete="street-address"
                             />
                             {errors.address && <p className="text-red-400 text-sm mt-1">{errors.address}</p>}
@@ -779,7 +728,7 @@ const CheckoutPage = () => {
                                 name="city"
                                 value={formData.city}
                                 onChange={handleFormChange}
-                                className="w-full min-h-11 box-border p-2 zlx-input"
+                                className="w-full min-h-11 box-border rounded-lg border border-zlx-border bg-zlx-input p-3 text-white"
                                 autoComplete="address-level2"
                             />
                             {errors.city && <p className="text-red-400 text-sm mt-1">{errors.city}</p>}
@@ -794,7 +743,7 @@ const CheckoutPage = () => {
                                     name="state"
                                     value={formData.state}
                                     onChange={handleFormChange}
-                                    className="w-full min-h-11 box-border p-2 zlx-input"
+                                    className="w-full min-h-11 box-border rounded-lg border border-zlx-border bg-zlx-input p-3 text-white"
                                     autoComplete="address-level1"
                                 />
                                 {errors.state && <p className="text-red-400 text-sm mt-1">{errors.state}</p>}
@@ -808,7 +757,7 @@ const CheckoutPage = () => {
                                     name="postal_code"
                                     value={formData.postal_code}
                                     onChange={handleFormChange}
-                                    className="w-full min-h-11 box-border p-2 zlx-input"
+                                    className="w-full min-h-11 box-border rounded-lg border border-zlx-border bg-zlx-input p-3 text-white"
                                     autoComplete="postal-code"
                                 />
                                 {errors.postal_code && (
@@ -825,26 +774,28 @@ const CheckoutPage = () => {
                                 name="country"
                                 value={formData.country}
                                 onChange={handleFormChange}
-                                className="w-full min-h-11 box-border p-2 zlx-input"
+                                className="w-full min-h-11 box-border rounded-lg border border-zlx-border bg-zlx-input p-3 text-white"
                                 autoComplete="country-name"
                             />
                             {errors.country && <p className="text-red-400 text-sm mt-1">{errors.country}</p>}
                         </div>
                     </div>
-                </div>
+                </section>
 
                 {!IS_MOCK_PAYMENT && paymentError && !clientSecret && (
-                    <p className="text-red-500 mt-2 mb-4" role="alert">
-                        {paymentError}
-                    </p>
+                    <div className="zlx-alert-danger mb-4 p-4 text-sm" role="alert">
+                        <strong className="mb-1 block text-white">Payment issue</strong>
+                        <p className="m-0 text-neutral-300">{paymentError}</p>
+                    </div>
                 )}
 
                 {IS_MOCK_PAYMENT ? (
                     <form onSubmit={handleSubmit}>
                         {paymentError && (
-                            <p className="text-red-500 mt-2" role="alert">
-                                {paymentError}
-                            </p>
+                            <div className="zlx-alert-danger mb-4 p-4 text-sm" role="alert">
+                                <strong className="mb-1 block text-white">Payment issue</strong>
+                                <p className="m-0 text-neutral-300">{paymentError}</p>
+                            </div>
                         )}
                         <button
                             type="submit"
@@ -856,13 +807,15 @@ const CheckoutPage = () => {
                                 !quote ||
                                 Boolean(cartQuoteError)
                             }
-                            className={`w-full min-h-12 scroll-mt-32 rounded px-4 py-3 font-bold text-lg text-zlx-action-text ${
+                            className={`w-full min-h-12 scroll-mt-32 rounded-lg px-4 py-3 font-bold text-lg ${
                               processing ? "zlx-btn-processing" : "zlx-btn-primary"
                             }`}
                         >
                             {processing ? "Processing..." : "Pay Now"}
-            </button>
-            <div className="mt-3 text-sm text-neutral-400 text-center">Secure checkout • Free returns • Satisfaction guaranteed</div>
+                        </button>
+                        <p className="mt-4 text-center text-sm text-zlx-muted">
+                            Secure checkout • Free returns • Satisfaction guaranteed
+                        </p>
                     </form>
                 ) : (
                     clientSecret && stripePromise && quote ? (
@@ -892,6 +845,74 @@ const CheckoutPage = () => {
                         </p>
                     )
                 )}
+                    </div>
+
+                    <aside className="zlx-card p-5 sm:p-6 lg:sticky lg:top-28" aria-labelledby="order-summary-heading">
+                        <h2 id="order-summary-heading" className="mb-4 text-xl font-bold">Order Summary</h2>
+                        {cartQuoteError && (
+                            <div className="zlx-alert-danger mb-4 flex flex-col gap-2 p-4 text-sm sm:flex-row sm:items-center sm:justify-between" role="alert">
+                                <span className="text-neutral-200">{cartQuoteError}</span>
+                                <button
+                                    type="button"
+                                    onClick={refetchCartQuote}
+                                    className="zlx-btn-secondary rounded-md px-3 py-2 text-sm"
+                                >
+                                    Retry
+                                </button>
+                            </div>
+                        )}
+                        {cartQuoteLoading && !quote && (
+                            <p className="mb-2 text-sm text-zlx-muted" role="status">
+                                Loading line items from the catalog…
+                            </p>
+                        )}
+                        <div className="divide-y divide-neutral-800">
+                            {orderLineDisplay.map((row, idx) => (
+                                <div
+                                    key={`${idx}-${row.name}`}
+                                    className="flex min-w-0 items-start justify-between gap-3 py-3"
+                                >
+                                    <span className="min-w-0 flex-1 break-words text-neutral-300">
+                                        {row.name} × {row.quantity}
+                                    </span>
+                                    <span className="shrink-0 tabular-nums text-neutral-300">
+                                        ${row.lineTotal.toFixed(2)}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                        {quote ? (
+                            <div className="mt-2 space-y-2 text-neutral-300">
+                                <p className="flex justify-between gap-3">
+                                    <span>Subtotal</span>
+                                    <span>${(quote.subtotal_cents / 100).toFixed(2)}</span>
+                                </p>
+                                <p className="flex justify-between gap-3">
+                                    <span>Shipping</span>
+                                    <span>
+                                        {quote.shipping_cents === 0
+                                            ? "Free"
+                                            : `$${(quote.shipping_cents / 100).toFixed(2)}`}
+                                    </span>
+                                </p>
+                                <p className="flex justify-between gap-3">
+                                    <span>Tax</span>
+                                    <span>${(quote.tax_cents / 100).toFixed(2)}</span>
+                                </p>
+                                <p className="flex justify-between gap-3 border-t border-neutral-800 pt-3 text-xl font-extrabold text-white">
+                                    <span>Total</span>
+                                    <span>${(quote.total_cents / 100).toFixed(2)}</span>
+                                </p>
+                            </div>
+                        ) : (
+                            <p className="mt-4 text-sm text-zlx-muted" role="status">
+                                {!cartQuoteError
+                                    ? "Calculating your totals from the current catalog…"
+                                    : "Fix pricing above to continue."}
+                            </p>
+                        )}
+                    </aside>
+                </div>
             </main>
         </div>
     );

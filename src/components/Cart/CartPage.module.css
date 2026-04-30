@@ -41,7 +41,8 @@
   }
   
   .checkoutBtn {
-    background-color: #3182ce;
+    background-color: var(--zlx-action);
+    color: var(--zlx-action-text);
     color: white;
     padding: 0.75rem 1.5rem;
     border: none;
@@ -51,7 +52,7 @@
   }
   
   .checkoutBtn:hover {
-    background-color: #2b6cb0;
+    background-color: var(--zlx-action-hover);
   }
   
   .cartItemImage {

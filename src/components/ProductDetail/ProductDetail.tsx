@@ -374,7 +374,7 @@ const ProductDetail: React.FC = () => {
           {isNotFound ? "Product not found" : "Something went wrong"}
         </h1>
         <p className="text-neutral-400 mb-4">{error}</p>
-        <Link to="/products" className="text-amber-200 underline underline-offset-4 hover:text-amber-100">
+        <Link to="/products" className="text-neutral-200 underline decoration-neutral-500 underline-offset-4 hover:text-white">
           Back to products
         </Link>
       </div>
@@ -387,6 +387,15 @@ const ProductDetail: React.FC = () => {
   const { storefrontProductId } = row;
   const showPriceRange = selectionRes.kind === "incomplete" && pMin !== pMax;
   const showSelectCopy = selectionRes.kind === "incomplete" && pMin === pMax;
+  const selectedLowStockMessage = selectedVariant
+    ? lowStockMessage(selectedVariant)
+    : null;
+  const stockTone =
+    selectedVariant?.inventory_quantity === 0
+      ? "text-zlx-danger"
+      : selectedLowStockMessage
+        ? "text-zlx-warning"
+        : "text-zlx-success";
 
   const addHandler = () => {
     if (cta.disabled || !selectedVariant) {
@@ -415,7 +424,7 @@ const ProductDetail: React.FC = () => {
   return (
     <div
       data-testid="pdp"
-      className="grid grid-cols-1 gap-6 p-4 text-neutral-200 lg:grid-cols-2 lg:gap-10 lg:p-8 max-w-6xl mx-auto bg-black min-h-[50vh]"
+      className="mx-auto grid min-h-[50vh] max-w-6xl grid-cols-1 gap-8 bg-black p-4 text-neutral-200 lg:grid-cols-2 lg:gap-14 lg:p-8"
     >
       <div>
         <ProductImageGallery
@@ -425,17 +434,17 @@ const ProductDetail: React.FC = () => {
           selectionKey={gallerySelectionKey}
         />
       </div>
-      <div className="flex flex-col min-w-0">
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight text-neutral-50">
+      <div className="flex min-w-0 flex-col">
+        <h1 className="mb-3 text-3xl font-extrabold tracking-tight text-neutral-50 md:text-4xl">
           {product.title}
         </h1>
         {selectedVariant && (
-          <p data-testid="pdp-selected-price" className="mb-2 text-3xl font-extrabold text-white">
+          <p data-testid="pdp-selected-price" className="mb-3 text-3xl font-extrabold text-white">
             ${(selectedVariant.price_cents / 100).toFixed(2)}
           </p>
         )}
         {showPriceRange && (
-          <p data-testid="pdp-price-range" className="mb-2 text-3xl font-extrabold text-white">
+          <p data-testid="pdp-price-range" className="mb-3 text-3xl font-extrabold text-white">
             ${(pMin / 100).toFixed(2)}&nbsp;–&nbsp;${(pMax / 100).toFixed(2)}
           </p>
         )}
@@ -446,14 +455,14 @@ const ProductDetail: React.FC = () => {
         )}
 
         {selectedVariant && (
-          <p data-testid="pdp-stock-message" className="mb-4 text-sm font-semibold text-amber-400">
+          <p data-testid="pdp-stock-message" className={`mb-5 text-sm font-bold ${stockTone}`}>
             {selectedVariant.inventory_quantity === 0
               ? "Out of stock for this color and size."
-              : lowStockMessage(selectedVariant) ?? "In stock."}
+              : selectedLowStockMessage ?? "In stock."}
           </p>
         )}
         {purchasable.length === 0 && (
-          <p data-testid="pdp-oos" className="mb-3 text-sm text-amber-200/95">
+          <p data-testid="pdp-oos" className="mb-3 text-sm font-bold text-zlx-warning">
             Unavailable. No purchasable variants.
           </p>
         )}
@@ -478,7 +487,7 @@ const ProductDetail: React.FC = () => {
           <div className="mb-4" />
         )}
 
-        <div className="mb-8 flex flex-col gap-2">
+        <div className="mb-4 flex flex-col gap-2">
           <button
             type="button"
             data-testid="pdp-add-to-cart"
@@ -486,8 +495,8 @@ const ProductDetail: React.FC = () => {
             onClick={addHandler}
             className={
               cta.disabled
-                ? "w-full min-h-12 cursor-not-allowed rounded-md border border-neutral-600 bg-neutral-900/90 px-4 py-3 text-sm font-semibold text-neutral-500"
-                : "w-full min-h-12 rounded-md border border-transparent zlx-btn-primary px-4 py-3 text-sm font-semibold shadow-sm shadow-black/30 transition hover:bg-zlx-action-hover"
+                ? "w-full min-h-12 cursor-not-allowed rounded-lg border border-neutral-600 bg-neutral-900/90 px-4 py-3 text-sm font-semibold text-neutral-500"
+                : "zlx-btn-primary w-full min-h-12 rounded-lg px-4 py-3 text-sm font-extrabold shadow-sm shadow-black/30 transition"
             }
             aria-describedby="pdp-add-hint"
             aria-label={
@@ -503,8 +512,20 @@ const ProductDetail: React.FC = () => {
           </p>
         </div>
 
+        <div className="mb-8 flex flex-wrap gap-3" aria-label="Purchase benefits">
+          <span className="rounded-full border border-zlx-border px-3 py-2 text-sm text-neutral-300">
+            ✓ Free returns
+          </span>
+          <span className="rounded-full border border-zlx-border px-3 py-2 text-sm text-neutral-300">
+            ✓ 2-3 day delivery
+          </span>
+          <span className="rounded-full border border-zlx-border px-3 py-2 text-sm text-neutral-300">
+            ✓ Soft bamboo feel
+          </span>
+        </div>
+
         <section
-          className="space-y-2 border-t border-neutral-700 pt-6 text-sm text-neutral-300"
+          className="zlx-card space-y-2 p-5 text-sm text-neutral-300"
           aria-labelledby="pdp-trust-heading"
         >
           <h2 id="pdp-trust-heading" className="text-base font-medium text-neutral-50">
@@ -530,7 +551,7 @@ const ProductDetail: React.FC = () => {
         </section>
 
         {product.description ? (
-          <section className="mt-8" aria-labelledby="pdp-desc-heading">
+          <section className="zlx-card mt-6 p-5" aria-labelledby="pdp-desc-heading">
             <h2
               id="pdp-desc-heading"
               className="mb-3 text-base font-medium text-neutral-50"
@@ -542,7 +563,7 @@ const ProductDetail: React.FC = () => {
         ) : null}
 
         {product.care_instructions ? (
-          <section className="mt-8" aria-labelledby="pdp-care-heading">
+          <section className="zlx-card mt-6 p-5" aria-labelledby="pdp-care-heading">
             <h2
               id="pdp-care-heading"
               className="mb-3 text-base font-medium text-neutral-50"

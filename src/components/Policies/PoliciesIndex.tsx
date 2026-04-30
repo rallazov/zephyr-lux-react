@@ -10,7 +10,7 @@ const PoliciesIndex: React.FC = () => {
   });
   return (
     <main className="policy-index min-h-[50vh] bg-neutral-900 text-neutral-100">
-      <div className="prose prose-invert prose-headings:text-neutral-100 prose-a:text-red-400 hover:prose-a:text-red-300 max-w-prose mx-auto px-4 py-10 lg:py-14">
+      <div className="prose prose-invert prose-headings:text-neutral-100 prose-a:text-neutral-200 hover:prose-a:text-white max-w-prose mx-auto px-4 py-10 lg:py-14">
         {/* Template — replace before production: policy index IA is launch-ready but copy is generic. */}
         <h1>Policies</h1>
         <p className="text-neutral-300">
@@ -19,22 +19,22 @@ const PoliciesIndex: React.FC = () => {
         </p>
         <ul className="list-none pl-0 space-y-2 not-prose">
           <li>
-            <Link to="/policies/shipping" className="text-red-400 hover:text-red-300">
+            <Link to="/policies/shipping" className="text-neutral-200 hover:text-white">
               Shipping policy
             </Link>
           </li>
           <li>
-            <Link to="/policies/returns" className="text-red-400 hover:text-red-300">
+            <Link to="/policies/returns" className="text-neutral-200 hover:text-white">
               Returns policy
             </Link>
           </li>
           <li>
-            <Link to="/policies/privacy" className="text-red-400 hover:text-red-300">
+            <Link to="/policies/privacy" className="text-neutral-200 hover:text-white">
               Privacy policy
             </Link>
           </li>
           <li>
-            <Link to="/policies/terms" className="text-red-400 hover:text-red-300">
+            <Link to="/policies/terms" className="text-neutral-200 hover:text-white">
               Terms of use
             </Link>
           </li>

@@ -77,7 +77,7 @@ export default function HomePage() {
             <>
               Zephyr Lux
               <br />
-              <span className="text-red-400">Premium essentials</span>
+              <span className="text-neutral-200">Premium essentials</span>
             </>
           }
           description="Loading the catalog…"
@@ -107,7 +107,7 @@ export default function HomePage() {
           <>
             Zephyr Lux
             <br />
-            <span className="text-red-400">Premium essentials</span>
+            <span className="text-neutral-200">Premium essentials</span>
           </>
         }
         description={heroDescription}
@@ -141,7 +141,7 @@ export default function HomePage() {
             <li key={c.path}>
               <Link
                 to={c.path}
-                className="inline-block rounded-md border border-neutral-600 px-3.5 py-2 text-neutral-100 no-underline transition-colors hover:border-amber-500/70 hover:text-amber-100"
+                className="inline-block rounded-md border border-neutral-600 px-3.5 py-2 text-neutral-100 no-underline transition-colors hover:border-zlx-processing hover:text-white"
               >
                 {c.navLabel}
               </Link>
