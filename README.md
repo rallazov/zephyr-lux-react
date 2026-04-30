@@ -15,6 +15,22 @@ E-commerce front end with Vite, React Router, Stripe checkout, and a **Node HTTP
 
 Payment-focused setup (Stripe CLI, webhook forwarding) is in [README-payments.md](README-payments.md).
 
+## End-to-end tests (Playwright)
+
+Browser tests run in **Chromium** (desktop + Pixel 5–sized mobile). Default flow uses `vite preview` on `http://127.0.0.1:4173` (started for you unless one is already running).
+
+| Command | When to use |
+|--------|----------------|
+| `npm run playwright:install` | First clone / CI — downloads Chromium |
+| `npm run test:e2e:ci` | **`npm run build` + Playwright** — use after major UI/routing changes |
+| `npm run test:e2e` | Re-run against an existing preview (needs `dist/` from a prior `npm run build`) |
+| `npm run test:e2e:ui` | Debug with the Playwright UI |
+
+Test a deployed URL (no local server):  
+`PLAYWRIGHT_BASE_URL=https://your-store.example npm run test:e2e`
+
+Manual GitHub Action: workflow **E2E (Playwright)** (`workflow_dispatch`) in `.github/workflows/e2e.yml`.
+
 ---
 
 This project started from the Vite React + TS template. Below is the original Vite README for ESLint and tooling reference.

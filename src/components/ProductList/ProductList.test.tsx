@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getDefaultCatalogAdapter } from "../../catalog/factory";
@@ -118,6 +119,20 @@ describe("ProductList", () => {
     expect(
       screen.queryByRole("link", { name: /view details/i })
     ).not.toBeInTheDocument();
+  });
+
+  it("add-to-cart stays actionable after hover (CSS hover states need a real browser)", async () => {
+    const user = userEvent.setup();
+    vi.mocked(getDefaultCatalogAdapter).mockReturnValue({
+      listProducts: async () => singleRow,
+      listProductsByCategory: async () => [],
+      getProductBySlug: async () => null,
+    });
+
+    renderList();
+    const cta = await screen.findByRole("button", { name: /add to cart/i });
+    await user.hover(cta);
+    expect(cta).toBeEnabled();
   });
 
   it("shows a loading state before the catalog resolves", async () => {

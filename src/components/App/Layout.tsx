@@ -17,6 +17,11 @@ const Layout = () => {
     ogType: "website",
   });
 
+  /** SPA default is to keep scroll Y across pathname changes — reset so nav tabs land at page top (esp. mobile). */
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [location.pathname]);
+
   useEffect(() => {
     const path = location.pathname;
     const storageKey = `analytics_page_view:${path}:${location.key}`;
