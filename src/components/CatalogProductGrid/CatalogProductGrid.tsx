@@ -52,11 +52,11 @@ export default function CatalogProductGrid({ products }: Props) {
                 style={{ width: "100%", height: "auto" }}
               />
             </Link>
-            <h3>
-              <Link to={detailPath}>{product.title}</Link>
+            <h3 style={{ marginBottom: 6, marginTop: 12, fontSize: 18 }}>
+              <Link to={detailPath} style={{ color: "#f5f5f5" }}>{product.title}</Link>
             </h3>
-            <p>{product.fabric_type}</p>
-            <p>Price: {priceLine}</p>
+            <p style={{ color: "#a8a8a8", marginTop: 0 }}>{product.fabric_type}</p>
+            <p style={{ fontWeight: 800, fontSize: 20, marginTop: 8 }}>Price: {priceLine}</p>
             {singlePurchasable ? (
               <button
                 type="button"

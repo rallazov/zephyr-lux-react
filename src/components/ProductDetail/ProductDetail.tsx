@@ -430,12 +430,12 @@ const ProductDetail: React.FC = () => {
           {product.title}
         </h1>
         {selectedVariant && (
-          <p data-testid="pdp-selected-price" className="mb-2 text-lg font-semibold text-white">
+          <p data-testid="pdp-selected-price" className="mb-2 text-3xl font-extrabold text-white">
             ${(selectedVariant.price_cents / 100).toFixed(2)}
           </p>
         )}
         {showPriceRange && (
-          <p data-testid="pdp-price-range" className="mb-2 text-lg font-semibold text-white">
+          <p data-testid="pdp-price-range" className="mb-2 text-3xl font-extrabold text-white">
             ${(pMin / 100).toFixed(2)}&nbsp;–&nbsp;${(pMax / 100).toFixed(2)}
           </p>
         )}
@@ -446,7 +446,7 @@ const ProductDetail: React.FC = () => {
         )}
 
         {selectedVariant && (
-          <p data-testid="pdp-stock-message" className="mb-3 text-sm text-neutral-300">
+          <p data-testid="pdp-stock-message" className="mb-4 text-sm font-semibold text-amber-400">
             {selectedVariant.inventory_quantity === 0
               ? "Out of stock for this color and size."
               : lowStockMessage(selectedVariant) ?? "In stock."}
@@ -487,7 +487,7 @@ const ProductDetail: React.FC = () => {
             className={
               cta.disabled
                 ? "w-full min-h-12 cursor-not-allowed rounded-md border border-neutral-600 bg-neutral-900/90 px-4 py-3 text-sm font-semibold text-neutral-500"
-                : "w-full min-h-12 rounded-md border border-transparent bg-zlx-action px-4 py-3 text-sm font-semibold text-zlx-action-text shadow-sm shadow-black/30 transition hover:bg-zlx-action-hover"
+                : "w-full min-h-12 rounded-md border border-transparent zlx-btn-primary px-4 py-3 text-sm font-semibold shadow-sm shadow-black/30 transition hover:bg-zlx-action-hover"
             }
             aria-describedby="pdp-add-hint"
             aria-label={
@@ -514,14 +514,14 @@ const ProductDetail: React.FC = () => {
             Standard processing is typically 1–2 business days. Read our{" "}
             <Link
               to="/policies/shipping"
-              className="font-medium text-amber-200 underline decoration-amber-200/45 underline-offset-4 hover:text-amber-100"
+              className="font-medium text-neutral-200 underline decoration-neutral-500 underline-offset-4 hover:text-white"
             >
               shipping policy
             </Link>{" "}
             and{" "}
             <Link
               to="/policies/returns"
-              className="font-medium text-amber-200 underline decoration-amber-200/45 underline-offset-4 hover:text-amber-100"
+              className="font-medium text-neutral-200 underline decoration-neutral-500 underline-offset-4 hover:text-white"
             >
               returns policy
             </Link>
