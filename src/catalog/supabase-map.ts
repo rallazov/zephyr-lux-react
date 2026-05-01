@@ -47,7 +47,7 @@ export type SupabaseProductRow = {
   fabric_type: string | null;
   care_instructions: string | null;
   origin: string | null;
-  status: "draft" | "active" | "archived";
+  status: "draft" | "active" | "coming_soon" | "archived";
   legacy_storefront_id: number | null;
 };
 

@@ -6,31 +6,43 @@ import PolicyLayout from "./PolicyLayout";
 const PolicyReturnsPage: React.FC = () => {
   usePageMeta({
     title: formatPageTitleWithBrand("Returns policy"),
-    description: "Returns and exchanges policy for Zephyr Lux.",
+    description:
+      "Returns and exchanges at Zephyr Lux—eligibility, timelines, and how to start a return or exchange.",
     canonicalPath: "/policies/returns",
   });
   return (
     <PolicyLayout title="Returns">
       <p>
-        Replace eligibility windows, conditions, refund methods, and restocking rules with your actual return program
-        before launch.
+        We want you to be happy with Zephyr Lux pieces. This policy explains typical eligibility for returns and
+        exchanges, how to request one, and how refunds are issued.
       </p>
-      <h2>General</h2>
+      <h2>Eligibility</h2>
       <p>
-        If an item does not meet your expectations, you may be able to return it in unused condition with original
-        packaging where applicable. Final sale or hygiene-sensitive items may be excluded—list those categories
-        explicitly.
+        For most unworn items with original tags attached and packaging intact, we accept return requests within thirty
+        (30) days of delivery, unless an item is marked final sale at purchase or falls under hygiene-sensitive or
+        intimate categories that cannot be restocked once opened. If you are unsure whether your item qualifies, email us
+        on the{" "}
+        <Link to="/contact" className="text-neutral-200 hover:text-white">
+          contact page
+        </Link>{" "}
+        before shipping anything back.
       </p>
       <h2>How to start a return</h2>
       <p>
-        Contact us using the information on the{" "}
-        <Link to="/contact">contact page</Link>. Include your order number and the items you wish to return. We will
-        confirm next steps.
+        Email us using the{" "}
+        <Link to="/contact" className="text-neutral-200 hover:text-white">
+          contact page
+        </Link>{" "}
+        with your order number, the items you wish to return, and whether you prefer a refund or exchange where
+        inventory allows. We will confirm instructions, including the return address or prepaid label if we provide
+        one for your case.
       </p>
       <h2>Refunds</h2>
       <p>
-        Approved refunds are typically issued to the original payment method after the return is received and inspected.
-        Timing depends on your payment processor and bank.
+        Approved refunds are applied to your original payment method after we receive and inspect the return.
+        Processing usually takes several business days on our side; your bank may need additional time to post the
+        credit. Original shipping charges are non-refundable unless we made an error or an item arrived damaged or
+        mislabeled.
       </p>
     </PolicyLayout>
   );

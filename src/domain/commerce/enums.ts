@@ -27,7 +27,12 @@ export const shipmentPipelineStatusSchema = z.enum([
   "returned",
 ]);
 
-export const productStatusSchema = z.enum(["draft", "active", "archived"]);
+export const productStatusSchema = z.enum([
+  "draft",
+  "active",
+  "coming_soon",
+  "archived",
+]);
 
 export const productVariantStatusSchema = z.enum([
   "active",

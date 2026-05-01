@@ -50,7 +50,8 @@
 
 .navbar.scrolled .nav-links a,
 .navbar.scrolled .nav-icons a,
-.navbar.scrolled .nav-icons .nav-icon-btn {
+.navbar.scrolled .nav-icons .nav-icon-btn,
+.navbar.scrolled .nav-icons a.nav-icon-btn {
     color: #000000;
 }
 
@@ -61,7 +62,8 @@
 
 .navbar:hover .nav-links a,
 .navbar:hover .nav-icons a,
-.navbar:hover .nav-icons .nav-icon-btn {
+.navbar:hover .nav-icons .nav-icon-btn,
+.navbar:hover .nav-icons a.nav-icon-btn {
     color:#000000;
 }
 
@@ -110,7 +112,7 @@
     transition: color 0.3s ease;
 }
 
-.nav-icons .nav-icon-btn {
+.nav-icons button.nav-icon-btn {
     appearance: none;
     background: none;
     border: none;
@@ -125,6 +127,12 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+}
+
+.nav-icons a.nav-icon-btn {
+    text-decoration: none;
+    cursor: pointer;
+    opacity: 1;
 }
 
 .hamburger {
@@ -165,6 +173,7 @@
 
     .navbar:not(.scrolled):hover .nav-icons a:not(:hover),
     .navbar:not(.scrolled):hover .nav-icons .nav-icon-btn,
+    .navbar:not(.scrolled):hover .nav-icons a.nav-icon-btn,
     .navbar:not(.scrolled):hover .nav-links a,
     .navbar:not(.scrolled):hover .hamburger,
     .navbar:not(.scrolled):hover .cart-container .cart-count {
@@ -177,6 +186,7 @@
 
     .navbar.scrolled:hover .nav-icons a:not(:hover),
     .navbar.scrolled:hover .nav-icons .nav-icon-btn,
+    .navbar.scrolled:hover .nav-icons a.nav-icon-btn,
     .navbar.scrolled:hover .hamburger,
     .navbar.scrolled:hover .cart-container .cart-count {
         color: #000000;

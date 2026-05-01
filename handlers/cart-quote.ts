@@ -52,10 +52,6 @@ export default function handler(req: VercelRequest, res: VercelResponse): void {
       res.status(200).json(q);
     } catch (e) {
       if (isQuoteError(e)) {
-        if (e.code === "UNKNOWN_SKU") {
-          res.status(400).json({ code: e.code, error: e.message });
-          return;
-        }
         res.status(400).json({ code: e.code, error: e.message });
         return;
       }

@@ -31,6 +31,7 @@ import SubscriptionsPage from "../../pages/SubscriptionsPage";
 import SubscriptionCheckoutCanceledPage from "../../pages/SubscriptionCheckoutCanceledPage";
 import SubscriptionCheckoutSuccessPage from "../../pages/SubscriptionCheckoutSuccessPage";
 import Layout from './Layout';
+import SearchPage from '../Search/SearchPage';
 
 
 /**
@@ -63,6 +64,7 @@ export function AppRoutes() {
               </>
             }
             />
+            <Route path="/search" element={<SearchPage />} />
             {COLLECTION_ROUTES.map((c) => (
               <Route
                 key={c.path}

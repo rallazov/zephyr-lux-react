@@ -43,7 +43,7 @@ export type { Product, ProductVariant };
 
 export class QuoteError extends Error {
   constructor(
-    public readonly code: "UNKNOWN_SKU" | "INVALID_LINE",
+    public readonly code: "UNKNOWN_SKU" | "INVALID_LINE" | "NOT_FOR_SALE",
     message: string,
   ) {
     super(message);
@@ -58,7 +58,7 @@ export function isQuoteError(e: unknown): e is QuoteError {
   const o = e as { name?: unknown; code?: unknown };
   return (
     o.name === "QuoteError" &&
-    (o.code === "UNKNOWN_SKU" || o.code === "INVALID_LINE")
+    (o.code === "UNKNOWN_SKU" || o.code === "INVALID_LINE" || o.code === "NOT_FOR_SALE")
   );
 }
 
@@ -121,6 +121,12 @@ export function quoteCartLines(
     const hit = findVariantBySku(row.sku);
     if (!hit) {
       throw new QuoteError("UNKNOWN_SKU", `Unknown SKU: ${row.sku}`);
+    }
+    if (hit.product.status === "coming_soon") {
+      throw new QuoteError(
+        "NOT_FOR_SALE",
+        "This product is not available for purchase yet.",
+      );
     }
     const unit_cents = hit.variant.price_cents;
     if (typeof unit_cents !== "number" || !Number.isFinite(unit_cents) || unit_cents < 0) {

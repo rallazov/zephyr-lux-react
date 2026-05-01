@@ -60,7 +60,7 @@ const CustomerOrderStatusPage: React.FC = () => {
   }, [token]);
 
   return (
-    <main className="min-h-[70vh] bg-stone-950 text-stone-50">
+    <main className="min-h-[70vh] bg-stone-950 text-stone-50 customer-order-print-root">
       <section className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
         <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -72,7 +72,10 @@ const CustomerOrderStatusPage: React.FC = () => {
             </h1>
           </div>
           <a
-            className="text-sm font-medium text-neutral-300 underline-offset-4 hover:text-amber-200 hover:underline"
+            className={[
+              "text-sm font-medium text-neutral-300 underline-offset-4 hover:text-amber-200 hover:underline",
+              loadState.status === "ready" ? "print:hidden" : "",
+            ].filter(Boolean).join(" ")}
             href={SUPPORT_MAIL}
           >
             Email support
@@ -120,17 +123,26 @@ const CustomerOrderStatusPage: React.FC = () => {
 
 function OrderStatusReady({ view }: { view: CustomerOrderStatusViewModel }) {
   return (
-    <div className="space-y-6">
+    <div className="order-print-customer-ready space-y-6">
       <section className="grid gap-5 border border-stone-700 bg-stone-900 px-5 py-6 sm:grid-cols-[1.2fr_0.8fr] sm:px-6">
-        <div>
-          <p className="text-sm text-stone-400">Order {view.orderNumber}</p>
-          <h2 className="mt-2 text-2xl font-semibold text-stone-50">
-            {view.fulfillmentLabel}
-          </h2>
-          <p className="mt-3 text-sm leading-6 text-stone-300">
-            Placed {view.placedAt}
-            {view.maskedEmail ? ` for ${view.maskedEmail}` : ""}
-          </p>
+        <div className="flex flex-col gap-4 min-w-0 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+          <div className="min-w-0">
+            <p className="text-sm text-stone-400">Order {view.orderNumber}</p>
+            <h2 className="mt-2 text-2xl font-semibold text-stone-50">
+              {view.fulfillmentLabel}
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-stone-300">
+              Placed {view.placedAt}
+              {view.maskedEmail ? ` for ${view.maskedEmail}` : ""}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="print:hidden shrink-0 min-h-11 rounded-md border border-stone-500 bg-stone-800 px-4 py-2 text-sm font-semibold text-stone-100 hover:bg-stone-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
+            onClick={() => window.print()}
+          >
+            Print order
+          </button>
         </div>
         <dl className="grid gap-3 text-sm sm:text-right">
           <div>
@@ -144,7 +156,7 @@ function OrderStatusReady({ view }: { view: CustomerOrderStatusViewModel }) {
         </dl>
       </section>
 
-      <section className="border border-stone-700 bg-stone-900 px-5 py-6 sm:px-6">
+      <section className="border border-stone-700 bg-stone-900 px-5 py-6 sm:px-6 print:hidden">
         <h2 className="text-lg font-semibold text-stone-50">Progress</h2>
         <ol
           aria-label="Fulfillment progress"
@@ -190,7 +202,7 @@ function OrderStatusReady({ view }: { view: CustomerOrderStatusViewModel }) {
               {item.imageUrl && (
                 <img
                   alt=""
-                  className="h-16 w-16 shrink-0 rounded-md object-cover"
+                  className="print:hidden h-16 w-16 shrink-0 rounded-md object-cover"
                   src={item.imageUrl}
                 />
               )}
@@ -264,7 +276,7 @@ function OrderStatusReady({ view }: { view: CustomerOrderStatusViewModel }) {
               <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                 {view.tracking.trackHref && (
                   <a
-                    className="inline-flex min-h-11 w-full min-w-0 items-center justify-center rounded-md bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600 sm:w-auto"
+                    className="print:hidden inline-flex min-h-11 w-full min-w-0 items-center justify-center rounded-md bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600 sm:w-auto"
                     href={view.tracking.trackHref}
                     rel="noreferrer noopener"
                     target="_blank"

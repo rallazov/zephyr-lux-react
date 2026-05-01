@@ -19,12 +19,17 @@ function jsonNullsToUndefined(x: unknown): unknown {
 }
 
 function seedRowToProduct(row: StaticSeedProductRow): Product {
-  const { id: _storefrontId, ...body } = row;
+  const { id: _storefrontId, supabase_product_id, ...bodyBase } = row;
   void _storefrontId;
+  const body = {
+    ...bodyBase,
+    ...(supabase_product_id ? { id: supabase_product_id } : {}),
+  };
   return productSchema.parse(body);
 }
 
-function isPurchasableVariant(v: Product["variants"][number]): boolean {
+/** Variant eligible for cart/checkout list UX (`status` + on-hand inventory). */
+export function isPurchasableVariant(v: Product["variants"][number]): boolean {
   return v.status === "active" && v.inventory_quantity > 0;
 }
 
@@ -32,11 +37,13 @@ function purchasableVariantCount(product: Product): number {
   return product.variants.filter(isPurchasableVariant).length;
 }
 
-/** Storefront list + PDP only surface products with this status (FR-SF-001, story 2-3). */
-export function isStorefrontBrowsableProduct(product: Product): boolean {
-  return product.status === "active";
+/** Storefront PLP/PDP/search listing gate (`draft` / `archived` omitted — Story 9-3 adds coming-soon browsability). */
+export function isStorefrontListableProduct(product: Product): boolean {
+  return product.status === "active" || product.status === "coming_soon";
 }
 
+/** Spec legacy naming (`story 2-3`); prefer {@link isStorefrontListableProduct}. */
+export const isStorefrontBrowsableProduct = isStorefrontListableProduct;
 /** Shared list-row derivation for static + Supabase catalog adapters. */
 export function catalogListItemFromProduct(
   product: Product,
@@ -63,8 +70,8 @@ export function catalogListItemFromProduct(
  * Parse + validate the authoritative static catalog and build indexes.
  * Use at JSON boundaries: bundled import (SPA) or `JSON.parse` + this (Node).
  *
- * Only **`active`** products are included in `products`, `listItems`, and `bySlug`
- * so list and detail routes agree and non-browsable slugs behave as not found.
+ * **`active`** and **`coming_soon`** rows surface as storefront browse/detail/search targets.
+ * **`draft`** / **`archived`** stay omitted so slug lookups behave as not-found outside curated feeds.
  */
 export function parseStaticCatalogData(input: unknown) {
   const preprocessed = jsonNullsToUndefined(input);

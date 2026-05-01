@@ -1,0 +1,68 @@
+/**
+ * Browser print / PDF save — scoped to order surfaces (customer token status + admin detail).
+ * Screen layout is unchanged; rules apply under @media print only.
+ */
+
+@media print {
+  /* Economical output; avoid heavy dark fills on paper */
+  * {
+    -webkit-print-color-adjust: economy !important;
+    print-color-adjust: economy !important;
+  }
+
+  .layout-order-status-token .layout-storefront-print-chrome {
+    display: none !important;
+  }
+
+  /* Dark customer theme → legible neutrals without large ink fills */
+  .customer-order-print-root {
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  .order-print-customer-ready,
+  .order-print-customer-ready *:not(img):not(button) {
+    color: inherit !important;
+    box-shadow: none !important;
+  }
+
+  .order-print-customer-ready section {
+    background: #fff !important;
+    border: 1px solid #ccc !important;
+  }
+
+  .order-print-customer-ready img {
+    max-height: 48px !important;
+  }
+
+  .admin-order-detail-print-scope {
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  .admin-pwa-shell {
+    background: #fff !important;
+  }
+
+  .admin-print-legacy-notes {
+    background: #fff !important;
+    border-color: #ccc !important;
+  }
+
+  /* Shipping address readable on narrow paper */
+  .admin-print-address-block {
+    white-space: pre-wrap !important;
+    overflow: visible !important;
+    word-break: break-word !important;
+  }
+
+  /* Keep table rows intact where possible */
+  .admin-print-line-items-wrapper {
+    overflow: visible !important;
+  }
+
+  .admin-print-timeline-note {
+    background: transparent !important;
+    border-color: #ccc !important;
+  }
+}

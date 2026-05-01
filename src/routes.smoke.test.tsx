@@ -65,14 +65,23 @@ describe("storefront route smoke (App.tsx router tree)", () => {
     );
   });
 
+  it("product list shows multiple tiles after catalog expansion", async () => {
+    renderRoute("/products");
+    expect(await screen.findByTestId("storefront-layout")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Product List/i })).toBeInTheDocument();
+    const tiles = await screen.findAllByTestId("catalog-product-tile");
+    expect(tiles.length).toBeGreaterThan(1);
+  });
+
   const cases: [string, RegExp][] = [
     ["/", /Premium essentials/i],
     ["/products", /Product List/i],
-    ["/women", /Empower Your Style/i],
-    ["/men", /For the Modern Man/i],
-    ["/kids", /Fun & Functional/i],
-    ["/sale", /Limited Time Offers/i],
-    ["/underwear", /Foundation Essentials/i],
+    ["/search", /^Search$/i],
+    ["/women", /Women.*essentials/i],
+    ["/men", /Refined everyday wear/i],
+    ["/kids", /Little wardrobe staples/i],
+    ["/sale", /Sale edit/i],
+    ["/underwear", /The foundation layer/i],
     ["/cart", /SHOPPING/i],
     ["/checkout", /^Checkout$/i],
     ["/order-confirmation", /Order confirmed|We couldn|processing your payment|Payment reference/i],
@@ -114,7 +123,7 @@ describe("storefront route smoke (App.tsx router tree)", () => {
     localStorage.clear();
     if (path === "/checkout") {
       localStorage.setItem(
-        "cartItems",
+        CART_LOCAL_STORAGE_KEY,
         JSON.stringify({
           v: 1,
           items: [
@@ -124,7 +133,7 @@ describe("storefront route smoke (App.tsx router tree)", () => {
               quantity: 1,
               price: 24,
               image: "/assets/img/Listing2.jpeg",
-              sku: "ZLX-BLK-M",
+              sku: "ZLX-2PK-M",
               product_slug: "boxer-briefs",
             },
           ],

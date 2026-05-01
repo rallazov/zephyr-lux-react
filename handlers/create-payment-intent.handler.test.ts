@@ -81,11 +81,11 @@ describe("create-payment-intent handler (Stripe create)", () => {
     const { quoteForPaymentItems } = await import("./_lib/catalog");
 
     const body = {
-      items: [{ sku: "ZLX-BLK-S", quantity: 1 }],
+      items: [{ sku: "ZLX-2PK-S", quantity: 1 }],
       currency: "usd" as const,
       email: "buyer@example.com",
     };
-    const expected = quoteForPaymentItems([{ sku: "ZLX-BLK-S", qty: 1 }]).total_cents;
+    const expected = quoteForPaymentItems([{ sku: "ZLX-2PK-S", qty: 1 }]).total_cents;
 
     const req = { method: "POST", body } as VercelRequest;
     const resJson = vi.fn();

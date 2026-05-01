@@ -24,9 +24,9 @@ const baseProduct: SupabaseProductWithRelations = {
     {
       id: "b0000001-0000-4000-8000-000000000001",
       product_id: "a0000001-0000-4000-8000-000000000001",
-      sku: "ZLX-BLK-S",
+      sku: "ZLX-2PK-S",
       size: "S",
-      color: "black",
+      color: null,
       price_cents: 2400,
       currency: "usd",
       inventory_quantity: 2,
@@ -82,7 +82,7 @@ describe("supabase-map", () => {
   it("maps rows to Product with Zod boundary", () => {
     const product = supabaseRowsToProduct(baseProduct);
     expect(product.slug).toBe("boxer-briefs");
-    expect(product.variants[0]?.sku).toBe("ZLX-BLK-S");
+    expect(product.variants[0]?.sku).toBe("ZLX-2PK-S");
     expect(product.variants[0]?.image_url).toBe("/assets/v.jpg");
     expect(product.variants[0]?.currency).toBe("USD");
   });
@@ -100,7 +100,7 @@ describe("supabase-map", () => {
     expect(detail.storefrontProductId).toBe(101);
     expect(detail.product.title).toContain("Boxer Briefs");
     expect(detail.galleryImages).toEqual(["/assets/p.jpg"]);
-    expect(detail.variantPrimaryImageBySku["ZLX-BLK-S"]).toBe("/assets/v.jpg");
+    expect(detail.variantPrimaryImageBySku["ZLX-2PK-S"]).toBe("/assets/v.jpg");
     expect(detail.displayGalleryUrls).toContain("/assets/p.jpg");
     expect(detail.displayGalleryUrls).toContain("/assets/v.jpg");
     expect(detail.subscriptionPlans).toEqual([]);

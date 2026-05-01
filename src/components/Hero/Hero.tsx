@@ -4,13 +4,13 @@ import { Link } from "react-router-dom";
 const DEFAULT_IMAGE = "/assets/img/Lifestyle.jpeg";
 const DEFAULT_TITLE = (
   <>
-    Premium Comfort.
+    Zephyr Lux
     <br />
-    <span className="text-neutral-200">Bold Style.</span>
+    <span className="text-neutral-200">Elevated essentials</span>
   </>
 );
 const DEFAULT_DESCRIPTION =
-  "Experience unparalleled comfort with our premium collection of men's boxer briefs. Crafted for the modern man who demands quality.";
+  "Thoughtfully made basics with premium materials—comfort you notice, quality that holds up wash after wash.";
 
 export type HeroProps = {
   image?: string;
@@ -36,7 +36,7 @@ export default function Hero({
       <div className="absolute inset-0">
         <img
           src={image}
-          alt="Premium boxer briefs lifestyle"
+          alt="Zephyr Lux — elevated everyday essentials, lifestyle photography"
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/60" />

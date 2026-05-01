@@ -5,16 +5,11 @@ import './DiscountMessage.css';
 const DiscountMessage: React.FC = () => {
   return (
     <div className="discount-message">
-      <h2>LONG WEEKEND SALE</h2>
+      <h2>Shop the sale</h2>
       <div className="discount-container">
-        <div className="discount-item">
-          <span className="discount-amount">60% OFF</span>
-          <span className="discount-text">SITEWIDE</span>
-        </div>
-        <div className="vertical-line"></div>
-        <div className="discount-item">
-          <span className="discount-amount">20% OFF</span>
-          <span className="discount-text">YOUR ORDER</span>
+        <div className="discount-item discount-item-full">
+          <span className="discount-text discount-headline">Select styles at special pricing</span>
+          <span className="discount-sub">Pricing may vary by item—check each product for the current offer.</span>
         </div>
       </div>
       <div className="cta-buttons">
