@@ -5,29 +5,39 @@ import PolicyLayout from "./PolicyLayout";
 const PolicyShippingPage: React.FC = () => {
   usePageMeta({
     title: formatPageTitleWithBrand("Shipping policy"),
-    description: "Shipping and delivery policy for Zephyr Lux orders.",
+    description:
+      "How Zephyr Lux processes and ships orders—timing, carriers, domestic delivery, and international availability.",
     canonicalPath: "/policies/shipping",
   });
   return (
     <PolicyLayout title="Shipping">
       <p>
-        This page describes how orders are prepared and delivered in general terms. Replace all timeframes, regions,
-        carriers, and fees with your real operations before production.
+        This policy describes how Zephyr Lux prepares and delivers online orders. Carriers, transit times, and regions we
+        serve may change; we will note material updates on this page when we can.
       </p>
-      <h2>Processing</h2>
+      <h2>Order processing</h2>
       <p>
-        Orders are typically processed within a few business days. Peak periods or inventory checks may add delay.
-        You will receive an email update when the order ships or if something prevents shipment.
+        After checkout, we typically verify payment and allocate inventory within one to three business days (often
+        sooner). During launches, holidays, or inventory restocks, processing may take longer—we will email you if
+        there is an unexpected delay.
       </p>
-      <h2>Delivery</h2>
+      <h2>Domestic (U.S.) delivery</h2>
       <p>
-        Standard delivery is via common parcel carriers to the address provided at checkout. Transit time depends on
-        the carrier and destination; tracking is provided when available.
+        We ship to valid street addresses within the United States using major parcel carriers. You will receive a
+        confirmation email with tracking when your package leaves our fulfillment partner, when tracking is available for
+        your service level.
       </p>
       <h2>International</h2>
       <p>
-        If you ship internationally, list countries, duties, taxes, and customs rules here. Until then, state clearly
-        which regions you serve.
+        International shipping is available only where shown at checkout. Import duties, taxes, and carrier brokerage
+        fees are the buyer&apos;s responsibility unless we state otherwise during checkout. Delivery times vary by
+        destination and customs processing.
+      </p>
+      <h2>Split shipments</h2>
+      <p>
+        If part of your order ships separately, you may receive more than one package and more than one tracking
+        number. You are only charged for shipping as displayed at checkout unless we contact you first to approve a
+        change.
       </p>
     </PolicyLayout>
   );

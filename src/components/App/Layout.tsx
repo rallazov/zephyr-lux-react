@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, useMatch } from "react-router-dom";
 import { ANALYTICS_EVENTS } from "../../analytics/events";
 import { dispatchAnalyticsEvent } from "../../analytics/sink";
 import { usePageMeta } from "../../seo/meta";
@@ -9,6 +9,9 @@ import Header from "../Header/Header";
 
 const Layout = () => {
   const location = useLocation();
+  const secureOrderMatch = Boolean(
+    useMatch({ path: "/order-status/:token", end: true }),
+  );
 
   usePageMeta({
     title: SITE_BRAND,
@@ -38,12 +41,19 @@ const Layout = () => {
   }, [location.pathname, location.key]);
 
   return (
-    <div className="App" data-testid="storefront-layout">
-      <Header />
+    <div
+      className={["App", secureOrderMatch ? "layout-order-status-token" : ""].filter(Boolean).join(" ")}
+      data-testid="storefront-layout"
+    >
+      <div className={secureOrderMatch ? "layout-storefront-print-chrome" : undefined}>
+        <Header />
+      </div>
       <main className="storefront-outlet">
         <Outlet />
       </main>
-      <Footer />
+      <div className={secureOrderMatch ? "layout-storefront-print-chrome" : undefined}>
+        <Footer />
+      </div>
     </div>
   );
 };

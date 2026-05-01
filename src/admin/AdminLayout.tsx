@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useMatch } from "react-router-dom";
 import "./admin-pwa.css";
 import { useAuth } from "../auth/AuthContext";
 import { AdminOwnerPushPanel } from "./AdminOwnerPushPanel";
@@ -8,13 +8,19 @@ import { AdminOwnerPushPanel } from "./AdminOwnerPushPanel";
  */
 export default function AdminLayout() {
   const { signOut, user, configured, session } = useAuth();
+  const orderDetailMatch = Boolean(useMatch({ path: "/admin/orders/:id", end: true }));
 
   return (
     <div
       className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden admin-pwa-shell"
       data-testid="admin-layout"
     >
-      <header className="border-b border-slate-200 bg-white admin-pwa-shell-header">
+      <header
+        className={[
+          "border-b border-slate-200 bg-white admin-pwa-shell-header",
+          orderDetailMatch ? "print:hidden" : "",
+        ].filter(Boolean).join(" ")}
+      >
         <div className="max-w-5xl mx-auto px-4 py-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div className="flex flex-col gap-2 min-w-0 w-full sm:w-auto sm:min-w-[12rem]">
             <span className="font-semibold text-slate-800">Zephyr Lux Admin</span>
@@ -69,7 +75,7 @@ export default function AdminLayout() {
         </div>
       </header>
       <main className="max-w-5xl mx-auto px-4 py-6 w-full min-w-0 admin-pwa-shell-main">
-        <div className="mb-6">
+        <div className={orderDetailMatch ? "mb-6 print:hidden" : "mb-6"}>
           <AdminOwnerPushPanel session={session} isAdminContext={Boolean(configured && user)} />
         </div>
         <Outlet />

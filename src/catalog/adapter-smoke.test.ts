@@ -20,14 +20,18 @@ it("listProductsByCategory filters bundled underwear row", async () => {
   const underwear = await adapter.listProductsByCategory("underwear");
   expect(underwear.map((l) => l.product.slug)).toContain("boxer-briefs");
   const women = await adapter.listProductsByCategory("women");
-  expect(women).toHaveLength(0);
+  expect(women.map((l) => l.product.slug)).toContain("silk-relaxed-shell");
 });
 
 it("listProducts returns bundled active rows with list invariants", async () => {
   const adapter = getDefaultCatalogAdapter();
   const list = await adapter.listProducts();
   expect(list.map((l) => l.product.slug)).toContain("boxer-briefs");
-  expect(list.every((l) => l.product.status === "active")).toBe(true);
+  expect(
+    list.every(
+      (l) => l.product.status === "active" || l.product.status === "coming_soon",
+    ),
+  ).toBe(true);
   expect(
     list.every(
       (l) =>
@@ -35,4 +39,12 @@ it("listProducts returns bundled active rows with list invariants", async () => 
         l.purchasableVariantCount >= 0
     )
   ).toBe(true);
+});
+
+it("lists coming_soon products as storefront-discoverable slugs", async () => {
+  const adapter = getDefaultCatalogAdapter();
+  const row = await adapter.getProductBySlug("seasonal-archive-sale");
+  expect(row?.product.status).toBe("coming_soon");
+  const list = await adapter.listProducts();
+  expect(list.some((l) => l.product.slug === "seasonal-archive-sale")).toBe(true);
 });

@@ -275,3 +275,32 @@ Extracted from PRD §13 (UX Requirements), §7 (Users/Personas), and pain points
 ## Epic List
 
 {{epics_list}}
+
+---
+
+## Course correction — Epic 9–11 (2026-04-30)
+
+Sprint change rationale and checklist: [`sprint-change-proposal-2026-04-30.md`](./sprint-change-proposal-2026-04-30.md).
+
+### Epic 9 — Catalog realism, discovery, and fixed-assortment products
+
+Delivers pack-accurate merchandising (size-only PDP where color is not a customer choice), storefront search, coming-soon listings with per-product waitlist, expanded placeholder assortment with real imagery paths, remaining placeholder content sweep, and print-friendly order views.
+
+| Story | Summary |
+|-------|---------|
+| 9-1 | Fixed-assortment pack data model + seed/admin alignment for boxer briefs 2-pack (size variants; hide meaningless color axis via single/null color across variants); deprecate legacy single-color SKUs per owner decision |
+| 9-2 | Storefront product search (title/category); nav entry; empty state |
+| 9-3 | `coming_soon` listing state + migration/RLS + waitlist capture API + PDP/PLP UX |
+| 9-4 | Additional products/categories and images (mix purchasable + coming soon) |
+| 9-5 | Replace residual placeholder collection/tab/marketing copy |
+| 9-6 | Print stylesheet + optional print control on customer order status and admin order detail |
+
+### Epic 10 — Customer accounts (backlog)
+
+Optional logged-in experience: Supabase customer auth, `/account`, order history; guest checkout and magic-link lookup remain supported.
+
+### Epic 11 — Variant template builder (backlog)
+
+Admin-defined variant axes beyond fixed size/color columns; only after multiple product families justify dynamic schemas.
+
+**Deferred from immediate phase:** Customer push/SMS alerts beyond email (owner push prototype already exists); full configurable bundle composer.

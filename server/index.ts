@@ -19,6 +19,7 @@ import createSubscriptionCheckoutSession from "../handlers/create-subscription-c
 import customerOrderStatus from "../handlers/customer-order-status";
 import orderByPaymentIntent from "../handlers/order-by-payment-intent";
 import orderLookupRequest from "../handlers/order-lookup-request";
+import productWaitlist from "../handlers/product-waitlist";
 import stripeWebhook from "../handlers/stripe-webhook";
 
 type ApiHandler = (req: VercelRequest, res: VercelResponse) => void | Promise<void | VercelResponse>;
@@ -88,6 +89,7 @@ const jsonRoutes: Array<[string, ApiHandler]> = [
   ["/api/order-by-payment-intent", orderByPaymentIntent],
   ["/api/customer-order-status", customerOrderStatus],
   ["/api/order-lookup-request", orderLookupRequest],
+  ["/api/product-waitlist", productWaitlist],
   ["/api/admin-order-fulfillment", adminOrderFulfillment],
   ["/api/admin-order-internal-note", adminOrderInternalNote],
   ["/api/admin-shipment", adminShipment],

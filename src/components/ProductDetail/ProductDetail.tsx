@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useId, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { ANALYTICS_EVENTS } from "../../analytics/events";
 import { dispatchAnalyticsEvent } from "../../analytics/sink";
@@ -7,6 +7,8 @@ import { resolvePdpHeroImageUrl } from "../../catalog/pdpImage";
 import type { CatalogProductDetail } from "../../catalog/types";
 import { useCart } from "../../context/CartContext";
 import type { ProductVariant } from "../../domain/commerce";
+import { apiUrl } from "../../lib/apiBase";
+import { PRODUCT_WAITLIST_ACK_MESSAGE } from "../../lib/productWaitlistAck";
 import { usePageMeta } from "../../seo/meta";
 import {
   buildProductJsonLd,
@@ -46,6 +48,106 @@ function variantNameSuffix(v: ProductVariant | null): string {
     parts.push(formatOptionLabel(String(v.color)));
   }
   return parts.length ? ` — ${parts.join(" / ")}` : "";
+}
+
+function ComingSoonWaitlistPanel({ productId }: { productId: string | undefined }) {
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  const fieldId = useId();
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    setSuccess(null);
+    setProblem(null);
+    if (!productId) return;
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setProblem("Enter your email.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch(apiUrl("/api/product-waitlist"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: trimmed,
+          product_id: productId,
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        message?: string;
+        error?: string;
+      };
+      if (!res.ok && res.status !== 202) {
+        setProblem(typeof data.error === "string" ? data.error : "Something went wrong.");
+        return;
+      }
+      setSuccess(data.message ?? PRODUCT_WAITLIST_ACK_MESSAGE);
+      setEmail("");
+    } catch {
+      setProblem("Something went wrong. Please try again shortly.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!productId) {
+    return (
+      <p className="text-sm text-zlx-warning" role="status">
+        Waitlist signup is not available for this preview listing.
+      </p>
+    );
+  }
+
+  return (
+    <section
+      data-testid="pdp-waitlist"
+      className="zlx-card mb-6 space-y-3 p-5"
+      aria-labelledby={`${fieldId}-waitlist-heading`}
+    >
+      <h2 id={`${fieldId}-waitlist-heading`} className="text-base font-semibold text-neutral-50">
+        Join the waitlist
+      </h2>
+      <p className="text-sm text-neutral-400">
+        Be first to know when this piece opens for orders.
+      </p>
+      <form onSubmit={(ev) => void onSubmit(ev)} className="flex flex-col gap-3">
+        <label htmlFor={`${fieldId}-email`} className="text-sm text-neutral-300">
+          Email
+        </label>
+        <input
+          id={`${fieldId}-email`}
+          type="email"
+          name="email"
+          autoComplete="email"
+          required
+          value={email}
+          onChange={(ev) => setEmail(ev.target.value)}
+          className="rounded-lg border border-neutral-600 bg-neutral-950 px-3 py-2 text-neutral-100"
+          disabled={busy}
+          data-testid="pdp-waitlist-email"
+        />
+        <button
+          type="submit"
+          disabled={busy}
+          className="zlx-btn-primary rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-60"
+          data-testid="pdp-waitlist-submit"
+        >
+          {busy ? "Sending…" : "Notify me"}
+        </button>
+      </form>
+      <p id={`${fieldId}-privacy`} className="text-xs text-neutral-500">
+        We use your email only to notify you about availability for this product — not for unrelated marketing.
+      </p>
+      <div aria-live="polite" role="status" className="min-h-[1.25rem] space-y-1 text-sm">
+        {problem ? <span className="text-red-400">{problem}</span> : null}
+        {success ? <span className="text-emerald-400">{success}</span> : null}
+      </div>
+    </section>
+  );
 }
 
 function PlainTextBlocks({ text }: { text: string }) {
@@ -125,6 +227,13 @@ const ProductDetail: React.FC = () => {
   }, [slug, analyticsProductId, locationNavKey, productSlug]);
 
   const product = row?.product;
+  const isComingSoon = product?.status === "coming_soon";
+
+  const indicativeVariantPricing = useMemo(() => {
+    if (!product?.variants?.length) return { min: 0, max: 0 };
+    const cents = product.variants.map((v) => v.price_cents);
+    return { min: Math.min(...cents), max: Math.max(...cents) };
+  }, [product]);
 
   const catalogGallery = useMemo(() => {
     if (!row) {
@@ -222,7 +331,7 @@ const ProductDetail: React.FC = () => {
       productLevelGallery: catalogGallery.galleryImages,
       displayGalleryUrls: catalogGallery.displayGalleryUrls,
       variantPrimaryImageBySku: catalogGallery.variantPrimaryImageBySku,
-      fallbackVariant: purchasable[0] ?? null,
+      fallbackVariant: purchasable[0] ?? product?.variants[0] ?? null,
     });
   }, [
     product,
@@ -327,7 +436,7 @@ const ProductDetail: React.FC = () => {
   const siteForLd = originBase.replace(/\/$/, "");
 
   const productJsonLdPayload = useMemo(() => {
-    if (loading || error || !row?.product || !slug) {
+    if (loading || error || !row?.product || !slug || row.product.status === "coming_soon") {
       return null;
     }
     return buildProductJsonLd({
@@ -438,48 +547,93 @@ const ProductDetail: React.FC = () => {
         <h1 className="mb-3 text-3xl font-extrabold tracking-tight text-neutral-50 md:text-4xl">
           {product.title}
         </h1>
-        {selectedVariant && (
-          <p data-testid="pdp-selected-price" className="mb-3 text-3xl font-extrabold text-white">
-            ${(selectedVariant.price_cents / 100).toFixed(2)}
+        {isComingSoon ? (
+          <p
+            data-testid="pdp-coming-soon-banner"
+            role="status"
+            className="mb-3 inline-flex rounded-full border border-zlx-border px-3 py-1 text-xs font-bold uppercase tracking-wide text-zlx-warning"
+          >
+            Coming soon
           </p>
-        )}
-        {showPriceRange && (
-          <p data-testid="pdp-price-range" className="mb-3 text-3xl font-extrabold text-white">
-            ${(pMin / 100).toFixed(2)}&nbsp;–&nbsp;${(pMax / 100).toFixed(2)}
+        ) : null}
+        {product.subtitle?.trim() ? (
+          <p
+            data-testid="pdp-product-subtitle"
+            className="mb-3 text-base font-medium leading-snug text-neutral-300 md:text-lg"
+          >
+            {product.subtitle.trim()}
           </p>
+        ) : null}
+        {isComingSoon ? (
+          <>
+            {indicativeVariantPricing.min > 0 ? (
+              <p
+                data-testid="pdp-coming-soon-price-hint"
+                className="mb-4 text-xl font-semibold text-neutral-100"
+              >
+                From ${(indicativeVariantPricing.min / 100).toFixed(2)}
+                {indicativeVariantPricing.min !== indicativeVariantPricing.max
+                  ? ` – $${(indicativeVariantPricing.max / 100).toFixed(2)}`
+                  : ""}{" "}
+                <span className="text-sm font-normal text-neutral-400">
+                  Planned pricing — not available for purchase yet.
+                </span>
+              </p>
+            ) : (
+              <p className="mb-4 text-sm text-neutral-400">
+                Details on pricing will come closer to launch.
+              </p>
+            )}
+            <ComingSoonWaitlistPanel productId={product.id} />
+          </>
+        ) : (
+          <>
+            {selectedVariant && (
+              <p data-testid="pdp-selected-price" className="mb-3 text-3xl font-extrabold text-white">
+                ${(selectedVariant.price_cents / 100).toFixed(2)}
+              </p>
+            )}
+            {showPriceRange && (
+              <p data-testid="pdp-price-range" className="mb-3 text-3xl font-extrabold text-white">
+                ${(pMin / 100).toFixed(2)}&nbsp;–&nbsp;${(pMax / 100).toFixed(2)}
+              </p>
+            )}
+            {showSelectCopy && purchasable.length > 0 && (
+              <p data-testid="pdp-price-select" className="mb-2 text-sm text-neutral-400">
+                ${(pMin / 100).toFixed(2)} — select options to confirm price.
+              </p>
+            )}
+            {selectedVariant && (
+              <p data-testid="pdp-stock-message" className={`mb-5 text-sm font-bold ${stockTone}`}>
+                {selectedVariant.inventory_quantity === 0
+                  ? "Out of stock for this color and size."
+                  : selectedLowStockMessage ?? "In stock."}
+              </p>
+            )}
+            {purchasable.length === 0 && (
+              <p data-testid="pdp-oos" className="mb-3 text-sm font-bold text-zlx-warning">
+                Unavailable. No purchasable variants.
+              </p>
+            )}
+          </>
         )}
-        {showSelectCopy && purchasable.length > 0 && (
-          <p data-testid="pdp-price-select" className="mb-2 text-sm text-neutral-400">
-            ${(pMin / 100).toFixed(2)} — select options to confirm price.
-          </p>
-        )}
+        {!isComingSoon ? (
+          <VariantSelector
+            purchasable={purchasable}
+            layout={layout}
+            selectedSize={selSize}
+            selectedColor={selColor}
+            onSizeChange={setSelSize}
+            onColorChange={setSelColor}
+          />
+        ) : null}
 
-        {selectedVariant && (
-          <p data-testid="pdp-stock-message" className={`mb-5 text-sm font-bold ${stockTone}`}>
-            {selectedVariant.inventory_quantity === 0
-              ? "Out of stock for this color and size."
-              : selectedLowStockMessage ?? "In stock."}
-          </p>
-        )}
-        {purchasable.length === 0 && (
-          <p data-testid="pdp-oos" className="mb-3 text-sm font-bold text-zlx-warning">
-            Unavailable. No purchasable variants.
-          </p>
-        )}
-
-        <VariantSelector
-          purchasable={purchasable}
-          layout={layout}
-          selectedSize={selSize}
-          selectedColor={selColor}
-          onSizeChange={setSelSize}
-          onColorChange={setSelColor}
-        />
-
-        <PdpSubscriptionBlock
-          plans={row.subscriptionPlans}
-          selectedVariant={selectedVariant}
-        />
+        {!isComingSoon ? (
+          <PdpSubscriptionBlock
+            plans={row.subscriptionPlans}
+            selectedVariant={selectedVariant}
+          />
+        ) : null}
 
         {product.fabric_type ? (
           <p className="mt-3 mb-4 text-sm text-neutral-400">{product.fabric_type}</p>
@@ -487,43 +641,46 @@ const ProductDetail: React.FC = () => {
           <div className="mb-4" />
         )}
 
-        <div className="mb-4 flex flex-col gap-2">
-          <button
-            type="button"
-            data-testid="pdp-add-to-cart"
-            disabled={cta.disabled}
-            onClick={addHandler}
-            className={
-              cta.disabled
-                ? "w-full min-h-12 cursor-not-allowed rounded-lg border border-neutral-600 bg-neutral-900/90 px-4 py-3 text-sm font-semibold text-neutral-500"
-                : "zlx-btn-primary w-full min-h-12 rounded-lg px-4 py-3 text-sm font-extrabold shadow-sm shadow-black/30 transition"
-            }
-            aria-describedby="pdp-add-hint"
-            aria-label={
-              cta.disabled
-                ? `Add to cart. ${cta.hint} Currently disabled.`
-                : "Add to cart"
-            }
-          >
-            {cta.text}
-          </button>
-          <p id="pdp-add-hint" className="sr-only">
-            {cta.hint}
-          </p>
-        </div>
+        {!isComingSoon ? (
+          <>
+            <div className="mb-4 flex flex-col gap-2">
+              <button
+                type="button"
+                data-testid="pdp-add-to-cart"
+                disabled={cta.disabled}
+                onClick={addHandler}
+                className={
+                  cta.disabled
+                    ? "w-full min-h-12 cursor-not-allowed rounded-lg border border-neutral-600 bg-neutral-900/90 px-4 py-3 text-sm font-semibold text-neutral-500"
+                    : "zlx-btn-primary w-full min-h-12 rounded-lg px-4 py-3 text-sm font-extrabold shadow-sm shadow-black/30 transition"
+                }
+                aria-describedby="pdp-add-hint"
+                aria-label={
+                  cta.disabled
+                    ? `Add to cart. ${cta.hint} Currently disabled.`
+                    : "Add to cart"
+                }
+              >
+                {cta.text}
+              </button>
+              <p id="pdp-add-hint" className="sr-only">
+                {cta.hint}
+              </p>
+            </div>
 
-        <div className="mb-8 flex flex-wrap gap-3" aria-label="Purchase benefits">
-          <span className="rounded-full border border-zlx-border px-3 py-2 text-sm text-neutral-300">
-            ✓ Free returns
-          </span>
-          <span className="rounded-full border border-zlx-border px-3 py-2 text-sm text-neutral-300">
-            ✓ 2-3 day delivery
-          </span>
-          <span className="rounded-full border border-zlx-border px-3 py-2 text-sm text-neutral-300">
-            ✓ Soft bamboo feel
-          </span>
-        </div>
-
+            <div className="mb-8 flex flex-wrap gap-3" aria-label="Purchase benefits">
+              <span className="rounded-full border border-zlx-border px-3 py-2 text-sm text-neutral-300">
+                ✓ Free returns
+              </span>
+              <span className="rounded-full border border-zlx-border px-3 py-2 text-sm text-neutral-300">
+                ✓ 2-3 day delivery
+              </span>
+              <span className="rounded-full border border-zlx-border px-3 py-2 text-sm text-neutral-300">
+                ✓ Soft bamboo feel
+              </span>
+            </div>
+          </>
+        ) : null}
         <section
           className="zlx-card space-y-2 p-5 text-sm text-neutral-300"
           aria-labelledby="pdp-trust-heading"

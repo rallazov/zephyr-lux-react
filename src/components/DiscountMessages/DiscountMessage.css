@@ -28,6 +28,27 @@
     font-family: 'Roboto', sans-serif; /* Change to a smooth font family */
     font-weight: 300; /* Make it thinner */
   }
+
+  .discount-item-full {
+    max-width: 36rem;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .discount-headline {
+    font-size: 1.25rem;
+    font-weight: 400;
+    line-height: 1.35;
+  }
+
+  .discount-sub {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 300;
+    margin-top: 0.75rem;
+    opacity: 0.92;
+    line-height: 1.4;
+  }
   
   .discount-amount {
     font-size: 2rem;

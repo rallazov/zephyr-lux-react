@@ -12,6 +12,8 @@ import { productStatusSchema } from "../domain/commerce/enums";
 export const staticSeedProductRowSchema = z
   .object({
     id: z.number().int().positive(),
+    /** Supabase `products.id` for waitlist / PDP parity when using service-role APIs (Story 9-3). */
+    supabase_product_id: z.string().uuid().optional(),
     slug: z.string().min(1),
     title: z.string().min(1),
     subtitle: z.string().optional(),
@@ -25,8 +27,12 @@ export const staticSeedProductRowSchema = z
     variants: z.array(productVariantSchema),
   })
   .superRefine((row, ctx) => {
-    const { id: _unused, ...body } = row;
+    const { id: _unused, supabase_product_id, ...rest } = row;
     void _unused;
+    const body = {
+      ...rest,
+      ...(supabase_product_id ? { id: supabase_product_id } : {}),
+    };
     const parsed = productSchema.safeParse(body);
     if (parsed.success) return;
     for (const issue of parsed.error.issues) {

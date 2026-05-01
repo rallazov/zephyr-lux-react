@@ -107,7 +107,7 @@ export class SupabaseCatalogAdapter implements CatalogAdapter {
     const { data, error } = await this.client
       .from("products")
       .select(PRODUCTS_CATALOG_SELECT.replace(/\s+/g, " ").trim())
-      .eq("status", "active")
+      .in("status", ["active", "coming_soon"])
       .order("title", { ascending: true });
 
     if (error) {
@@ -130,7 +130,7 @@ export class SupabaseCatalogAdapter implements CatalogAdapter {
       .from("products")
       .select(PRODUCTS_CATALOG_SELECT.replace(/\s+/g, " ").trim())
       .eq("slug", s)
-      .eq("status", "active")
+      .in("status", ["active", "coming_soon"])
       .maybeSingle();
 
     if (error) {

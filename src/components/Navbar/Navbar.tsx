@@ -95,24 +95,29 @@ const Navbar: React.FC = () => {
         ))}
         <li><Link to="/" onClick={() => setIsMenuOpen(false)}>Home</Link></li>
         <li><Link to="/products" onClick={() => setIsMenuOpen(false)}>Shop</Link></li>
+        <li>
+          <Link to="/search" onClick={() => setIsMenuOpen(false)}>
+            Search
+          </Link>
+        </li>
       </ul>
       <div className="nav-icons">
-        <button
-          type="button"
+        <Link
+          to="/search"
           className="nav-icon-btn"
-          disabled
-          aria-label="Search (coming soon)"
+          aria-label="Search products"
+          onClick={() => setIsMenuOpen(false)}
         >
           <FontAwesomeIcon icon={faSearch} />
-        </button>
-        <button
-          type="button"
+        </Link>
+        <Link
+          to="/order-status"
           className="nav-icon-btn"
-          disabled
-          aria-label="Account (coming soon)"
+          aria-label="Order lookup"
+          onClick={() => setIsMenuOpen(false)}
         >
           <FontAwesomeIcon icon={faUser} />
-        </button>
+        </Link>
         <Link to="/cart" aria-label="Cart">
           <div className="cart-container">
             <FontAwesomeIcon icon={faShoppingCart} />

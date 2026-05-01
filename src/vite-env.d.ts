@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
+  readonly VITE_SUPPORT_EMAIL?: string;
   readonly VITE_PUBLIC_SITE_URL?: string;
   readonly VITE_STRIPE_PUBLIC_KEY?: string;
   readonly VITE_USE_MOCK_STRIPE?: string;

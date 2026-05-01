@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { isPurchasableVariant } from "../../catalog/parse";
 import type { CatalogListItem } from "../../catalog/types";
 import { useCart } from "../../context/CartContext";
 import "../ProductList/ProductList.css";
@@ -32,21 +33,20 @@ export default function CatalogProductGrid({ products }: Props) {
           inStock,
           purchasableVariantCount,
         } = row;
+        const isComingSoon = product.status === "coming_soon";
         const priceLine =
           minPriceCents === maxPriceCents
             ? `$${(minPriceCents / 100).toFixed(2)}`
             : `$${(minPriceCents / 100).toFixed(2)} - $${(maxPriceCents / 100).toFixed(2)}`;
         const singlePurchasable =
+          !isComingSoon &&
           purchasableVariantCount === 1
-            ? product.variants.find(
-                (v) =>
-                  v.status === "active" && v.inventory_quantity > 0
-              )
+            ? product.variants.find((v) => isPurchasableVariant(v))
             : undefined;
         const detailPath = `/product/${product.slug}`;
 
         return (
-          <div key={product.slug} className="product-item">
+          <div key={product.slug} className="product-item" data-testid="catalog-product-tile">
             <Link to={detailPath} className="product-item-image-link">
               <img
                 src={heroImageUrl}
@@ -56,6 +56,11 @@ export default function CatalogProductGrid({ products }: Props) {
             <h3>
               <Link to={detailPath}>{product.title}</Link>
             </h3>
+            {isComingSoon ? (
+              <p role="status" className="product-item-coming-soon mb-2 text-xs font-semibold uppercase tracking-wide text-zlx-warning">
+                Coming soon
+              </p>
+            ) : null}
             {product.fabric_type ? <p className="product-item-fabric">{product.fabric_type}</p> : null}
             <p className="product-item-price">{priceLine}</p>
             {singlePurchasable ? (

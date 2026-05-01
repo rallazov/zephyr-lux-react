@@ -58,6 +58,7 @@ describe("Navbar scroll & mobile drawer behavior", () => {
     expect(list).toHaveClass("open");
     expect(within(list).getByRole("link", { name: /^shop$/i })).toHaveAttribute("href", "/products");
     expect(within(list).getByRole("link", { name: /^women$/i })).toHaveAttribute("href", "/women");
+    expect(within(list).getByRole("link", { name: /^search$/i })).toHaveAttribute("href", "/search");
   });
 
   it("closes the mobile menu after window scroll (integrated listener)", async () => {
@@ -103,6 +104,12 @@ describe("Navbar scroll & mobile drawer behavior", () => {
     expect(shopWomen).toHaveAttribute("href", "/women");
     await user.hover(shopWomen);
     expect(shopWomen).toHaveAttribute("href", "/women");
+  });
+
+  it("order lookup icon links to order status (honest account affordance)", () => {
+    renderNav();
+    const orderLookup = screen.getByRole("link", { name: /order lookup/i });
+    expect(orderLookup).toHaveAttribute("href", "/order-status");
   });
 
 });

@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import CustomerOrderStatusPage from "./CustomerOrderStatusPage";
@@ -171,6 +172,25 @@ describe("CustomerOrderStatusPage", () => {
       "https://www.ups.com/track?tracknum=1ZX",
     );
     expect(screen.getByText("UPS")).toBeInTheDocument();
+  });
+
+  it("calls window.print when Print order is clicked in ready state", async () => {
+    const printSpy = vi.spyOn(window, "print").mockImplementation(() => {});
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue(validResponse()),
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderStatusPage();
+
+    const printBtn = await screen.findByRole("button", { name: /^print order$/i });
+    await user.click(printBtn);
+    expect(printSpy).toHaveBeenCalledTimes(1);
+    printSpy.mockRestore();
   });
 
   it("shows tracking pending copy when shipment exists without carrier or number yet", async () => {

@@ -1,18 +1,20 @@
 [
   {
     "id": 101,
+    "supabase_product_id": "a0000001-0000-4000-8000-000000000001",
     "slug": "boxer-briefs",
     "category": "underwear",
     "title": "Zephyr Lux Boxer Briefs",
+    "subtitle": "2-piece pack: one black + one blue boxer brief per unit.",
     "status": "active",
-    "description": "Experience unparalleled comfort with our premium collection of men's boxer briefs. Crafted for the modern man who demands quality.",
+    "description": "Each unit is one retail pack containing two boxer briefs—one black, one blue—in breathable bamboo viscose with a tailored fit. Designed for all-day support without bulk—your daily foundation, elevated.",
     "care_instructions": "Machine wash cold with like colors. Tumble dry low. Do not bleach. Cool iron if needed.",
     "fabric_type": "Bamboo Viscose",
     "variants": [
       {
-        "sku": "ZLX-BLK-S",
+        "sku": "ZLX-2PK-S",
         "size": "S",
-        "color": "black",
+        "color": null,
         "price_cents": 2400,
         "currency": "USD",
         "inventory_quantity": 50,
@@ -20,9 +22,9 @@
         "image_url": "/assets/img/Listing2.jpeg"
       },
       {
-        "sku": "ZLX-BLK-M",
+        "sku": "ZLX-2PK-M",
         "size": "M",
-        "color": "black",
+        "color": null,
         "price_cents": 2400,
         "currency": "USD",
         "inventory_quantity": 50,
@@ -30,9 +32,9 @@
         "image_url": "/assets/img/Listing2.jpeg"
       },
       {
-        "sku": "ZLX-BLK-L",
+        "sku": "ZLX-2PK-L",
         "size": "L",
-        "color": "black",
+        "color": null,
         "price_cents": 2400,
         "currency": "USD",
         "inventory_quantity": 3,
@@ -41,24 +43,140 @@
         "image_url": "/assets/img/Listing2.jpeg"
       },
       {
-        "sku": "ZLX-BLK-XL",
+        "sku": "ZLX-2PK-XL",
         "size": "XL",
-        "color": "black",
+        "color": null,
         "price_cents": 2400,
         "currency": "USD",
         "inventory_quantity": 50,
         "status": "active",
         "image_url": "/assets/img/Listing2.jpeg"
+      }
+    ]
+  },
+  {
+    "id": 102,
+    "supabase_product_id": "a0000002-0000-4000-8000-000000000002",
+    "slug": "silk-relaxed-shell",
+    "category": "women",
+    "title": "Zephyr Lux Silk Relaxed Shell",
+    "subtitle": "Bias-cut shell with a fluid drape for polished layering.",
+    "status": "active",
+    "description": "A lightweight silk-forward shell designed for desk-to-dinner layering—easy tuck, soft shoulder line, and clean hem.",
+    "care_instructions": "Dry clean recommended. Steam to refresh between wears.",
+    "fabric_type": "Stretch Silk Charmeuse",
+    "variants": [
+      {
+        "sku": "ZLX-WM-SHELL-S",
+        "size": "S",
+        "color": null,
+        "price_cents": 8900,
+        "currency": "USD",
+        "inventory_quantity": 14,
+        "status": "active",
+        "image_url": "/assets/img/Lifestyle.jpeg"
       },
       {
-        "sku": "ZLX-BLU-M",
+        "sku": "ZLX-WM-SHELL-M",
         "size": "M",
-        "color": "blue",
-        "price_cents": 2400,
+        "color": null,
+        "price_cents": 8900,
         "currency": "USD",
-        "inventory_quantity": 40,
+        "inventory_quantity": 18,
         "status": "active",
-        "image_url": "/assets/img/Listing2.jpeg"
+        "image_url": "/assets/img/Lifestyle.jpeg"
+      }
+    ]
+  },
+  {
+    "id": 103,
+    "supabase_product_id": "a0000003-0000-4000-8000-000000000003",
+    "slug": "merino-everyday-crew",
+    "category": "men",
+    "title": "Zephyr Lux Merino Everyday Crew",
+    "subtitle": "Temperature-regulating crew built for daily rotation.",
+    "status": "active",
+    "description": "Ultra-fine merino blend crew that stays breathable indoors yet holds warmth when temps dip—your dependable neutral layer.",
+    "care_instructions": "Machine wash cold gentle. Lay flat to dry.",
+    "fabric_type": "Merino Blend",
+    "variants": [
+      {
+        "sku": "ZLX-MN-CREW-S",
+        "size": "S",
+        "color": null,
+        "price_cents": 6200,
+        "currency": "USD",
+        "inventory_quantity": 20,
+        "status": "active",
+        "image_url": "/assets/img/Listing.jpeg"
+      },
+      {
+        "sku": "ZLX-MN-CREW-M",
+        "size": "M",
+        "color": null,
+        "price_cents": 6200,
+        "currency": "USD",
+        "inventory_quantity": 24,
+        "status": "active",
+        "image_url": "/assets/img/Listing.jpeg"
+      }
+    ]
+  },
+  {
+    "id": 104,
+    "supabase_product_id": "a0000004-0000-4000-8000-000000000004",
+    "slug": "kids-play-shorts",
+    "category": "kids",
+    "title": "Zephyr Lux Kids Play Shorts",
+    "subtitle": "Movement-friendly shorts with a soft brushed waist.",
+    "status": "active",
+    "description": "Designed for recess-to-road-trip comfort—breathable jersey with reinforced seams for everyday wear.",
+    "care_instructions": "Machine wash cold. Tumble dry low.",
+    "fabric_type": "Cotton Jersey",
+    "variants": [
+      {
+        "sku": "ZLX-KD-SHORTS-XS",
+        "size": "XS",
+        "color": null,
+        "price_cents": 2800,
+        "currency": "USD",
+        "inventory_quantity": 16,
+        "status": "active",
+        "image_url": "/assets/img/kids_placeholder.jpeg"
+      },
+      {
+        "sku": "ZLX-KD-SHORTS-S",
+        "size": "S",
+        "color": null,
+        "price_cents": 2800,
+        "currency": "USD",
+        "inventory_quantity": 22,
+        "status": "active",
+        "image_url": "/assets/img/kids_placeholder.jpeg"
+      }
+    ]
+  },
+  {
+    "id": 105,
+    "supabase_product_id": "a0000005-0000-4000-8000-000000000005",
+    "slug": "seasonal-archive-sale",
+    "category": "sale",
+    "title": "Seasonal Archive (Coming Soon)",
+    "subtitle": "Limited archival picks — launching shortly.",
+    "status": "coming_soon",
+    "description": "We are preparing a tight rotation of archival silhouettes at approachable pricing. Join the waitlist and we will email you when this capsule unlocks.",
+    "care_instructions": "Care varies by piece — details ship with each style.",
+    "fabric_type": "Mixed premium blends",
+    "variants": [
+      {
+        "sku": "ZLX-SALE-ARCHIVE-PLACEHOLDER",
+        "size": "OS",
+        "color": null,
+        "price_cents": 4500,
+        "currency": "USD",
+        "inventory_quantity": 0,
+        "status": "inactive",
+        "image_url": "/assets/img/sale_placeholder.jpeg"
       }
     ]
   }

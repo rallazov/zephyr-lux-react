@@ -75,10 +75,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } catch (err) {
       if (isQuoteError(err)) {
         log.warn({ err, code: err.code }, "create-payment-intent: quote error");
-        return res.status(400).json({
-          error:
-            "One or more items are no longer available. Please return to your cart and try again.",
-        });
+        const payload =
+          err.code === "NOT_FOR_SALE"
+            ? {
+                error:
+                  "One or more items are not available for purchase yet. Please remove waitlisted items from your cart and try again.",
+              }
+            : {
+                error:
+                  "One or more items are no longer available. Please return to your cart and try again.",
+              };
+        return res.status(400).json(payload);
       }
       log.error({ err }, "create-payment-intent: unexpected catalog pricing failure");
       return res.status(500).json({ error: "Payment setup failed. Please try again." });

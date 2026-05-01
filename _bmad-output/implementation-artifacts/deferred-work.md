@@ -1,5 +1,36 @@
 # Deferred work (from reviews and triage)
 
+## Deferred from: code review of 9-5-real-content-placeholder-sweep.md (2026-04-30)
+
+- **Smoke test catalog breadth coupling** — `routes.smoke.test.tsx` asserts more than one product tile on `/products`; failures track catalog shrinkage more than story 9-5 acceptance. Consider relocating or relaxing when carving PRs or trimming fixtures.
+
+## Deferred from: code review of 9-6-printable-order-views.md (2026-04-30)
+
+- **Catalog tests bundled with 9-6** — `parse.test.ts` / `adapter-smoke.test.ts` updates reflect `data/products.json` / seed alignment rather than printable-order ACs; acceptable on branch; split when carving PRs if desired.
+- **Print while loading** — Customer order status or admin order detail can be printed before data finishes loading, yielding thin or empty output; optional follow-up: disable print affordances until `ready` / gate on loaded order.
+
+## Deferred from: code review of 9-1-fixed-assortment-pack-catalog.md (2026-04-30)
+
+- **AC9 command verification** — Story requires `npm run build`, `npm test`, and `npm run smoke` before marking done; confirm locally/CI before closing, not assumed from the diff review alone.
+- **PDP pack copy test coverage** — Optional: extend `ProductDetail.variants.test.tsx` to assert description body (not only `pdp-product-subtitle`) carries the same pack facts for regression coverage.
+
+### Epic 9 / 9-1 production Supabase (operator checklist)
+
+Run when live `products` / `product_variants` still include legacy single-color SKUs for `boxer-briefs`. **Execute before** production applies **9-3** `coming_soon` enum migrations if the DB is not already aligned with pack semantics.
+
+1. Identify product id: `SELECT id FROM products WHERE slug = 'boxer-briefs';`
+2. Deactivate legacy rows (adjust SKUs if yours differ):  
+   `UPDATE product_variants SET status = 'discontinued', inventory_quantity = 0 WHERE product_id = '<uuid>' AND (sku LIKE 'ZLX-BLK-%' OR sku LIKE 'ZLX-BLU-%');`
+3. Upsert pack variants to match canonical seed: **`ZLX-2PK-{S,M,L,XL}`** (or current prefix), **`color` NULL**, pricing/currency/status/inventory per ops.
+4. Align **`products.subtitle`** / **`products.description`** with storefront copy (mirror `supabase/seed.sql` or `data/products.json`).
+5. In **Admin → product**, open boxer briefs and run **save** once to confirm **`admin_save_product_bundle`** round-trip and gallery linkage.
+
+**Consolidated pre-dev context:** [epic-9-dev-prep-notes.md](epic-9-dev-prep-notes.md).
+
+### Epic 9 / optional hardening (9-3+)
+
+- **`/api/product-waitlist` rate limiting** — If volume or abuse matters, add per-IP or edge throttling; MVP may ship with logging only per story Dev Notes.
+
 ## Deferred from: code review of 8-1-subscription-capable-products.md (2026-04-29)
 
 - **Sprint status YAML mixed Epic 8 updates** — The same change set updates `8-1` alongside other Epic 8 story rows (e.g. 8-2/8-3/8-4 statuses). Defer splitting or reverting non-8-1 tracking until the team wants a single-story PR hygiene pass.

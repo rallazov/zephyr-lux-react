@@ -650,8 +650,11 @@ export default function AdminOrderDetail() {
   }
 
   return (
-    <div data-testid="admin-order-detail">
-      <nav className="mb-6 text-sm" aria-label="Breadcrumb">
+    <div
+      className="admin-order-detail-print-scope"
+      data-testid="admin-order-detail"
+    >
+      <nav className="mb-6 text-sm print:hidden" aria-label="Breadcrumb">
         <Link className="text-blue-700 hover:underline" to="/admin/orders">
           Orders
         </Link>
@@ -709,7 +712,7 @@ export default function AdminOrderDetail() {
             </dl>
           </header>
 
-          <section className="mb-10" aria-labelledby="fulfillment-actions-heading">
+          <section className="mb-10 print:hidden" aria-labelledby="fulfillment-actions-heading">
             <h2 id="fulfillment-actions-heading" className="text-lg font-semibold mb-3">
               Fulfillment actions
             </h2>
@@ -747,9 +750,15 @@ export default function AdminOrderDetail() {
             <p className="text-slate-800">
               <span className="text-slate-500">Email: </span>
               {isPlausibleOrderEmailForMailto(order.customer_email) ? (
-                <a href={`mailto:${order.customer_email}`} className="text-blue-800 underline">
-                  {order.customer_email}
-                </a>
+                <>
+                  <a
+                    href={`mailto:${order.customer_email}`}
+                    className="text-blue-800 underline print:hidden"
+                  >
+                    {order.customer_email}
+                  </a>
+                  <span className="hidden print:inline">{order.customer_email}</span>
+                </>
               ) : (
                 <span>{order.customer_email}</span>
               )}
@@ -769,7 +778,7 @@ export default function AdminOrderDetail() {
               Shipping address
             </h2>
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-start">
-              <pre className="whitespace-pre-wrap rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm flex-1 min-w-0 w-full sm:max-w-xl">
+              <pre className="admin-print-address-block whitespace-pre-wrap rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm flex-1 min-w-0 w-full sm:max-w-xl">
                 {shippingSnapshot?.lines.join("\n") ??
                   "(No address snapshot.)"}
               </pre>
@@ -777,7 +786,7 @@ export default function AdminOrderDetail() {
                 type="button"
                 disabled={!addressBlock}
                 onClick={() => void copyAddress()}
-                className={`w-full sm:w-auto shrink-0 min-h-11 rounded-lg border px-4 text-sm font-medium sm:self-start ${
+                className={`print:hidden w-full sm:w-auto shrink-0 min-h-11 rounded-lg border px-4 text-sm font-medium sm:self-start ${
                   addressBlock
                     ? "border-slate-300 bg-white hover:bg-slate-50"
                     : "border-slate-200 text-slate-400 cursor-not-allowed"
@@ -795,13 +804,13 @@ export default function AdminOrderDetail() {
             {order.notes?.trim() ? (
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-slate-600 mb-2">Legacy (single-field)</h3>
-                <p className="whitespace-pre-wrap text-slate-800 border border-slate-200 rounded-md p-4 bg-amber-50/40">
+                <p className="admin-print-legacy-notes whitespace-pre-wrap text-slate-800 border border-slate-200 rounded-md p-4 bg-amber-50/40">
                   {order.notes}
                 </p>
               </div>
             ) : null}
 
-            <div className="mb-4">
+            <div className="mb-4 print:hidden">
               <h3 className="text-sm font-medium text-slate-700 mb-2">Add timeline note</h3>
               {!session?.access_token ? (
                 <p className="text-slate-600 text-sm">Sign in to add internal notes.</p>
@@ -851,7 +860,7 @@ export default function AdminOrderDetail() {
             <h2 id="line-items-heading" className="text-lg font-semibold mb-4">
               Line items
             </h2>
-            <div className="overflow-x-auto rounded-lg border border-slate-200">
+            <div className="admin-print-line-items-wrapper overflow-x-auto rounded-lg border border-slate-200">
               <table className="min-w-full text-sm">
                 <thead className="bg-slate-50 text-left">
                   <tr>
@@ -875,7 +884,7 @@ export default function AdminOrderDetail() {
                                 [li.product_title, li.variant_title].filter(Boolean).join(" — ") ||
                                 "Product thumbnail"
                               }
-                              className="h-12 w-12 rounded object-cover border border-slate-200 shrink-0"
+                              className="print:hidden h-12 w-12 rounded object-cover border border-slate-200 shrink-0"
                             />
                           ) : null}
                           <div>
@@ -915,7 +924,7 @@ export default function AdminOrderDetail() {
               {timelineEntries.map((e, idx) => (
                 <li key={`${e.at}-${e.tieBreak}-${idx}`}>
                   {e.internalNote ? (
-                    <div className="rounded-lg border border-violet-200 bg-violet-50/50 px-3 py-2 -ml-2 list-none">
+                    <div className="admin-print-timeline-note rounded-lg border border-violet-200 bg-violet-50/50 px-3 py-2 -ml-2 list-none">
                       <div className="flex flex-wrap items-baseline gap-2 mb-1">
                         <span className="text-xs font-semibold uppercase tracking-wide text-violet-900 bg-violet-100/80 px-1.5 py-0.5 rounded">
                           Internal note
@@ -956,7 +965,39 @@ export default function AdminOrderDetail() {
           Shipment &amp; tracking
         </h2>
 
-        <form noValidate className="max-w-xl space-y-6" onSubmit={(e) => void submit(e)}>
+        {carrier.trim() || trackingNumber.trim() || trackingUrl.trim() ? (
+          <div
+            className="mb-6 hidden max-w-xl space-y-3 text-sm print:block"
+            aria-label="Shipment summary for print"
+          >
+            {carrier.trim() ? (
+              <p>
+                <span className="text-slate-500">Carrier: </span>
+                <span className="font-medium text-slate-900">{carrier.trim()}</span>
+              </p>
+            ) : null}
+            {trackingNumber.trim() ? (
+              <p>
+                <span className="text-slate-500">Tracking number: </span>
+                <span className="break-all font-mono font-medium text-slate-900">
+                  {trackingNumber.trim()}
+                </span>
+              </p>
+            ) : null}
+            {trackingUrl.trim() ? (
+              <p>
+                <span className="text-slate-500">Tracking URL: </span>
+                <span className="break-all font-mono text-slate-900">{trackingUrl.trim()}</span>
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        <form
+          noValidate
+          className="max-w-xl space-y-6 print:hidden"
+          onSubmit={(e) => void submit(e)}
+        >
           <div>
             <label
               className="block text-sm font-medium text-slate-800 mb-1"
@@ -1081,16 +1122,18 @@ export default function AdminOrderDetail() {
         </form>
 
         {orderId ? (
-          <ShipmentEvidencePanel
-            orderId={orderId}
-            shipmentId={shipmentId}
-            canUpload={canEditShipment}
-            accessToken={session?.access_token ?? null}
-          />
+          <div className="print:hidden">
+            <ShipmentEvidencePanel
+              orderId={orderId}
+              shipmentId={shipmentId}
+              canUpload={canEditShipment}
+              accessToken={session?.access_token ?? null}
+            />
+          </div>
         ) : null}
       </section>
       {(loadErr && order) || cargoErr ? (
-        <p className="text-amber-800 text-sm mt-6" role="status">
+        <p className="mt-6 text-amber-800 text-sm print:hidden" role="status">
           Partial load notice: {[loadErr, cargoErr].filter(Boolean).join(" · ")}
         </p>
       ) : null}

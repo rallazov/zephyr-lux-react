@@ -21,29 +21,30 @@ function renderPdp() {
 }
 
 describe("ProductDetail variant selection", () => {
-  it("updates price and stock when size and color are selected", async () => {
+  it("shows pack copy and size-only controls for boxer-briefs (no color selector)", async () => {
+    renderPdp();
+    expect(await screen.findByTestId("pdp-variant-selector")).toBeInTheDocument();
+    expect(screen.getByTestId("pdp-product-subtitle")).toHaveTextContent(/2-piece pack/i);
+    expect(screen.getByTestId("pdp-product-subtitle")).toHaveTextContent(/black/i);
+    expect(screen.getByTestId("pdp-product-subtitle")).toHaveTextContent(/blue/i);
+    expect(screen.queryByTestId("pdp-select-color")).not.toBeInTheDocument();
+  });
+
+  it("updates price and low-stock message when size is selected", async () => {
     renderPdp();
     expect(await screen.findByTestId("pdp-variant-selector")).toBeInTheDocument();
 
-    const sizeSelect = screen.getByTestId("pdp-select-size");
-    fireEvent.change(sizeSelect, { target: { value: "L" } });
-
-    await waitFor(
-      () => {
-        expect(screen.getByTestId("pdp-select-color")).not.toBeDisabled();
-      },
-      { timeout: 5000 }
-    );
-    const colorSelect = screen.getByTestId("pdp-select-color");
-    fireEvent.change(colorSelect, { target: { value: "black" } });
+    fireEvent.change(screen.getByTestId("pdp-select-size"), { target: { value: "L" } });
 
     const price = await screen.findByTestId("pdp-selected-price");
-    expect(price).toHaveTextContent("$24.00");
+    await waitFor(() => {
+      expect(price).toHaveTextContent("$24.00");
+    });
     const stock = screen.getByTestId("pdp-stock-message");
     expect(stock.textContent).toMatch(/3|Only 3|left/);
   });
 
-  it("leaves add-to-cart disabled until both dimensions are chosen", async () => {
+  it("enables add-to-cart after size is chosen (single dimension)", async () => {
     renderPdp();
     await screen.findByTestId("pdp-variant-selector");
     const btn = screen.getByTestId("pdp-add-to-cart");
@@ -51,6 +52,8 @@ describe("ProductDetail variant selection", () => {
     fireEvent.change(screen.getByTestId("pdp-select-size"), {
       target: { value: "M" },
     });
-    expect(btn).toBeDisabled();
+    await waitFor(() => {
+      expect(btn).not.toBeDisabled();
+    });
   });
 });

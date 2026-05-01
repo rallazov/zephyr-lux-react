@@ -5,10 +5,10 @@ import { orderItemRowsFromQuote, variantTitleFromVariant } from "./orderSnapshot
 
 describe("orderItemRowsFromQuote", () => {
   it("maps catalog snapshots for a known SKU", () => {
-    const quote = quoteCartLines([{ sku: "ZLX-BLK-S", quantity: 1 }]);
+    const quote = quoteCartLines([{ sku: "ZLX-2PK-S", quantity: 1 }]);
     const rows = orderItemRowsFromQuote(quote);
     expect(rows).toHaveLength(1);
-    expect(rows[0].sku).toBe("ZLX-BLK-S");
+    expect(rows[0].sku).toBe("ZLX-2PK-S");
     expect(rows[0].quantity).toBe(1);
     expect(rows[0].unit_price_cents).toBeGreaterThan(0);
     expect(rows[0].total_cents).toBe(rows[0].unit_price_cents);

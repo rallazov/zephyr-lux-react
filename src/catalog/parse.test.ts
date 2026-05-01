@@ -12,8 +12,8 @@ describe("parseStaticCatalogData", () => {
   it("accepts the repo canonical seed file", () => {
     const raw = JSON.parse(readFileSync(productsJsonPath, "utf-8")) as unknown;
     const { products, listItems, bySlug } = parseStaticCatalogData(raw);
-    expect(products).toHaveLength(1);
-    expect(listItems[0].storefrontProductId).toBe(101);
+    expect(products).toHaveLength(5);
+    expect(listItems.some((l) => l.storefrontProductId === 101)).toBe(true);
     expect(bySlug.get("boxer-briefs")?.product.title).toMatch(/Zephyr Lux Boxer Briefs/);
   });
 

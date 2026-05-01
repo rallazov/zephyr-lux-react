@@ -72,7 +72,7 @@ function newImageRow(): IRow {
   };
 }
 
-const productStatuses: ProductStatus[] = ["draft", "active", "archived"];
+const productStatuses: ProductStatus[] = ["draft", "active", "coming_soon", "archived"];
 const variantStatuses: ProductVariantStatus[] = [
   "active",
   "inactive",
