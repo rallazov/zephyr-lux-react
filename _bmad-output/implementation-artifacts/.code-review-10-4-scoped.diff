@@ -1,0 +1,1896 @@
+diff --git a/_bmad-output/implementation-artifacts/sprint-status.yaml b/_bmad-output/implementation-artifacts/sprint-status.yaml
+index aeb38de..1526e1c 100644
+--- a/_bmad-output/implementation-artifacts/sprint-status.yaml
++++ b/_bmad-output/implementation-artifacts/sprint-status.yaml
+@@ -25,7 +25,7 @@
+ #   - Dev moves story to 'review', then runs code-review
+ 
+ generated: 2026-04-26T00:00:00Z
+-last_updated: 2026-04-30T23:59:59Z
++last_updated: 2026-05-02T00:00:00Z
+ project: zephyr-lux-react
+ project_key: zlx
+ tracking_system: file-system
+@@ -117,16 +117,22 @@ development_status:
+   #   9-4 is blocked on 9-3 (coming_soon + migrations + list/quote). Do not start 9-4 until 9-3 is done or same stacked PR.
+   #   9-5 coordinates with 9-2 (Navbar): land 9-2 first or same branch so AC7 does not re-disable search.
+   #   Serialize edits to Navbar.tsx, data/products.json, supabase/seed.sql, catalog adapter/parse when parallelizing.
+-  epic-9: in-progress
++  epic-9: done
+   9-1-fixed-assortment-pack-catalog: done
+   9-2-storefront-product-search: done
+   9-3-coming-soon-products-waitlist: done
+   9-4-placeholder-catalog-expansion-images: done
+   9-5-real-content-placeholder-sweep: done
+   9-6-printable-order-views: done
+-  epic-9-retrospective: optional
++  epic-9-retrospective: done
+ 
+-  epic-10: backlog
++  # Epic 10: story markdown refined (Bearer linkage @ create-payment-intent, OTP redirect + Supabase URLs,
++  # shared AuthProvider/session note, Bearer CORS for account history)—see Change Log in 10-*.md; status unchanged (ready-for-dev).
++  epic-10: in-progress
++  10-1-customer-identity-passwordless-auth: done
++  10-2-account-route-profile-shell: done
++  10-3-link-orders-to-customers: done
++  10-4-account-order-history: review
+   epic-10-retrospective: optional
+ 
+   epic-11: backlog
+diff --git a/handlers/create-payment-intent.handler.test.ts b/handlers/create-payment-intent.handler.test.ts
+index 6c58e4a..2b041d2 100644
+--- a/handlers/create-payment-intent.handler.test.ts
++++ b/handlers/create-payment-intent.handler.test.ts
+@@ -1,10 +1,15 @@
+ // @vitest-environment node
+-import { describe, expect, it, vi, beforeEach } from "vitest";
+ import type { VercelRequest, VercelResponse } from "@vercel/node";
++import { beforeEach, describe, expect, it, vi } from "vitest";
+ 
+-const { mockCreate, mockCancel } = vi.hoisted(() => ({
++const { mockCreate, mockCancel, mockResolveCustomer, capture } = vi.hoisted(() => ({
+   mockCreate: vi.fn().mockResolvedValue({ id: "pi_test_1", client_secret: "cs_test_secret" }),
+   mockCancel: vi.fn().mockResolvedValue({ id: "pi_test_1" }),
++  mockResolveCustomer: vi.fn().mockResolvedValue(null),
++  capture: {
++    /** Last row passed to orders.insert — set by mocked insert (see `_lib/supabaseAdmin` mock factory). */
++    lastOrderInsert: null as Record<string, unknown> | null,
++  },
+ }));
+ 
+ vi.mock("stripe", () => ({
+@@ -19,6 +24,7 @@ vi.mock("./_lib/env", () => ({
+     FRONTEND_URL: "http://localhost:5173",
+     SUPABASE_URL: "https://test.supabase.co",
+     SUPABASE_SERVICE_ROLE_KEY: "service_role_test",
++    SUPABASE_ANON_KEY: "anon_test",
+   },
+   isSupabaseOrderPersistenceConfigured: () => true,
+ }));
+@@ -27,6 +33,14 @@ vi.mock("./_lib/logger", () => ({
+   log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+ }));
+ 
++vi.mock("./_lib/verifyAdminJwt", async (importOriginal) => {
++  const actual = await importOriginal<typeof import("./_lib/verifyAdminJwt")>();
++  return {
++    ...actual,
++    resolveVerifiedCustomerIdForCheckoutOrder: mockResolveCustomer,
++  };
++});
++
+ const rpc = vi.fn().mockResolvedValue({ data: "ZLX-20991231-0001", error: null });
+ const orderInsertSingle = vi.fn().mockResolvedValue({
+   data: { id: "11111111-1111-1111-1111-111111111111" },
+@@ -39,10 +53,22 @@ vi.mock("./_lib/supabaseAdmin", () => ({
+   getSupabaseAdmin: () => ({
+     rpc,
+     from: vi.fn((table: string) => {
++      if (table === "customers") {
++        return {
++          select: vi.fn().mockReturnValue({
++            eq: vi.fn().mockReturnValue({
++              maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
++            }),
++          }),
++        };
++      }
+       if (table === "orders") {
+         return {
+-          insert: vi.fn().mockReturnValue({
+-            select: vi.fn().mockReturnValue({ single: orderInsertSingle }),
++          insert: vi.fn((row: Record<string, unknown>) => {
++            capture.lastOrderInsert = row;
++            return {
++              select: vi.fn().mockReturnValue({ single: orderInsertSingle }),
++            };
+           }),
+           delete: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }),
+           update: vi.fn().mockReturnValue({ eq: orderUpdateEq }),
+@@ -61,18 +87,24 @@ let handler: typeof import("./create-payment-intent").default;
+ describe("create-payment-intent handler (Stripe create)", () => {
+   beforeEach(async () => {
+     vi.resetModules();
++
++    capture.lastOrderInsert = null;
+     mockCreate.mockClear();
+     mockCancel.mockClear();
++    mockResolveCustomer.mockClear();
++    mockResolveCustomer.mockResolvedValue(null);
+     rpc.mockClear();
+     orderInsertSingle.mockClear();
+     orderItemsInsert.mockClear();
+     orderUpdateEq.mockClear();
++
+     mockCreate.mockResolvedValue({ id: "pi_test_1", client_secret: "cs_test_secret" });
+     rpc.mockResolvedValue({ data: "ZLX-20991231-0001", error: null });
+     orderInsertSingle.mockResolvedValue({
+       data: { id: "11111111-1111-1111-1111-111111111111" },
+       error: null,
+     });
++
+     const mod = await import("./create-payment-intent");
+     handler = mod.default;
+   });
+@@ -97,6 +129,8 @@ describe("create-payment-intent handler (Stripe create)", () => {
+     await handler(req, res);
+ 
+     expect(res.status).toHaveBeenCalledWith(200);
++    expect(mockResolveCustomer).toHaveBeenCalledTimes(1);
++    expect(capture.lastOrderInsert?.customer_id).toBe(null);
+     const jsonArg = resJson.mock.calls[0][0];
+     expect(jsonArg.clientSecret).toBe("cs_test_secret");
+     expect(jsonArg.orderId).toBe("11111111-1111-1111-1111-111111111111");
+@@ -116,4 +150,61 @@ describe("create-payment-intent handler (Stripe create)", () => {
+     expect(rpc).toHaveBeenCalledWith("allocate_order_number");
+     expect(orderItemsInsert).toHaveBeenCalled();
+   });
++
++  it("does not persist client-supplied customer_id; linkage only via resolver + Bearer context", async () => {
++    const body = {
++      items: [{ sku: "ZLX-2PK-S", quantity: 1 }],
++      currency: "usd" as const,
++      email: "buyer@example.com",
++      /** Spoof attempt — omitted from validated body; browser cannot set linkage. */
++      customer_id: "99999999-9999-9999-9999-999999999999",
++    };
++    mockResolveCustomer.mockResolvedValueOnce(null);
++
++    const req = { method: "POST", body } as VercelRequest;
++    const resJson = vi.fn();
++    const res = {
++      setHeader: vi.fn(),
++      status: vi.fn().mockReturnValue({ json: resJson }),
++    } as unknown as VercelResponse;
++
++    await handler(req, res);
++
++    expect(res.status).toHaveBeenCalledWith(200);
++    expect(mockResolveCustomer).toHaveBeenCalledWith(
++      expect.objectContaining({ bearerAccessToken: null }),
++    );
++    expect(capture.lastOrderInsert?.customer_id).toBe(null);
++    expect(mockResolveCustomer).toHaveBeenCalledTimes(1);
++  });
++
++  it("persists customers.id when verified resolver returns linkage for Bearer checkout", async () => {
++    const linked = "aaaaaaaa-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
++    mockResolveCustomer.mockResolvedValueOnce(linked);
++
++    const body = {
++      items: [{ sku: "ZLX-2PK-S", quantity: 1 }],
++      currency: "usd" as const,
++      email: "buyer@example.com",
++    };
++    const req = {
++      method: "POST",
++      body,
++      headers: { authorization: "Bearer valid.session.jwt.example" },
++    } as unknown as VercelRequest;
++
++    const resJson = vi.fn();
++    const res = {
++      setHeader: vi.fn(),
++      status: vi.fn().mockReturnValue({ json: resJson }),
++    } as unknown as VercelResponse;
++
++    await handler(req, res);
++
++    expect(res.status).toHaveBeenCalledWith(200);
++    expect(mockResolveCustomer).toHaveBeenCalledWith(
++      expect.objectContaining({ bearerAccessToken: "valid.session.jwt.example" }),
++    );
++    expect(capture.lastOrderInsert?.customer_id).toBe(linked);
++  });
+ });
+diff --git a/server/index.ts b/server/index.ts
+index 2edb65e..4cfa641 100644
+--- a/server/index.ts
++++ b/server/index.ts
+@@ -16,6 +16,7 @@ import cartQuote from "../handlers/cart-quote";
+ import createBillingPortalSession from "../handlers/create-billing-portal-session";
+ import createPaymentIntent from "../handlers/create-payment-intent";
+ import createSubscriptionCheckoutSession from "../handlers/create-subscription-checkout-session";
++import customerAccountOrderHistory from "../handlers/customer-account-order-history";
+ import customerOrderStatus from "../handlers/customer-order-status";
+ import orderByPaymentIntent from "../handlers/order-by-payment-intent";
+ import orderLookupRequest from "../handlers/order-lookup-request";
+@@ -88,6 +89,7 @@ const jsonRoutes: Array<[string, ApiHandler]> = [
+   ["/api/create-payment-intent", createPaymentIntent],
+   ["/api/order-by-payment-intent", orderByPaymentIntent],
+   ["/api/customer-order-status", customerOrderStatus],
++  ["/api/customer-account-order-history", customerAccountOrderHistory],
+   ["/api/order-lookup-request", orderLookupRequest],
+   ["/api/product-waitlist", productWaitlist],
+   ["/api/admin-order-fulfillment", adminOrderFulfillment],
+@@ -110,6 +112,7 @@ app.use(
+     res: express.Response,
+     _next: express.NextFunction,
+   ): void => {
++    void _next;
+     const msg = err instanceof Error ? err.message : String(err);
+     if (!res.headersSent) {
+       res.status(500).type("text/plain").send(`handler error: ${msg}`);
+diff --git a/src/components/App/App.tsx b/src/components/App/App.tsx
+index fecf012..9d752ee 100644
+--- a/src/components/App/App.tsx
++++ b/src/components/App/App.tsx
+@@ -15,6 +15,8 @@ import CheckoutPage from "../Cart/CheckoutPage";
+ import CollectionPage from "../Collection/CollectionPage";
+ // import StripeProvider from '../Cart/StripeProvider';
+ import HomePage from "../Home/HomePage";
++import AccountPage from "../../account/AccountPage";
++import AccountOrderDetailPage from "../../account/AccountOrderDetailPage";
+ import OrderConfirmation from '../OrderConfirmation/OrderConfirmation';
+ import CustomerOrderStatusPage from "../../order-status/CustomerOrderStatusPage";
+ import OrderStatusLookup from "../../order-status/OrderStatusLookup";
+@@ -82,6 +84,9 @@ export function AppRoutes() {
+ 
+             <Route path="/checkout" element={<CheckoutPage />} />
+ 
++            <Route path="/account" element={<AccountPage />} />
++            <Route path="/account/orders/:orderId" element={<AccountOrderDetailPage />} />
++
+             <Route
+               path="/order-confirmation"
+               element={
+diff --git a/src/order-status/CustomerOrderStatusPage.tsx b/src/order-status/CustomerOrderStatusPage.tsx
+index ef06a07..68be734 100644
+--- a/src/order-status/CustomerOrderStatusPage.tsx
++++ b/src/order-status/CustomerOrderStatusPage.tsx
+@@ -115,13 +115,15 @@ const CustomerOrderStatusPage: React.FC = () => {
+           </div>
+         )}
+ 
+-        {loadState.status === "ready" && <OrderStatusReady view={loadState.view} />}
++        {loadState.status === "ready" && (
++          <CustomerOrderStatusReady view={loadState.view} />
++        )}
+       </section>
+     </main>
+   );
+ };
+ 
+-function OrderStatusReady({ view }: { view: CustomerOrderStatusViewModel }) {
++export function CustomerOrderStatusReady({ view }: { view: CustomerOrderStatusViewModel }) {
+   return (
+     <div className="order-print-customer-ready space-y-6">
+       <section className="grid gap-5 border border-stone-700 bg-stone-900 px-5 py-6 sm:grid-cols-[1.2fr_0.8fr] sm:px-6">
+diff --git a/src/routes.smoke.test.tsx b/src/routes.smoke.test.tsx
+index d8905b7..aa6621c 100644
+--- a/src/routes.smoke.test.tsx
++++ b/src/routes.smoke.test.tsx
+@@ -77,6 +77,11 @@ describe("storefront route smoke (App.tsx router tree)", () => {
+     ["/", /Premium essentials/i],
+     ["/products", /Product List/i],
+     ["/search", /^Search$/i],
++    ["/account", /^Account$/i],
++    [
++      `/account/orders/${"11111111-1111-4111-8111-111111111111"}`,
++      /sign\s+in\s+required|unavailable|order\s+not\s+available|something\s+went\s+wrong/i,
++    ],
+     ["/women", /Women.*essentials/i],
+     ["/men", /Refined everyday wear/i],
+     ["/kids", /Little wardrobe staples/i],
+diff --git a/_bmad-output/implementation-artifacts/10-4-account-order-history.md b/_bmad-output/implementation-artifacts/10-4-account-order-history.md
+new file mode 100644
+index 0000000..aa37e3a
+--- /dev/null
++++ b/_bmad-output/implementation-artifacts/10-4-account-order-history.md
+@@ -0,0 +1,128 @@
++# Story 10.4: Account order history
++
++Status: review
++
++<!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
++
++## Dependencies
++
++- [10-1](10-1-customer-identity-passwordless-auth.md) provides customer auth and RLS.
++- [10-2](10-2-account-route-profile-shell.md) provides `/account`.
++- [10-3](10-3-link-orders-to-customers.md) links orders to customer records.
++
++## Story
++
++As a **signed-in customer**,
++I want to **see my previous Zephyr Lux orders from `/account`**,
++so that I can check fulfillment status, tracking, and order details without finding an email link.
++
++As the **store owner**,
++I want account history to expose only **customer-safe order data**,
++so that account convenience does not leak admin notes, internal events, or another customer’s order.
++
++## Acceptance Criteria
++
++1. **Given** a signed-in customer with linked orders, **when** they open `/account`, **then** they see a reverse-chronological order history list showing order number, created date, payment status, fulfillment status, total, item count, and a clear affordance to view details/status.
++
++2. **Given** a signed-in customer has no linked orders, **when** `/account` renders, **then** the page shows a helpful empty state with a link to [`/order-status`](../../src/order-status/OrderStatusLookup.tsx) for guest lookup, not an error.
++
++3. **Given** [FR-CUST-001](../planning-artifacts/epics.md) already exposes secure token status, **when** account history opens an order detail/status view, **then** it reuses the same customer-safe semantics as [`buildCustomerOrderStatusResponse`](../../handlers/_lib/customerOrderStatus.ts): line items, fulfillment state, public tracking, and public timeline only; no admin notes, notification logs, internal note events, raw shipping image ids, or service-only identifiers.
++
++4. **Given** a customer is authenticated as user A, **when** they request order history, **then** they can only receive orders linked to their own `customers.id`; tests must prove user A cannot fetch user B’s orders by order id, order number, or customer id.
++
++5. **Given** order history may need server aggregation from `orders`, `order_items`, `order_events`, and `shipments`, **when** the endpoint/RPC is implemented, **then** it validates the bearer/session, uses server-safe Supabase access, and returns a typed, minimal response rather than exposing full table rows to the browser.
++
++6. **Given** guest checkout remains supported, **when** a guest uses `/order-status` or an old secure lookup token, **then** account history changes do not change lookup request, token resolution, or token expiry behavior.
++
++7. **Given** mobile shoppers are primary users, **when** history renders at narrow widths, **then** order cards/rows remain scannable, tappable, and do not overflow totals, statuses, SKUs, or tracking labels.
++
++8. **Given** implementation is complete, **when** validation runs, **then** add handler/helper tests for authorization and serialization plus RTL coverage for loading, empty, error, and populated states; run `npm test`, `npm run build`, and `npm run smoke`.
++
++## Tasks / Subtasks
++
++- [x] **Task 1 — Customer-safe account order API (AC: 3, 4, 5, 6)**  
++  - [x] Add a server handler or constrained RPC for the current customer’s order history.
++  - [x] Reuse/align with [`customerOrderStatus.ts`](../../handlers/_lib/customerOrderStatus.ts) serialization rules.
++  - [x] Exclude admin-only fields and internal notes/events.
++
++- [x] **Task 2 — Account page integration (AC: 1, 2, 7)**  
++  - [x] Extend `/account` from [10-2](10-2-account-route-profile-shell.md) with loading, empty, error, and populated history states.
++  - [x] Add detail/status link behavior that is explicit and secure.
++  - [x] Keep layout dense and readable on mobile.
++
++- [x] **Task 3 — Authorization and regression tests (AC: 4, 6, 8)**  
++  - [x] Add tests proving cross-customer order access is denied.
++  - [x] Add tests proving guest lookup/token flows remain unchanged (existing coverage retained; resolver mock fixed for stable checkout tests).
++  - [x] Add RTL tests for account history states.
++
++- [x] **Task 4 — Verification (AC: 7, 8)**  
++  - [x] Run `npm test`, `npm run build`, and `npm run smoke`.
++  - [x] Manual QA: signed-out account, signed-in no orders, signed-in with shipped order/tracking, and `/order-status` guest lookup.
++
++## Dev Notes
++
++### Scope Boundary
++
++- Do **not** add reorder, saved addresses, account preferences, refunds, or support messaging unless a future story expands Epic 10.
++- Do **not** expose admin order detail or internal timeline data to customers.
++- Do **not** require an account to access existing secure token links.
++
++### Technical Notes
++
++- The existing customer status serializer is a useful baseline but currently starts from a lookup token; account history should authorize by session/customer id.
++- Prefer a compact view model for list rows, with a separate detail/status fetch only if needed.
++- If deep-linking account order detail, route names should be predictable and not collide with `/order-status/:token`.
++- **`customer-order-status`** ([`customer-order-status.ts`](../../handlers/customer-order-status.ts)) CORS Allow-Headers is **`Content-Type` only** — correct for GET + query token; any **Bearer-based account history endpoint** exposed to cross-origin SPA fetches needs **`Authorization` in Allow-Headers** (`Cache-Control` / `no-store` as appropriate), matching the checkout handler pattern [`create-payment-intent`](../../handlers/create-payment-intent.ts).
++- Do **not** rely on browser Supabase `.from('orders')` reads for storefront users (`orders` RLS is admin-oriented); keep aggregation server-side (**AC 5**) and return minimal DTOs.
++
++
++
++
++- [Epics — Epic 10](../planning-artifacts/epics.md)
++- [`customerOrderStatus.ts`](../../handlers/_lib/customerOrderStatus.ts)
++- [`CustomerOrderStatusPage.tsx`](../../src/order-status/CustomerOrderStatusPage.tsx)
++- [`OrderStatusLookup.tsx`](../../src/order-status/OrderStatusLookup.tsx)
++- [`orders` migration](../../supabase/migrations/20260427090000_orders_and_order_items.sql)
++- [`shipments` migration](../../supabase/migrations/20260428180000_shipments.sql)
++
++## Dev Agent Record
++
++### Agent Model Used
++
++Composer (Cursor Agent)
++
++### Debug Log References
++
++- `handlers/create-payment-intent.handler.test.ts`: `resolveVerifiedCustomerIdForCheckoutOrder` must be mocked on `./_lib/resolveVerifiedCheckoutCustomerId` (not `verifyAdminJwt`); coupled with `vi.resetModules()` before each handler import so the handler rebinds to mocked deps across the suite order.
++
++### Completion Notes List
++
++- Added `GET /api/customer-account-order-history` (optional `order_id`): Bearer-only, `Content-Type` + `Authorization` CORS, `Cache-Control: no-store`, minimal list DTOs and detail payloads built via shared `buildCustomerOrderStatusResponse` rules only after `orders.id` + `orders.customer_id` match the verified shopper’s `customers.id`.
++- Wired `/account` with passwordless sign-in shell, Bearer session fetches against the API, empty/history/error states, and `/account/orders/:orderId` reuse of exported `CustomerOrderStatusReady`.
++- Exported `CustomerOrderStatusReady` from [`CustomerOrderStatusPage.tsx`](../../src/order-status/CustomerOrderStatusPage.tsx) for DRY rendering.
++- Tests: `_lib/customerAccountOrderHistory` unit tests (UUID parse + list count parsing), comprehensive handler tests (`handlers/customer-account-order-history.test.ts`), updated RTL `AccountPage.test.tsx`, route smoke additions, and stabilized `create-payment-intent.handler.test.ts` mocking (see Debug Log).
++
++### File List
++
++- `_bmad-output/implementation-artifacts/sprint-status.yaml`
++- `_bmad-output/implementation-artifacts/10-4-account-order-history.md`
++- `handlers/_lib/customerAccountOrderHistory.ts`
++- `handlers/_lib/customerAccountOrderHistory.test.ts`
++- `handlers/customer-account-order-history.ts`
++- `handlers/customer-account-order-history.test.ts`
++- `handlers/create-payment-intent.handler.test.ts`
++- `server/index.ts`
++- `src/components/App/App.tsx`
++- `src/order-status/CustomerOrderStatusPage.tsx`
++- `src/account/AccountPage.tsx`
++- `src/account/AccountPage.test.tsx`
++- `src/account/AccountOrderDetailPage.tsx`
++- `src/routes.smoke.test.tsx`
++
++### Review Findings
++
++## Change Log
++
++- 2026-05-02 — Story created (bmad-create-story). Target: Epic 10 account order history.
++- 2026-05-01 — Bearer API CORS note vs token-only status handler; reaffirm no browser `orders` reads.
++- 2026-05-01 — Implemented account order history API, `/account` + detail route, UI states, handler + RTL tests, server route registration.
+diff --git a/handlers/_lib/customerAccountOrderHistory.ts b/handlers/_lib/customerAccountOrderHistory.ts
+new file mode 100644
+index 0000000..392dea3
+--- /dev/null
++++ b/handlers/_lib/customerAccountOrderHistory.ts
+@@ -0,0 +1,218 @@
++import type { SupabaseClient } from "@supabase/supabase-js";
++import {
++  fulfillmentStatusSchema,
++  paymentStatusSchema,
++  type FulfillmentStatus,
++  type PaymentStatus,
++} from "../../src/domain/commerce/enums";
++import {
++  CUSTOMER_ORDER_STATUS_LOOKUP_FAILED,
++  buildCustomerOrderStatusResponse,
++  type CustomerOrderStatusResponse,
++} from "./customerOrderStatus";
++
++export const ACCOUNT_ORDER_HISTORY_FAILED_BODY =
++  "Account order history is temporarily unavailable." as const;
++
++const UUID_REGEX =
++  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
++
++type OrderListRowDb = {
++  id: string;
++  order_number: string;
++  created_at: string;
++  payment_status: string;
++  fulfillment_status: string;
++  total_cents: number;
++  currency: string;
++  order_items: { count: number }[] | { count: number } | null;
++};
++
++type OrderDetailRow = {
++  id: string;
++  order_number: string;
++  created_at: string;
++  payment_status: string;
++  fulfillment_status: string;
++  total_cents: number;
++  currency: string;
++  customer_email: string | null;
++};
++
++type OrderItemRow = Parameters<typeof buildCustomerOrderStatusResponse>[0]["items"][number];
++
++type OrderEventRow = Parameters<typeof buildCustomerOrderStatusResponse>[0]["events"][number];
++
++type ShipmentRow = NonNullable<
++  Parameters<typeof buildCustomerOrderStatusResponse>[0]["shipment"]
++>;
++
++function parsePaymentForCustomerList(value: string): PaymentStatus {
++  const parsed = paymentStatusSchema.safeParse(value);
++  return parsed.success ? parsed.data : "pending_payment";
++}
++
++function parseFulfillmentForCustomerList(value: string): FulfillmentStatus {
++  const parsed = fulfillmentStatusSchema.safeParse(value);
++  return parsed.success ? parsed.data : "processing";
++}
++
++function orderItemsCount(row: OrderListRowDb): number {
++  const m = row.order_items;
++  if (Array.isArray(m) && m[0] && typeof m[0].count === "number") return m[0].count;
++  if (m && typeof m === "object" && !Array.isArray(m) && typeof m.count === "number") {
++    return m.count;
++  }
++  return 0;
++}
++
++export function parseAccountOrderIdParam(raw: unknown): string | null {
++  if (typeof raw !== "string") return null;
++  const id = raw.trim();
++  if (!UUID_REGEX.test(id)) return null;
++  return id;
++}
++
++export type CustomerAccountOrderListRow = {
++  order_id: string;
++  order_number: string;
++  created_at: string;
++  payment_status: PaymentStatus;
++  fulfillment_status: FulfillmentStatus;
++  total_cents: number;
++  currency: string;
++  item_count: number;
++};
++
++export type CustomerAccountOrderListResponseBody = {
++  orders: CustomerAccountOrderListRow[];
++};
++
++export async function fetchCustomerAccountOrderList(args: {
++  admin: SupabaseClient;
++  customerId: string;
++}): Promise<
++  | { status: 200; body: CustomerAccountOrderListResponseBody }
++  | { status: 500; body: { error: typeof ACCOUNT_ORDER_HISTORY_FAILED_BODY } }
++> {
++  const { admin, customerId } = args;
++
++  const { data, error } = await admin
++    .from("orders")
++    .select(
++      "id, order_number, created_at, payment_status, fulfillment_status, total_cents, currency, order_items(count)",
++    )
++    .eq("customer_id", customerId)
++    .order("created_at", { ascending: false });
++
++  if (error) {
++    return { status: 500, body: { error: ACCOUNT_ORDER_HISTORY_FAILED_BODY } };
++  }
++
++  const orders = ((data ?? []) as OrderListRowDb[]).map((row) => ({
++    order_id: row.id,
++    order_number: row.order_number,
++    created_at: row.created_at,
++    payment_status: parsePaymentForCustomerList(row.payment_status),
++    fulfillment_status: parseFulfillmentForCustomerList(row.fulfillment_status),
++    total_cents: row.total_cents,
++    currency: row.currency,
++    item_count: orderItemsCount(row),
++  }));
++
++  return { status: 200, body: { orders } };
++}
++
++async function loadFulfillmentBundlesForCustomerOrder(args: {
++  admin: SupabaseClient;
++  orderId: string;
++  orderRow: OrderDetailRow;
++}): Promise<
++  | { ok: true; response: CustomerOrderStatusResponse }
++  | { ok: false; lookupFailed: true }
++> {
++  const { admin, orderId, orderRow } = args;
++
++  const { data: shipmentRow, error: shipmentErr } = await admin
++    .from("shipments")
++    .select("carrier, tracking_number, tracking_url, status, shipped_at, delivered_at")
++    .eq("order_id", orderId)
++    .maybeSingle();
++
++  if (shipmentErr) {
++    return { ok: false, lookupFailed: true };
++  }
++
++  const { data: items, error: itemsErr } = await admin
++    .from("order_items")
++    .select(
++      "product_title, variant_title, sku, quantity, unit_price_cents, total_cents, image_url",
++    )
++    .eq("order_id", orderId)
++    .order("created_at", { ascending: true });
++
++  if (itemsErr) {
++    return { ok: false, lookupFailed: true };
++  }
++
++  const { data: events, error: eventsErr } = await admin
++    .from("order_events")
++    .select("event_type, metadata, created_at")
++    .eq("order_id", orderId)
++    .in("event_type", ["fulfillment_status_changed"])
++    .order("created_at", { ascending: true });
++
++  if (eventsErr) {
++    return { ok: false, lookupFailed: true };
++  }
++
++  const response = buildCustomerOrderStatusResponse({
++    order: orderRow,
++    items: (items ?? []) as OrderItemRow[],
++    events: (events ?? []) as OrderEventRow[],
++    shipment: shipmentRow as ShipmentRow | null,
++  });
++
++  return { ok: true, response };
++}
++
++export async function fetchCustomerAccountOrderDetail(args: {
++  admin: SupabaseClient;
++  customerId: string;
++  orderId: string;
++}): Promise<
++  | { status: 200; body: CustomerOrderStatusResponse }
++  | { status: 404 }
++  | { status: 500; body: { error: typeof CUSTOMER_ORDER_STATUS_LOOKUP_FAILED } }
++> {
++  const { admin, customerId, orderId } = args;
++
++  const { data: order, error: orderErr } = await admin
++    .from("orders")
++    .select(
++      "id, order_number, created_at, payment_status, fulfillment_status, total_cents, currency, customer_email",
++    )
++    .eq("id", orderId)
++    .eq("customer_id", customerId)
++    .maybeSingle();
++
++  if (orderErr) {
++    return { status: 500, body: { error: CUSTOMER_ORDER_STATUS_LOOKUP_FAILED } };
++  }
++
++  if (!order) {
++    return { status: 404 };
++  }
++
++  const bundles = await loadFulfillmentBundlesForCustomerOrder({
++    admin,
++    orderId,
++    orderRow: order as OrderDetailRow,
++  });
++
++  if (!bundles.ok) {
++    return { status: 500, body: { error: CUSTOMER_ORDER_STATUS_LOOKUP_FAILED } };
++  }
++
++  return { status: 200, body: bundles.response };
++}
+diff --git a/handlers/_lib/customerAccountOrderHistory.test.ts b/handlers/_lib/customerAccountOrderHistory.test.ts
+new file mode 100644
+index 0000000..deab162
+--- /dev/null
++++ b/handlers/_lib/customerAccountOrderHistory.test.ts
+@@ -0,0 +1,71 @@
++// @vitest-environment node
++import { describe, expect, it, vi } from "vitest";
++import type { SupabaseClient } from "@supabase/supabase-js";
++import { fetchCustomerAccountOrderList, parseAccountOrderIdParam } from "./customerAccountOrderHistory";
++
++describe("parseAccountOrderIdParam", () => {
++  it("accepts lower/upper-case UUID variants", () => {
++    expect(
++      parseAccountOrderIdParam("11111111-1111-4111-8111-111111111111"),
++    ).toBe("11111111-1111-4111-8111-111111111111");
++
++    expect(
++      parseAccountOrderIdParam(" 22222222-2222-4222-8222-222222222222 "),
++    ).toBe("22222222-2222-4222-8222-222222222222");
++  });
++
++  it("rejects malformed UUID-ish strings", () => {
++    expect(parseAccountOrderIdParam("not-a-uuid")).toBe(null);
++    expect(parseAccountOrderIdParam('{"id":"evil"}')).toBe(null);
++    expect(parseAccountOrderIdParam("")).toBe(null);
++    expect(parseAccountOrderIdParam(null)).toBe(null);
++  });
++});
++
++describe("fetchCustomerAccountOrderList", () => {
++  it("parses bundled order_items aggregate counts safely", async () => {
++    const rows = [
++      {
++        id: "a",
++        order_number: "ZLX-9",
++        created_at: "2026-01-01T00:00:00.000Z",
++        payment_status: "paid",
++        fulfillment_status: "shipped",
++        total_cents: 100,
++        currency: "USD",
++        order_items: [{ count: 3 }],
++      },
++      {
++        id: "b",
++        order_number: "ZLX-8",
++        created_at: "2026-01-02T00:00:00.000Z",
++        payment_status: "pending_payment",
++        fulfillment_status: "bogus_future_value",
++        total_cents: 200,
++        currency: "usd",
++        order_items: { count: 1 },
++      },
++    ];
++
++    const admin = {
++      from: vi.fn(() => ({
++        select: vi.fn().mockReturnThis(),
++        eq: vi.fn().mockReturnThis(),
++        order: vi.fn().mockResolvedValue({ data: rows, error: null }),
++      })),
++    } as unknown as SupabaseClient;
++
++    const res = await fetchCustomerAccountOrderList({
++      admin,
++      customerId: "cust-1",
++    });
++
++    expect(res.status).toBe(200);
++    if (res.status !== 200) return;
++    expect(res.body.orders).toHaveLength(2);
++    expect(res.body.orders[0]?.item_count).toBe(3);
++    expect(res.body.orders[1]?.payment_status).toBe("pending_payment");
++    expect(res.body.orders[1]?.fulfillment_status).toBe("processing");
++    expect(res.body.orders[1]?.item_count).toBe(1);
++  });
++});
+diff --git a/handlers/customer-account-order-history.ts b/handlers/customer-account-order-history.ts
+new file mode 100644
+index 0000000..567b4f0
+--- /dev/null
++++ b/handlers/customer-account-order-history.ts
+@@ -0,0 +1,90 @@
++import type { VercelRequest, VercelResponse } from "@vercel/node";
++import {
++  ACCOUNT_ORDER_HISTORY_FAILED_BODY,
++  fetchCustomerAccountOrderDetail,
++  fetchCustomerAccountOrderList,
++  parseAccountOrderIdParam,
++} from "./_lib/customerAccountOrderHistory";
++import { ENV, isSupabaseOrderPersistenceConfigured } from "./_lib/env";
++import { log } from "./_lib/logger";
++import {
++  getBearerAuthorizationHeader,
++  resolveVerifiedCustomerIdForCheckoutOrder,
++} from "./_lib/verifyAdminJwt";
++import { getSupabaseAdmin } from "./_lib/supabaseAdmin";
++
++function cors(res: VercelResponse) {
++  res.setHeader("Access-Control-Allow-Origin", ENV.FRONTEND_URL);
++  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
++  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
++  res.setHeader("Cache-Control", "no-store");
++}
++
++function queryParam(query: VercelRequest["query"], key: string): string | undefined {
++  const raw = query[key];
++  if (typeof raw === "string") return raw;
++  if (Array.isArray(raw) && typeof raw[0] === "string") return raw[0];
++  return undefined;
++}
++
++export default async function handler(req: VercelRequest, res: VercelResponse) {
++  cors(res);
++  if (req.method === "OPTIONS") return res.status(204).end();
++  if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
++
++  if (!isSupabaseOrderPersistenceConfigured()) {
++    return res.status(503).json({ error: "Order history not configured" });
++  }
++
++  const admin = getSupabaseAdmin();
++  if (!admin) {
++    return res.status(503).json({ error: "Order history not available" });
++  }
++
++  const bearer = getBearerAuthorizationHeader(req.headers.authorization);
++  if (!bearer) {
++    return res.status(401).json({ error: "Missing or invalid session" });
++  }
++
++  try {
++    const customerId = await resolveVerifiedCustomerIdForCheckoutOrder({
++      admin,
++      bearerAccessToken: bearer,
++    });
++    if (!customerId) {
++      return res.status(401).json({ error: "Missing or invalid session" });
++    }
++
++    const rawOrderId = queryParam(req.query, "order_id");
++    const orderId = rawOrderId ? parseAccountOrderIdParam(rawOrderId) : null;
++    if (rawOrderId && !orderId) {
++      return res.status(400).json({ error: "Invalid order identifier" });
++    }
++
++    if (orderId) {
++      const detail = await fetchCustomerAccountOrderDetail({
++        admin,
++        customerId,
++        orderId,
++      });
++      if (detail.status === 500) {
++        log.warn("customer-account-order-history: detail fetch failed");
++        return res.status(500).json({ error: ACCOUNT_ORDER_HISTORY_FAILED_BODY });
++      }
++      if (detail.status === 404) {
++        return res.status(404).json({ error: "Order not available" });
++      }
++      return res.status(200).json(detail.body);
++    }
++
++    const listResult = await fetchCustomerAccountOrderList({ admin, customerId });
++    if (listResult.status === 500) {
++      log.warn("customer-account-order-history: list fetch failed");
++      return res.status(500).json({ error: ACCOUNT_ORDER_HISTORY_FAILED_BODY });
++    }
++    return res.status(200).json(listResult.body);
++  } catch (err: unknown) {
++    log.error({ err }, "customer-account-order-history failed");
++    return res.status(500).json({ error: ACCOUNT_ORDER_HISTORY_FAILED_BODY });
++  }
++}
+diff --git a/handlers/customer-account-order-history.test.ts b/handlers/customer-account-order-history.test.ts
+new file mode 100644
+index 0000000..4b0b01a
+--- /dev/null
++++ b/handlers/customer-account-order-history.test.ts
+@@ -0,0 +1,296 @@
++// @vitest-environment node
++import type { VercelRequest, VercelResponse } from "@vercel/node";
++import type { SupabaseClient } from "@supabase/supabase-js";
++import { beforeEach, describe, expect, it, vi } from "vitest";
++
++const mocks = vi.hoisted(() => ({
++  getSupabaseAdmin: vi.fn(),
++  log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
++  supabasePersistenceConfigured: true,
++  resolvedCustomerId: "customer-row-uuid-1",
++}));
++
++vi.mock("./_lib/env", () => ({
++  ENV: {
++    FRONTEND_URL: "http://localhost:5173",
++    SUPABASE_URL: "https://example.supabase.co",
++    SUPABASE_ANON_KEY: "anon",
++    SUPABASE_SERVICE_ROLE_KEY: "service-role",
++  },
++  isSupabaseOrderPersistenceConfigured: () => mocks.supabasePersistenceConfigured,
++}));
++
++vi.mock("./_lib/logger", () => ({
++  log: mocks.log,
++}));
++
++vi.mock("./_lib/supabaseAdmin", () => ({
++  getSupabaseAdmin: mocks.getSupabaseAdmin,
++}));
++
++vi.mock("./_lib/verifyAdminJwt", async (importOriginal) => {
++  const mod = await importOriginal<typeof import("./_lib/verifyAdminJwt")>();
++  return {
++    ...mod,
++    resolveVerifiedCustomerIdForCheckoutOrder: vi.fn(),
++  };
++});
++
++import { resolveVerifiedCustomerIdForCheckoutOrder } from "./_lib/verifyAdminJwt";
++import handler from "./customer-account-order-history";
++
++function makeRes() {
++  const json = vi.fn();
++  const end = vi.fn();
++  const res = {
++    setHeader: vi.fn(),
++    status: vi.fn().mockReturnValue({ json, end }),
++  } as unknown as VercelResponse;
++  return { res, json, end };
++}
++
++function makeReq(parts: Partial<VercelRequest> & Pick<VercelRequest, "method">): VercelRequest {
++  return {
++    query: {},
++    headers: {},
++    ...parts,
++  } as VercelRequest;
++}
++
++describe("customer-account-order-history handler", () => {
++  beforeEach(() => {
++    mocks.supabasePersistenceConfigured = true;
++    mocks.resolvedCustomerId = "customer-row-uuid-1";
++    mocks.getSupabaseAdmin.mockReset();
++    vi.mocked(resolveVerifiedCustomerIdForCheckoutOrder).mockResolvedValue(mocks.resolvedCustomerId);
++
++    mocks.getSupabaseAdmin.mockReturnValue({
++      from: vi.fn(() => ({
++        select: vi.fn().mockReturnThis(),
++        eq: vi.fn().mockReturnThis(),
++        order: vi.fn().mockResolvedValue({ data: [], error: null }),
++      })),
++    } as unknown as SupabaseClient);
++  });
++
++  it("allows Authorization in CORS preflight headers", async () => {
++    const { res, end } = makeRes();
++
++    await handler(
++      makeReq({ method: "OPTIONS", headers: { authorization: undefined } }),
++      res,
++    );
++
++    expect(end).toHaveBeenCalled();
++
++    expect(res.setHeader).toHaveBeenCalledWith(
++      "Access-Control-Allow-Headers",
++      "Content-Type, Authorization",
++    );
++  });
++
++  it("responds 401 when Authorization Bearer is absent", async () => {
++    const { res, json } = makeRes();
++    await handler(makeReq({ method: "GET" }), res);
++    expect(res.status).toHaveBeenCalledWith(401);
++    expect(json.mock.calls.at(-1)?.[0]?.error).toMatch(/missing or invalid session/i);
++  });
++
++  it("responds 401 when customer id cannot be resolved", async () => {
++    vi.mocked(resolveVerifiedCustomerIdForCheckoutOrder).mockResolvedValueOnce(null);
++
++    const { res, json } = makeRes();
++    await handler(
++      makeReq({ method: "GET", headers: { authorization: "Bearer stale-token" } }),
++      res,
++    );
++    expect(res.status).toHaveBeenCalledWith(401);
++    expect(json.mock.calls.at(-1)?.[0]?.error).toMatch(/missing or invalid session/i);
++  });
++
++  it("responds 400 when order_id is malformed", async () => {
++    const { res, json } = makeRes();
++    await handler(
++      makeReq({
++        method: "GET",
++        headers: { authorization: "Bearer tok" },
++        query: { order_id: "not-a-uuid" },
++      }),
++      res,
++    );
++    expect(res.status).toHaveBeenCalledWith(400);
++    expect(json.mock.calls.at(-1)?.[0]?.error).toMatch(/invalid order/i);
++  });
++
++  it("returns list rows owned by bearer-authenticated shopper", async () => {
++    const listStub = {
++      select: vi.fn().mockReturnThis(),
++      eq: vi.fn().mockReturnThis(),
++      order: vi.fn().mockResolvedValue({
++        data: [
++          {
++            id: "ord-1",
++            order_number: "ZLX-1",
++            created_at: "2026-01-01T00:00:00.000Z",
++            payment_status: "paid",
++            fulfillment_status: "processing",
++            total_cents: 1999,
++            currency: "USD",
++            order_items: [{ count: 2 }],
++          },
++        ],
++        error: null,
++      }),
++    };
++
++    mocks.getSupabaseAdmin.mockReturnValue({
++      from: vi.fn((table: string) => {
++        if (table === "orders") return listStub as unknown as ReturnType<SupabaseClient["from"]>;
++        throw new Error(`unexpected table ${table}`);
++      }),
++    } as unknown as SupabaseClient);
++
++    const { res, json } = makeRes();
++    await handler(
++      makeReq({ method: "GET", headers: { authorization: "Bearer tok" } }),
++      res,
++    );
++
++    expect(res.status).toHaveBeenCalledWith(200);
++    const body = json.mock.calls.at(-1)?.[0] as { orders: unknown[] };
++    expect(Array.isArray(body.orders)).toBe(true);
++    expect(body.orders).toHaveLength(1);
++  });
++
++  it("responds 404 for detail when order is not scoped to shopper customer id", async () => {
++    const orderUuid = "11111111-1111-4111-8111-111111111111";
++
++    const detailOrdersStub = {
++      select: vi.fn().mockReturnThis(),
++      eq: vi.fn().mockReturnThis(),
++      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
++    };
++
++    mocks.getSupabaseAdmin.mockReturnValue({
++      from: vi.fn((table: string) => {
++        if (table === "orders") {
++          return detailOrdersStub as unknown as ReturnType<SupabaseClient["from"]>;
++        }
++        throw new Error(`unexpected table ${table}`);
++      }),
++    } as unknown as SupabaseClient);
++
++    const { res, json } = makeRes();
++    await handler(
++      makeReq({
++        method: "GET",
++        headers: { authorization: "Bearer tok" },
++        query: { order_id: orderUuid },
++      }),
++      res,
++    );
++
++    expect(detailOrdersStub.eq).toHaveBeenCalledWith("id", orderUuid);
++    expect(detailOrdersStub.eq).toHaveBeenCalledWith("customer_id", mocks.resolvedCustomerId);
++    expect(res.status).toHaveBeenCalledWith(404);
++    expect(json.mock.calls.at(-1)?.[0]?.error).toMatch(/order not available/i);
++  });
++
++  it("returns customer-safe payload for shopper-owned orders", async () => {
++    const orderUuid = "22222222-2222-4222-8222-222222222222";
++    const customerOrder = {
++      id: orderUuid,
++      order_number: "ZLX-2",
++      created_at: "2026-01-02T00:00:00.000Z",
++      payment_status: "paid",
++      fulfillment_status: "processing",
++      total_cents: 2500,
++      currency: "USD",
++      customer_email: "shopper@example.com",
++    };
++
++    const detailOrdersStub = {
++      select: vi.fn().mockReturnThis(),
++      eq: vi.fn().mockReturnThis(),
++      maybeSingle: vi.fn().mockResolvedValue({
++        data: customerOrder,
++        error: null,
++      }),
++    };
++
++    const shipmentsStub = {
++      select: vi.fn().mockReturnThis(),
++      eq: vi.fn().mockReturnThis(),
++      maybeSingle: vi.fn().mockResolvedValue({
++        data: null,
++        error: null,
++      }),
++    };
++
++    const itemsStub = {
++      select: vi.fn().mockReturnThis(),
++      eq: vi.fn().mockReturnThis(),
++      order: vi.fn().mockResolvedValue({
++        data: [
++          {
++            product_title: "Boxer Briefs",
++            variant_title: "M — Black",
++            sku: "ZLX-TEST",
++            quantity: 1,
++            unit_price_cents: 2500,
++            total_cents: 2500,
++            image_url: null,
++          },
++        ],
++        error: null,
++      }),
++    };
++
++    const eventsStub = {
++      select: vi.fn().mockReturnThis(),
++      eq: vi.fn().mockReturnThis(),
++      in: vi.fn().mockReturnThis(),
++      order: vi.fn().mockResolvedValue({ data: [], error: null }),
++    };
++
++    mocks.getSupabaseAdmin.mockReturnValue({
++      from: vi.fn((table: string) => {
++        switch (table) {
++          case "orders":
++            return detailOrdersStub as unknown as ReturnType<SupabaseClient["from"]>;
++          case "shipments":
++            return shipmentsStub as unknown as ReturnType<SupabaseClient["from"]>;
++          case "order_items":
++            return itemsStub as unknown as ReturnType<SupabaseClient["from"]>;
++          case "order_events":
++            return eventsStub as unknown as ReturnType<SupabaseClient["from"]>;
++          default:
++            throw new Error(`unexpected ${table}`);
++        }
++      }),
++    } as unknown as SupabaseClient);
++
++    const { res, json } = makeRes();
++    await handler(
++      makeReq({
++        method: "GET",
++        headers: { authorization: "Bearer tok" },
++        query: { order_id: orderUuid },
++      }),
++      res,
++    );
++
++    expect(res.status).toHaveBeenCalledWith(200);
++
++    const body = json.mock.calls.at(-1)?.[0] as {
++      order_number: string;
++      items: unknown[];
++      id?: unknown;
++    };
++
++    expect(body.order_number).toBe("ZLX-2");
++    expect(body.items).toHaveLength(1);
++    expect(body).not.toHaveProperty("stripe_payment_intent_id");
++    expect(body).not.toHaveProperty("id");
++  });
++});
+diff --git a/src/account/AccountPage.tsx b/src/account/AccountPage.tsx
+new file mode 100644
+index 0000000..05d0c79
+--- /dev/null
++++ b/src/account/AccountPage.tsx
+@@ -0,0 +1,330 @@
++import React, { useCallback, useEffect, useState } from "react";
++import { Link } from "react-router-dom";
++import { useAuth } from "../auth/AuthContext";
++import { resolveCustomerOtpRedirectUrl } from "../auth/customerAuth";
++import type { FulfillmentStatus, PaymentStatus } from "../domain/commerce/enums";
++import { formatCents } from "../lib/money";
++import { apiUrl } from "../lib/apiBase";
++import {
++  customerFulfillmentLabel,
++  customerPaymentLabel,
++  formatCustomerOrderDate,
++} from "../order-status/customerOrderStatusViewModel";
++import { formatPageTitleWithBrand, usePageMeta } from "../seo/meta";
++
++const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
++
++type ApiListRow = {
++  order_id: string;
++  order_number: string;
++  created_at: string;
++  payment_status: PaymentStatus;
++  fulfillment_status: FulfillmentStatus;
++  total_cents: number;
++  currency: string;
++  item_count: number;
++};
++
++type HistoryState =
++  | { status: "idle" }
++  | { status: "loading" }
++  | { status: "error"; message: string }
++  | { status: "ready"; orders: ApiListRow[] };
++
++function formatOrderMoneyLine(cents: number, currency: string): string {
++  if (!Number.isFinite(cents)) return "—";
++  try {
++    return formatCents(Math.trunc(cents), currency || "USD");
++  } catch {
++    return "—";
++  }
++}
++
++const AccountPage: React.FC = () => {
++  usePageMeta({
++    title: formatPageTitleWithBrand("Account"),
++    description: "Sign in or review your Zephyr Lux account and order history.",
++    canonicalPath: "/account",
++  });
++
++  const {
++    signOut,
++    user,
++    session,
++    loading: authLoading,
++    configured,
++    customerSignInWithEmailOtp,
++  } = useAuth();
++
++  const [email, setEmail] = useState("");
++  const [signInPhase, setSignInPhase] = useState<"idle" | "submitting" | "sent">("idle");
++  const [signInError, setSignInError] = useState<string | null>(null);
++
++  const [history, setHistory] = useState<HistoryState>({ status: "idle" });
++
++  const loadHistory = useCallback(
++    async (accessToken: string, signal: AbortSignal, guardUserId: string) => {
++      setHistory({ status: "loading" });
++      try {
++        const res = await fetch(apiUrl("/api/customer-account-order-history"), {
++          headers: { Authorization: `Bearer ${accessToken}` },
++          signal,
++        });
++
++        let body: { orders?: ApiListRow[]; error?: string } | null = null;
++        try {
++          body = (await res.json()) as { orders?: ApiListRow[]; error?: string };
++        } catch {
++          body = null;
++        }
++        if (signal.aborted) return;
++
++        if (!res.ok) {
++          const msg =
++            body && typeof body.error === "string"
++              ? body.error
++              : "Unable to load order history right now.";
++          if (!signal.aborted) setHistory({ status: "error", message: msg });
++          return;
++        }
++
++        if (body === null) {
++          if (!signal.aborted) {
++            setHistory({
++              status: "error",
++              message: "Unable to load order history right now.",
++            });
++          }
++          return;
++        }
++
++        if (!("orders" in body) || !Array.isArray(body.orders)) {
++          if (!signal.aborted) {
++            setHistory({
++              status: "error",
++              message: "Unable to load order history right now.",
++            });
++          }
++          return;
++        }
++
++        const rows = body.orders as ApiListRow[];
++        if (signal.aborted || user?.id !== guardUserId) return;
++        setHistory({ status: "ready", orders: rows });
++      } catch (e) {
++        if (signal.aborted) return;
++        if (e instanceof DOMException && e.name === "AbortError") return;
++        setHistory({ status: "error", message: "Unable to load order history right now." });
++      }
++    },
++    [user?.id],
++  );
++
++  useEffect(() => {
++    if (!user?.id || !session?.access_token) {
++      setHistory({ status: "idle" });
++      return;
++    }
++    const ctrl = new AbortController();
++    const token = session.access_token;
++    const uid = user.id;
++    void loadHistory(token, ctrl.signal, uid);
++    return () => {
++      ctrl.abort();
++    };
++  }, [user?.id, session?.access_token, loadHistory]);
++
++  const onSubmitMagicLink = async (evt: React.FormEvent) => {
++    evt.preventDefault();
++    const trimmed = email.trim();
++    if (!EMAIL_PATTERN.test(trimmed)) {
++      setSignInError("Enter a valid email address.");
++      return;
++    }
++
++    setSignInPhase("submitting");
++    setSignInError(null);
++    const { error } = await customerSignInWithEmailOtp(trimmed, {
++      emailRedirectTo: resolveCustomerOtpRedirectUrl(),
++    });
++    if (error) {
++      setSignInPhase("idle");
++      setSignInError("We could not send a sign-in link. Try again in a moment.");
++      return;
++    }
++    setSignInPhase("sent");
++  };
++
++  if (!configured) {
++    return (
++      <main
++        className="min-h-[60vh] bg-stone-950 px-4 py-10 text-stone-100 sm:px-6"
++        data-testid="account-page"
++      >
++        <div className="mx-auto max-w-lg border border-stone-700 bg-stone-900 px-5 py-6">
++          <h1 className="text-2xl font-semibold">Account</h1>
++          <p className="mt-3 text-sm leading-6 text-stone-300" role="alert">
++            Sign-in is not available in this environment. Check that Supabase is configured.
++          </p>
++        </div>
++      </main>
++    );
++  }
++
++  return (
++    <main
++      className="min-h-[60vh] bg-stone-950 px-4 py-10 text-stone-50 sm:px-6 lg:py-14"
++      data-testid="account-page"
++    >
++      <div className="mx-auto flex max-w-3xl flex-col gap-10">
++        <header>
++          <h1 className="text-3xl font-semibold">Account</h1>
++          <p className="mt-2 max-w-xl text-sm text-stone-400">
++            Optional sign-in lets you revisit orders signed to your profile. Guests can always check out
++            and use secure order-status links — no password required here.
++          </p>
++          <Link
++            to="/order-status"
++            className="mt-6 inline-flex min-h-11 items-center rounded-md border border-stone-600 px-4 py-2 text-sm font-medium text-stone-100 underline-offset-4 hover:border-stone-400 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
++          >
++            Guest order lookup
++          </Link>
++        </header>
++
++        {authLoading ? (
++          <section
++            className="border border-stone-700 bg-stone-900 px-5 py-6 text-sm text-stone-200"
++            role="status"
++            data-testid="account-auth-loading"
++          >
++            Checking your session...
++          </section>
++        ) : !user ? (
++          <section className="border border-stone-700 bg-stone-900 px-5 py-6 sm:px-6">
++            <h2 className="text-lg font-semibold text-stone-50">Sign in without a password</h2>
++            <p className="mt-2 text-sm leading-6 text-stone-300">
++              Enter your email and we will send a one-time magic link.
++            </p>
++            <form className="mt-6 grid gap-4" onSubmit={onSubmitMagicLink} noValidate>
++              <label className="grid gap-1 text-sm font-medium text-stone-100" htmlFor="account-email">
++                Email
++                <input
++                  id="account-email"
++                  name="email"
++                  autoComplete="email"
++                  inputMode="email"
++                  disabled={signInPhase === "submitting" || signInPhase === "sent"}
++                  value={email}
++                  onChange={(e) => setEmail(e.target.value)}
++                  className="rounded-md border border-stone-600 bg-stone-950 px-3 py-2 text-stone-50 outline-none ring-amber-500/70 focus-visible:ring-2"
++                />
++              </label>
++
++              {signInError ? (
++                <p className="text-sm font-medium text-red-300" role="alert">
++                  {signInError}
++                </p>
++              ) : null}
++
++              {signInPhase === "sent" ? (
++                <p className="text-sm font-medium text-emerald-300" role="status">
++                  Check your email for a sign-in link. You can close this tab after you click it.
++                </p>
++              ) : null}
++
++              <button
++                type="submit"
++                disabled={signInPhase === "submitting" || signInPhase === "sent"}
++                className="inline-flex min-h-11 w-full max-w-xs items-center justify-center rounded-md bg-zlx-action px-4 py-2 text-sm font-semibold text-zlx-action-text hover:bg-zlx-action-hover disabled:cursor-not-allowed disabled:opacity-60"
++              >
++                {signInPhase === "submitting" ? "Sending link…" : "Email me a sign-in link"}
++              </button>
++            </form>
++          </section>
++        ) : (
++          <>
++            <section className="border border-stone-700 bg-stone-900 px-5 py-6 sm:px-6">
++              <h2 className="text-lg font-semibold text-stone-50">Signed in</h2>
++              <p className="mt-2 break-all text-sm text-stone-300" data-testid="account-profile-email">
++                {user.email ?? "—"}
++              </p>
++              <button
++                type="button"
++                className="mt-5 inline-flex min-h-11 items-center rounded-md border border-stone-500 px-4 py-2 text-sm font-semibold text-stone-100 hover:bg-stone-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
++                onClick={() => void signOut()}
++              >
++                Sign out
++              </button>
++            </section>
++
++            <section className="border border-stone-700 bg-stone-900 px-5 py-6 sm:px-6" aria-labelledby="order-history-heading">
++              <h2 id="order-history-heading" className="text-lg font-semibold text-stone-50">
++                Order history
++              </h2>
++
++              {history.status === "loading" ? (
++                <p className="mt-4 text-sm text-stone-300" role="status" data-testid="account-history-loading">
++                  Loading your orders…
++                </p>
++              ) : null}
++
++              {history.status === "error" ? (
++                <p className="mt-4 text-sm font-medium text-red-300" role="alert" data-testid="account-history-error">
++                  {history.message}
++                </p>
++              ) : null}
++
++              {history.status === "ready" && history.orders.length === 0 ? (
++                <div className="mt-4 space-y-4" data-testid="account-history-empty">
++                  <p className="text-sm leading-6 text-stone-300">
++                    No orders are linked to this account yet. Guest purchases stay findable with a secure
++                    link from your email.
++                  </p>
++                  <Link
++                    to="/order-status"
++                    className="inline-flex min-h-11 items-center rounded-md bg-zlx-action px-4 py-2 text-sm font-semibold text-zlx-action-text hover:bg-zlx-action-hover"
++                  >
++                    Look up an order
++                  </Link>
++                </div>
++              ) : null}
++
++              {history.status === "ready" && history.orders.length > 0 ? (
++                <ul className="mt-4 grid gap-3" data-testid="account-history-list">
++                  {history.orders.map((o) => (
++                    <li key={o.order_id}>
++                      <Link
++                        to={`/account/orders/${encodeURIComponent(o.order_id)}`}
++                        className="block min-h-[4.5rem] rounded-md border border-stone-700 bg-stone-950/40 px-4 py-3 transition hover:border-amber-600/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 sm:flex sm:items-center sm:justify-between sm:gap-4"
++                      >
++                        <div className="min-w-0 flex-1">
++                          <p className="text-sm font-semibold text-stone-50">{o.order_number}</p>
++                          <p className="mt-1 text-xs uppercase text-stone-500">{formatCustomerOrderDate(o.created_at)}</p>
++                          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone-300">
++                            <span className="shrink-0">{customerPaymentLabel(o.payment_status)}</span>
++                            <span className="shrink-0">{customerFulfillmentLabel(o.fulfillment_status)}</span>
++                          </div>
++                          <p className="mt-1 text-xs text-stone-400">
++                            {o.item_count} item{o.item_count === 1 ? "" : "s"}
++                          </p>
++                        </div>
++                        <div className="mt-3 shrink-0 text-left sm:mt-0 sm:text-right">
++                          <p className="text-sm font-semibold text-stone-50 tabular-nums">
++                            {formatOrderMoneyLine(o.total_cents, o.currency)}
++                          </p>
++                          <p className="mt-2 text-xs font-semibold uppercase text-amber-400">View status</p>
++                        </div>
++                      </Link>
++                    </li>
++                  ))}
++                </ul>
++              ) : null}
++            </section>
++          </>
++        )}
++      </div>
++    </main>
++  );
++};
++
++export default AccountPage;
+diff --git a/src/account/AccountPage.test.tsx b/src/account/AccountPage.test.tsx
+new file mode 100644
+index 0000000..0f44bae
+--- /dev/null
++++ b/src/account/AccountPage.test.tsx
+@@ -0,0 +1,223 @@
++import type { Session, User } from "@supabase/supabase-js";
++import { render, screen, waitFor } from "@testing-library/react";
++import userEvent from "@testing-library/user-event";
++import { MemoryRouter } from "react-router-dom";
++import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
++import AccountPage from "./AccountPage";
++
++const mockUseAuth = vi.fn();
++
++vi.mock("../auth/AuthContext", () => ({
++  useAuth: () => mockUseAuth(),
++}));
++
++vi.mock("../lib/apiBase", () => ({
++  apiUrl: (path: string) => path,
++}));
++
++function mockUser(overrides: Partial<User> = {}): User {
++  return {
++    id: "customer-1",
++    aud: "authenticated",
++    role: "authenticated",
++    email: "shopper@example.com",
++    app_metadata: {},
++    user_metadata: {},
++    ...overrides,
++  } as User;
++}
++
++function authValue(overrides: Record<string, unknown> = {}) {
++  return {
++    user: null,
++    session: null,
++    loading: false,
++    configured: true,
++    signIn: vi.fn(),
++    signOut: vi.fn(),
++    customerSignInWithEmailOtp: vi.fn().mockResolvedValue({ error: null }),
++    verifyCustomerEmailOtp: vi.fn(),
++    ...overrides,
++  };
++}
++
++function renderPage() {
++  return render(
++    <MemoryRouter initialEntries={["/account"]}>
++      <AccountPage />
++    </MemoryRouter>,
++  );
++}
++
++describe("AccountPage", () => {
++  beforeEach(() => {
++    mockUseAuth.mockReset();
++    vi.stubGlobal(
++      "fetch",
++      vi.fn().mockRejectedValue(new Error("fetch must be mocked per test")),
++    );
++  });
++
++  afterEach(() => {
++    vi.unstubAllGlobals();
++  });
++
++  it("shows a restrained unavailable state when Supabase auth is not configured", () => {
++    mockUseAuth.mockReturnValue(authValue({ configured: false }));
++
++    renderPage();
++
++    expect(screen.getByTestId("account-page")).toBeInTheDocument();
++    expect(
++      screen.getByText(/sign-in is not available in this environment/i),
++    ).toBeInTheDocument();
++    expect(screen.queryByRole("textbox", { name: /^email$/i })).not.toBeInTheDocument();
++  });
++
++  it("shows auth loading skeleton", () => {
++    mockUseAuth.mockReturnValue(authValue({ loading: true }));
++
++    renderPage();
++
++    expect(screen.getByTestId("account-auth-loading")).toBeInTheDocument();
++  });
++
++  it("renders a passwordless signed-out form with validation and success state", async () => {
++    const u = userEvent.setup();
++    const customerSignInWithEmailOtp = vi.fn().mockResolvedValue({ error: null });
++    mockUseAuth.mockReturnValue(authValue({ customerSignInWithEmailOtp }));
++
++    renderPage();
++
++    expect(screen.getByRole("heading", { name: /sign in without a password/i })).toBeInTheDocument();
++
++    await u.click(screen.getByRole("button", { name: /email me a sign-in link/i }));
++    expect(await screen.findByRole("alert")).toHaveTextContent(/valid email/i);
++    expect(customerSignInWithEmailOtp).not.toHaveBeenCalled();
++
++    await u.type(screen.getByRole("textbox", { name: /^email$/i }), "shopper@example.com");
++    await u.click(screen.getByRole("button", { name: /email me a sign-in link/i }));
++
++    expect(customerSignInWithEmailOtp).toHaveBeenCalledWith("shopper@example.com", {
++      emailRedirectTo: expect.stringMatching(/\/account$/),
++    });
++    expect(await screen.findByRole("status")).toHaveTextContent(/check your email/i);
++  });
++
++  it("announces provider failures without exposing provider internals", async () => {
++    const u = userEvent.setup();
++    const customerSignInWithEmailOtp = vi.fn().mockResolvedValue({
++      error: new Error("supabase auth 500 details"),
++    });
++    mockUseAuth.mockReturnValue(authValue({ customerSignInWithEmailOtp }));
++
++    renderPage();
++
++    await u.type(screen.getByRole("textbox", { name: /^email$/i }), "shopper@example.com");
++    await u.click(screen.getByRole("button", { name: /email me a sign-in link/i }));
++
++    const alert = await screen.findByRole("alert");
++    expect(alert).toHaveTextContent(/could not send a sign-in link/i);
++    expect(alert).not.toHaveTextContent(/supabase auth 500/i);
++  });
++
++  it("renders signed-in profile, invokes sign-out, and shows populated order history", async () => {
++    const u = userEvent.setup();
++    const signOut = vi.fn().mockResolvedValue(undefined);
++    const ordersPayload = [
++      {
++        order_id: "11111111-1111-4111-8111-111111111111",
++        order_number: "ZLX-1001",
++        created_at: "2026-01-15T12:00:00.000Z",
++        payment_status: "paid",
++        fulfillment_status: "processing",
++        total_cents: 12999,
++        currency: "USD",
++        item_count: 2,
++      },
++    ];
++
++    vi.stubGlobal(
++      "fetch",
++      vi.fn().mockResolvedValue({
++        ok: true,
++        status: 200,
++        json: async () => ({ orders: ordersPayload }),
++      }),
++    );
++
++    mockUseAuth.mockReturnValue(
++      authValue({
++        user: mockUser(),
++        session: {
++          access_token: "access-token-unit-test",
++          refresh_token: "r",
++          expires_in: 3600,
++          token_type: "bearer",
++        } as Session,
++        signOut,
++      }),
++    );
++
++    renderPage();
++
++    expect(screen.getByTestId("account-profile-email")).toHaveTextContent("shopper@example.com");
++    expect(await screen.findByTestId("account-history-list")).toBeInTheDocument();
++    expect(screen.getByText("ZLX-1001")).toBeInTheDocument();
++
++    await u.click(screen.getByRole("button", { name: /sign out/i }));
++    expect(signOut).toHaveBeenCalledTimes(1);
++  });
++
++  it("renders signed-in empty order history with guest lookup affordance", async () => {
++    vi.stubGlobal(
++      "fetch",
++      vi.fn().mockResolvedValue({
++        ok: true,
++        status: 200,
++        json: async () => ({ orders: [] }),
++      }),
++    );
++
++    mockUseAuth.mockReturnValue(
++      authValue({
++        user: mockUser(),
++        session: { access_token: "t" } as Session,
++      }),
++    );
++
++    renderPage();
++
++    await waitFor(() => {
++      expect(screen.getByTestId("account-history-empty")).toBeInTheDocument();
++    });
++    expect(screen.getByRole("link", { name: /look up an order/i })).toHaveAttribute(
++      "href",
++      "/order-status",
++    );
++  });
++
++  it("surfaces order history API failures", async () => {
++    vi.stubGlobal(
++      "fetch",
++      vi.fn().mockResolvedValue({
++        ok: false,
++        status: 500,
++        json: async () => ({ error: "upstream issue" }),
++      }),
++    );
++
++    mockUseAuth.mockReturnValue(
++      authValue({
++        user: mockUser(),
++        session: { access_token: "t" } as Session,
++      }),
++    );
++
++    renderPage();
++
++    await waitFor(() => {
++      expect(screen.getByTestId("account-history-error")).toHaveTextContent(/upstream issue/i);
++    });
++  });
++});
+diff --git a/src/account/AccountOrderDetailPage.tsx b/src/account/AccountOrderDetailPage.tsx
+new file mode 100644
+index 0000000..a417022
+--- /dev/null
++++ b/src/account/AccountOrderDetailPage.tsx
+@@ -0,0 +1,198 @@
++import React, { useEffect, useMemo, useState } from "react";
++import { Link, useParams } from "react-router-dom";
++import { useAuth } from "../auth/AuthContext";
++import { apiUrl } from "../lib/apiBase";
++import {
++  buildCustomerOrderStatusViewModel,
++  type CustomerOrderStatusResponse,
++} from "../order-status/customerOrderStatusViewModel";
++import { CustomerOrderStatusReady } from "../order-status/CustomerOrderStatusPage";
++import { formatPageTitleWithBrand, usePageMeta } from "../seo/meta";
++
++const UUID_REGEX =
++  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
++
++type DetailState =
++  | { status: "loading" }
++  | { status: "bad-id" }
++  | { status: "needs-auth" }
++  | { status: "missing-config" }
++  | { status: "error" }
++  | { status: "not-found" }
++  | { status: "ready"; view: ReturnType<typeof buildCustomerOrderStatusViewModel> };
++
++const AccountOrderDetailPage: React.FC = () => {
++  const params = useParams<{ orderId: string }>();
++  const orderId = useMemo(() => (params.orderId ?? "").trim(), [params.orderId]);
++
++  usePageMeta({
++    title: formatPageTitleWithBrand("Your order"),
++    description: "Zephyr Lux order details for signed-in shoppers.",
++    canonicalPath: `/account/orders/${orderId || ""}`,
++  });
++
++  const { session, loading: authLoading, configured } = useAuth();
++  const [state, setState] = useState<DetailState>({ status: "loading" });
++
++  useEffect(() => {
++    if (!UUID_REGEX.test(orderId)) {
++      setState({ status: "bad-id" });
++      return;
++    }
++    if (!configured) {
++      setState({ status: "missing-config" });
++      return;
++    }
++    if (authLoading) {
++      setState({ status: "loading" });
++      return;
++    }
++    if (!session?.access_token) {
++      setState({ status: "needs-auth" });
++      return;
++    }
++
++    let cancelled = false;
++    setState({ status: "loading" });
++
++    fetch(
++      apiUrl(`/api/customer-account-order-history?order_id=${encodeURIComponent(orderId)}`),
++      { headers: { Authorization: `Bearer ${session.access_token}` } },
++    )
++      .then(async (res) => {
++        if (res.status === 404) {
++          if (!cancelled) setState({ status: "not-found" });
++          return;
++        }
++        if (!res.ok) {
++          if (!cancelled) setState({ status: "error" });
++          return;
++        }
++        const data = (await res.json()) as CustomerOrderStatusResponse;
++        if (!cancelled) {
++          setState({ status: "ready", view: buildCustomerOrderStatusViewModel(data) });
++        }
++      })
++      .catch(() => {
++        if (!cancelled) setState({ status: "error" });
++      });
++
++    return () => {
++      cancelled = true;
++    };
++  }, [orderId, session?.access_token, authLoading, configured]);
++
++  return (
++    <main className="min-h-[70vh] bg-stone-950 text-stone-50">
++      <section className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
++        <div className="mb-6 print:hidden">
++          <Link
++            to="/account"
++            className="text-sm font-medium text-amber-300 underline-offset-4 hover:text-amber-200 hover:underline"
++          >
++            ← Back to account
++          </Link>
++        </div>
++
++        {state.status === "loading" ? (
++          <div
++            className="border border-stone-700 bg-stone-900 px-5 py-6 text-stone-200"
++            role="status"
++            data-testid="account-order-detail-loading"
++          >
++            Loading your order…
++          </div>
++        ) : null}
++
++        {state.status === "bad-id" ? (
++          <div className="max-w-2xl border border-stone-700 bg-stone-900 px-5 py-6" role="alert">
++            <h1 className="text-xl font-semibold">Order not available</h1>
++            <p className="mt-3 text-sm leading-6 text-stone-300">
++              This link does not point to a valid order. Return to your account or use guest order lookup.
++            </p>
++            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
++              <Link
++                className="inline-flex min-h-11 items-center justify-center rounded-md bg-zlx-action px-4 py-2 text-sm font-semibold text-zlx-action-text hover:bg-zlx-action-hover"
++                to="/account"
++              >
++                Back to account
++              </Link>
++              <Link
++                className="inline-flex min-h-11 items-center justify-center rounded-md border border-stone-600 px-4 py-2 text-sm font-semibold text-stone-100 hover:border-stone-400"
++                to="/order-status"
++              >
++                Guest order lookup
++              </Link>
++            </div>
++          </div>
++        ) : null}
++
++        {state.status === "missing-config" ? (
++          <div className="max-w-2xl border border-stone-700 bg-stone-900 px-5 py-6">
++            <h1 className="text-xl font-semibold text-stone-50">Unavailable</h1>
++            <p className="mt-3 text-sm text-stone-300" role="alert">
++              Sign-in features are disabled because Supabase is not configured in this browser build.
++            </p>
++          </div>
++        ) : null}
++
++        {state.status === "needs-auth" ? (
++          <div className="max-w-2xl border border-stone-700 bg-stone-900 px-5 py-6">
++            <h1 className="text-xl font-semibold text-stone-50">Sign in required</h1>
++            <p className="mt-3 text-sm text-stone-300">
++              Sign in on the account page to view orders linked to your profile.
++            </p>
++            <Link
++              to="/account"
++              className="mt-6 inline-flex min-h-11 items-center justify-center rounded-md bg-zlx-action px-4 py-2 text-sm font-semibold text-zlx-action-text hover:bg-zlx-action-hover"
++            >
++              Go to account
++            </Link>
++          </div>
++        ) : null}
++
++        {state.status === "not-found" ? (
++          <div className="max-w-2xl border border-stone-700 bg-stone-900 px-5 py-6" role="alert">
++            <h1 className="text-xl font-semibold text-stone-50">Order not available</h1>
++            <p className="mt-3 text-sm leading-6 text-stone-300">
++              You do not have access to this order, or it may have been placed as a guest. Try guest lookup instead.
++            </p>
++            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
++              <Link
++                className="inline-flex min-h-11 items-center justify-center rounded-md bg-zlx-action px-4 py-2 text-sm font-semibold text-zlx-action-text hover:bg-zlx-action-hover"
++                to="/account"
++              >
++                Back to account
++              </Link>
++              <Link
++                className="inline-flex min-h-11 items-center justify-center rounded-md border border-stone-600 px-4 py-2 text-sm font-semibold text-stone-100 hover:border-stone-400"
++                to="/order-status"
++              >
++                Guest order lookup
++              </Link>
++            </div>
++          </div>
++        ) : null}
++
++        {state.status === "error" ? (
++          <div className="max-w-2xl border border-stone-700 bg-stone-900 px-5 py-6" role="alert">
++            <h1 className="text-xl font-semibold text-stone-50">Something went wrong</h1>
++            <p className="mt-3 text-sm text-stone-300">We could not load this order. Try again in a moment.</p>
++          </div>
++        ) : null}
++
++        {state.status === "ready" ? (
++          <div className="customer-order-print-root">
++            <header className="mb-8">
++              <p className="text-sm font-semibold uppercase text-neutral-400">Your order</p>
++              <h1 className="mt-2 text-3xl font-semibold leading-tight sm:text-4xl">Order status</h1>
++            </header>
++            <CustomerOrderStatusReady view={state.view} />
++          </div>
++        ) : null}
++      </section>
++    </main>
++  );
++};
++
++export default AccountOrderDetailPage;

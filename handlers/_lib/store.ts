@@ -80,4 +80,3 @@ export function getStore(): Store {
   return new BlobStore();
 }
 
-

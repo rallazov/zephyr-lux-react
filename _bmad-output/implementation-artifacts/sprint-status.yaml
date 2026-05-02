@@ -25,7 +25,7 @@
 #   - Dev moves story to 'review', then runs code-review
 
 generated: 2026-04-26T00:00:00Z
-last_updated: 2026-04-30T23:59:59Z
+last_updated: 2026-05-02T00:00:00Z
 project: zephyr-lux-react
 project_key: zlx
 tracking_system: file-system
@@ -117,16 +117,22 @@ development_status:
   #   9-4 is blocked on 9-3 (coming_soon + migrations + list/quote). Do not start 9-4 until 9-3 is done or same stacked PR.
   #   9-5 coordinates with 9-2 (Navbar): land 9-2 first or same branch so AC7 does not re-disable search.
   #   Serialize edits to Navbar.tsx, data/products.json, supabase/seed.sql, catalog adapter/parse when parallelizing.
-  epic-9: in-progress
+  epic-9: done
   9-1-fixed-assortment-pack-catalog: done
   9-2-storefront-product-search: done
   9-3-coming-soon-products-waitlist: done
   9-4-placeholder-catalog-expansion-images: done
   9-5-real-content-placeholder-sweep: done
   9-6-printable-order-views: done
-  epic-9-retrospective: optional
+  epic-9-retrospective: done
 
-  epic-10: backlog
+  # Epic 10: story markdown refined (Bearer linkage @ create-payment-intent, OTP redirect + Supabase URLs,
+  # shared AuthProvider/session note, Bearer CORS for account history)—see Change Log in 10-*.md; status unchanged (ready-for-dev).
+  epic-10: in-progress
+  10-1-customer-identity-passwordless-auth: done
+  10-2-account-route-profile-shell: done
+  10-3-link-orders-to-customers: done
+  10-4-account-order-history: done
   epic-10-retrospective: optional
 
   epic-11: backlog

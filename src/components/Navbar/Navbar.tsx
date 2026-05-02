@@ -111,9 +111,9 @@ const Navbar: React.FC = () => {
           <FontAwesomeIcon icon={faSearch} />
         </Link>
         <Link
-          to="/order-status"
+          to="/account"
           className="nav-icon-btn"
-          aria-label="Order lookup"
+          aria-label="Account"
           onClick={() => setIsMenuOpen(false)}
         >
           <FontAwesomeIcon icon={faUser} />

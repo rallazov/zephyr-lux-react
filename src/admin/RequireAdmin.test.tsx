@@ -40,6 +40,8 @@ describe("RequireAdmin", () => {
   const noopAuth = {
     signIn: vi.fn(),
     signOut: vi.fn(),
+    customerSignInWithEmailOtp: vi.fn(),
+    verifyCustomerEmailOtp: vi.fn(),
   };
 
   beforeEach(() => {

@@ -16,6 +16,7 @@ import cartQuote from "../handlers/cart-quote";
 import createBillingPortalSession from "../handlers/create-billing-portal-session";
 import createPaymentIntent from "../handlers/create-payment-intent";
 import createSubscriptionCheckoutSession from "../handlers/create-subscription-checkout-session";
+import customerAccountOrderHistory from "../handlers/customer-account-order-history";
 import customerOrderStatus from "../handlers/customer-order-status";
 import orderByPaymentIntent from "../handlers/order-by-payment-intent";
 import orderLookupRequest from "../handlers/order-lookup-request";
@@ -88,6 +89,7 @@ const jsonRoutes: Array<[string, ApiHandler]> = [
   ["/api/create-payment-intent", createPaymentIntent],
   ["/api/order-by-payment-intent", orderByPaymentIntent],
   ["/api/customer-order-status", customerOrderStatus],
+  ["/api/customer-account-order-history", customerAccountOrderHistory],
   ["/api/order-lookup-request", orderLookupRequest],
   ["/api/product-waitlist", productWaitlist],
   ["/api/admin-order-fulfillment", adminOrderFulfillment],
@@ -110,6 +112,7 @@ app.use(
     res: express.Response,
     _next: express.NextFunction,
   ): void => {
+    void _next;
     const msg = err instanceof Error ? err.message : String(err);
     if (!res.headersSent) {
       res.status(500).type("text/plain").send(`handler error: ${msg}`);

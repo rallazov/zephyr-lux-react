@@ -77,6 +77,7 @@ describe("storefront route smoke (App.tsx router tree)", () => {
     ["/", /Premium essentials/i],
     ["/products", /Product List/i],
     ["/search", /^Search$/i],
+    ["/account", /^Account$/i],
     ["/women", /Women.*essentials/i],
     ["/men", /Refined everyday wear/i],
     ["/kids", /Little wardrobe staples/i],
@@ -97,6 +98,12 @@ describe("storefront route smoke (App.tsx router tree)", () => {
     ["/subscription/checkout/success", /Thank you/i],
     ["/subscription/checkout/canceled", /Checkout canceled/i],
   ];
+
+  it("guest /account/orders/:id resolves to sign-in gate (not storefront 500)", async () => {
+    renderRoute(`/account/orders/${"11111111-1111-4111-8111-111111111111"}`);
+    expect(await screen.findByTestId("storefront-layout")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /^Sign in required$/i })).toBeInTheDocument();
+  });
 
   it("redirects unknown policy subpath to policy index", async () => {
     renderRoute("/policies/__no_such_policy__");

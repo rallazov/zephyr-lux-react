@@ -12,6 +12,8 @@ describe("AdminLayout (mobile-friendly chrome)", () => {
   it("uses a horizontally scrollable nav and ~44px tap targets on admin links", () => {
     mockUseAuth.mockReturnValue({
       signOut: vi.fn(),
+      customerSignInWithEmailOtp: vi.fn(),
+      verifyCustomerEmailOtp: vi.fn(),
       user: { email: "owner@example.com" },
       configured: true,
     });

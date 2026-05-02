@@ -1,5 +1,21 @@
 # Deferred work (from reviews and triage)
 
+## Deferred from: code review of 10-4-account-order-history.md (2026-05-01)
+
+- **Sprint / epic bookkeeping in one diff** — `sprint-status.yaml` and related Epic closure rows bundled with Story 10-4 wiring; carve separate commits/PR hygiene when release train requires pristine story scope.
+
+- **`create-payment-intent.handler.test.ts` stabilization brittleness** — Partial `verifyAdminJwt` mocking + captured `lastOrderInsert` stabilized checkout tests alongside order-history landing; refactoring resolver placement risks opaque breakage—instrument or refactor when consolidating checkout/customer-resolution helpers post–Epic 10.
+
+- **Automated responsive / non-overflow AC7 coverage** — Account history renders with responsive primitives but lacks narrow-viewport assertions; aligns with Epic 6-4 precedent of manual exploratory QA supplementing RTL—promote automation if regression risk grows.
+
+- **Payment/fulfillment enum masking deferral** — Unknown DB enum values coerce to storefront-safe list labels (`pending_payment`/`processing`-style semantics) intentionally for MVP shopper stability—follow up post–Epic 10 if product wants explicit `"unknown"`/error badges, logging hooks, or stricter degradation once data-quality alerting justifies shopper-visible discrepancies.
+
+## Deferred from: code review of 10-1-customer-identity-passwordless-auth.md (2026-05-01)
+
+- **OTP abuse and volumetric defenses** — Rate limits, CAPTCHA, or app-specific throttles on `signInWithOtp` / `verifyOtp` are not implemented in this story; rely on Supabase defaults and revisit if email bombing becomes a concern.
+
+- **Operator checklist for passwordless redirects** — Ensure Supabase **Site URL** and **Redirect URLs** include storefront origin + `/account` (or whatever matches `CUSTOMER_OTP_ACCOUNT_REDIRECT_PATH`); align with story 10-2 when the account route ships. Document referrer / shared-link hygiene for magic links if security review asks.
+
 ## Deferred from: code review of 9-5-real-content-placeholder-sweep.md (2026-04-30)
 
 - **Smoke test catalog breadth coupling** — `routes.smoke.test.tsx` asserts more than one product tile on `/products`; failures track catalog shrinkage more than story 9-5 acceptance. Consider relocating or relaxing when carving PRs or trimming fixtures.

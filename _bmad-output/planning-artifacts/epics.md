@@ -295,9 +295,16 @@ Delivers pack-accurate merchandising (size-only PDP where color is not a custome
 | 9-5 | Replace residual placeholder collection/tab/marketing copy |
 | 9-6 | Print stylesheet + optional print control on customer order status and admin order detail |
 
-### Epic 10 — Customer accounts (backlog)
+### Epic 10 — Customer accounts
 
 Optional logged-in experience: Supabase customer auth, `/account`, order history; guest checkout and magic-link lookup remain supported.
+
+| Story | Summary |
+|-------|---------|
+| 10-1 | Customer identity model + passwordless auth foundation: `customers` table, auth user mapping, RLS baseline, and browser auth helpers for magic-link/OTP |
+| 10-2 | `/account` route and sign-in/profile shell with guest-first navigation that keeps `/order-status` working |
+| 10-3 | Link paid orders to customer records through checkout/webhook-safe server logic without exposing customer PII through browser queries |
+| 10-4 | Authenticated account order history view that reuses customer-safe order status semantics and does not replace secure magic-link lookup |
 
 ### Epic 11 — Variant template builder (backlog)
 

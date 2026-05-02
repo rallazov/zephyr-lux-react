@@ -102,6 +102,7 @@ export async function applyPaymentIntentSucceeded(args: {
     }
 
     const emailMeta = (pi.metadata?.email ?? "").toString().trim();
+    /** Never PATCH `customer_id` here — only set from trusted Bearer path at order creation (10-3). */
     const patch: Record<string, unknown> = {
       payment_status: "paid",
       updated_at: new Date().toISOString(),

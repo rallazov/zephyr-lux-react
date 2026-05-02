@@ -1,0 +1,534 @@
+diff --git a/handlers/_lib/store.ts b/handlers/_lib/store.ts
+index e2cfcc7..9f7382d 100644
+--- a/handlers/_lib/store.ts
++++ b/handlers/_lib/store.ts
+@@ -45,7 +45,7 @@ class LocalStore implements Store {
+     fs.writeFileSync(p, JSON.stringify([...set], null, 2));
+     return true;
+   }
+-  async decrementInventory(_items: { sku: string; qty: number }[]) {
++  async decrementInventory() {
+     return;
+   }
+ }
+@@ -58,7 +58,7 @@ class BlobStore implements Store {
+       token: ENV.VERCEL_BLOB_RW_TOKEN,
+     });
+   }
+-  async getOrder(_orderId: string) {
++  async getOrder() {
+     return null; // add a GET endpoint later
+   }
+   async markEventProcessed(eventId: string) {
+@@ -68,7 +68,7 @@ class BlobStore implements Store {
+     await put(prefix, "1", { access: "public", contentType: "text/plain", token: ENV.VERCEL_BLOB_RW_TOKEN });
+     return true;
+   }
+-  async decrementInventory(_items: { sku: string; qty: number }[]) {
++  async decrementInventory() {
+     return;
+   }
+ }
+@@ -80,4 +80,3 @@ export function getStore(): Store {
+   return new BlobStore();
+ }
+ 
+-
+diff --git a/handlers/create-payment-intent.handler.test.ts b/handlers/create-payment-intent.handler.test.ts
+index 6c58e4a..c5e1216 100644
+--- a/handlers/create-payment-intent.handler.test.ts
++++ b/handlers/create-payment-intent.handler.test.ts
+@@ -1,10 +1,15 @@
+ // @vitest-environment node
+-import { describe, expect, it, vi, beforeEach } from "vitest";
+ import type { VercelRequest, VercelResponse } from "@vercel/node";
++import { beforeEach, describe, expect, it, vi } from "vitest";
+ 
+-const { mockCreate, mockCancel } = vi.hoisted(() => ({
++const { mockCreate, mockCancel, mockResolveCustomer, capture } = vi.hoisted(() => ({
+   mockCreate: vi.fn().mockResolvedValue({ id: "pi_test_1", client_secret: "cs_test_secret" }),
+   mockCancel: vi.fn().mockResolvedValue({ id: "pi_test_1" }),
++  mockResolveCustomer: vi.fn().mockResolvedValue(null),
++  capture: {
++    /** Last row passed to orders.insert — set by mocked insert (see `_lib/supabaseAdmin` mock factory). */
++    lastOrderInsert: null as Record<string, unknown> | null,
++  },
+ }));
+ 
+ vi.mock("stripe", () => ({
+@@ -19,6 +24,7 @@ vi.mock("./_lib/env", () => ({
+     FRONTEND_URL: "http://localhost:5173",
+     SUPABASE_URL: "https://test.supabase.co",
+     SUPABASE_SERVICE_ROLE_KEY: "service_role_test",
++    SUPABASE_ANON_KEY: "anon_test",
+   },
+   isSupabaseOrderPersistenceConfigured: () => true,
+ }));
+@@ -27,6 +33,19 @@ vi.mock("./_lib/logger", () => ({
+   log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+ }));
+ 
++vi.mock("./_lib/verifyAdminJwt", () => ({
++  getBearerAuthorizationHeader: (header: string | string[] | undefined) => {
++    if (!header) return null;
++    const raw = typeof header === "string" ? header : header[0];
++    const match = /^Bearer\s+(\S+)/iu.exec((raw ?? "").trim());
++    return match?.[1]?.trim() ? match[1] : null;
++  },
++  normalizeOrderContactEmail: (email: string) => email.trim().toLowerCase().slice(0, 256),
++  verifyAdminJwt: vi.fn(),
++  verifyStorefrontAccessJwt: vi.fn(),
++  resolveVerifiedCustomerIdForCheckoutOrder: mockResolveCustomer,
++}));
++
+ const rpc = vi.fn().mockResolvedValue({ data: "ZLX-20991231-0001", error: null });
+ const orderInsertSingle = vi.fn().mockResolvedValue({
+   data: { id: "11111111-1111-1111-1111-111111111111" },
+@@ -39,10 +58,22 @@ vi.mock("./_lib/supabaseAdmin", () => ({
+   getSupabaseAdmin: () => ({
+     rpc,
+     from: vi.fn((table: string) => {
++      if (table === "customers") {
++        return {
++          select: vi.fn().mockReturnValue({
++            eq: vi.fn().mockReturnValue({
++              maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
++            }),
++          }),
++        };
++      }
+       if (table === "orders") {
+         return {
+-          insert: vi.fn().mockReturnValue({
+-            select: vi.fn().mockReturnValue({ single: orderInsertSingle }),
++          insert: vi.fn((row: Record<string, unknown>) => {
++            capture.lastOrderInsert = row;
++            return {
++              select: vi.fn().mockReturnValue({ single: orderInsertSingle }),
++            };
+           }),
+           delete: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }),
+           update: vi.fn().mockReturnValue({ eq: orderUpdateEq }),
+@@ -61,18 +92,24 @@ let handler: typeof import("./create-payment-intent").default;
+ describe("create-payment-intent handler (Stripe create)", () => {
+   beforeEach(async () => {
+     vi.resetModules();
++
++    capture.lastOrderInsert = null;
+     mockCreate.mockClear();
+     mockCancel.mockClear();
++    mockResolveCustomer.mockClear();
++    mockResolveCustomer.mockResolvedValue(null);
+     rpc.mockClear();
+     orderInsertSingle.mockClear();
+     orderItemsInsert.mockClear();
+     orderUpdateEq.mockClear();
++
+     mockCreate.mockResolvedValue({ id: "pi_test_1", client_secret: "cs_test_secret" });
+     rpc.mockResolvedValue({ data: "ZLX-20991231-0001", error: null });
+     orderInsertSingle.mockResolvedValue({
+       data: { id: "11111111-1111-1111-1111-111111111111" },
+       error: null,
+     });
++
+     const mod = await import("./create-payment-intent");
+     handler = mod.default;
+   });
+@@ -97,6 +134,8 @@ describe("create-payment-intent handler (Stripe create)", () => {
+     await handler(req, res);
+ 
+     expect(res.status).toHaveBeenCalledWith(200);
++    expect(mockResolveCustomer).toHaveBeenCalledTimes(1);
++    expect(capture.lastOrderInsert?.customer_id).toBe(null);
+     const jsonArg = resJson.mock.calls[0][0];
+     expect(jsonArg.clientSecret).toBe("cs_test_secret");
+     expect(jsonArg.orderId).toBe("11111111-1111-1111-1111-111111111111");
+@@ -116,4 +155,61 @@ describe("create-payment-intent handler (Stripe create)", () => {
+     expect(rpc).toHaveBeenCalledWith("allocate_order_number");
+     expect(orderItemsInsert).toHaveBeenCalled();
+   });
++
++  it("does not persist client-supplied customer_id; linkage only via resolver + Bearer context", async () => {
++    const body = {
++      items: [{ sku: "ZLX-2PK-S", quantity: 1 }],
++      currency: "usd" as const,
++      email: "buyer@example.com",
++      /** Spoof attempt — omitted from validated body; browser cannot set linkage. */
++      customer_id: "99999999-9999-9999-9999-999999999999",
++    };
++    mockResolveCustomer.mockResolvedValueOnce(null);
++
++    const req = { method: "POST", body } as VercelRequest;
++    const resJson = vi.fn();
++    const res = {
++      setHeader: vi.fn(),
++      status: vi.fn().mockReturnValue({ json: resJson }),
++    } as unknown as VercelResponse;
++
++    await handler(req, res);
++
++    expect(res.status).toHaveBeenCalledWith(200);
++    expect(mockResolveCustomer).toHaveBeenCalledWith(
++      expect.objectContaining({ bearerAccessToken: null }),
++    );
++    expect(capture.lastOrderInsert?.customer_id).toBe(null);
++    expect(mockResolveCustomer).toHaveBeenCalledTimes(1);
++  });
++
++  it("persists customers.id when verified resolver returns linkage for Bearer checkout", async () => {
++    const linked = "aaaaaaaa-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
++    mockResolveCustomer.mockResolvedValueOnce(linked);
++
++    const body = {
++      items: [{ sku: "ZLX-2PK-S", quantity: 1 }],
++      currency: "usd" as const,
++      email: "buyer@example.com",
++    };
++    const req = {
++      method: "POST",
++      body,
++      headers: { authorization: "Bearer valid.session.jwt.example" },
++    } as unknown as VercelRequest;
++
++    const resJson = vi.fn();
++    const res = {
++      setHeader: vi.fn(),
++      status: vi.fn().mockReturnValue({ json: resJson }),
++    } as unknown as VercelResponse;
++
++    await handler(req, res);
++
++    expect(res.status).toHaveBeenCalledWith(200);
++    expect(mockResolveCustomer).toHaveBeenCalledWith(
++      expect.objectContaining({ bearerAccessToken: "valid.session.jwt.example" }),
++    );
++    expect(capture.lastOrderInsert?.customer_id).toBe(linked);
++  });
+ });
+diff --git a/handlers/create-payment-intent.ts b/handlers/create-payment-intent.ts
+index 30ebbeb..72d29aa 100644
+--- a/handlers/create-payment-intent.ts
++++ b/handlers/create-payment-intent.ts
+@@ -12,6 +12,10 @@ import { log } from "./_lib/logger";
+ import { isUnsendableCustomerEmail } from "./_lib/customerOrderConfirmation";
+ import { orderItemRowsFromQuote, PENDING_CHECKOUT_SHIPPING_JSON } from "./_lib/orderSnapshots";
+ import { getSupabaseAdmin } from "./_lib/supabaseAdmin";
++import {
++  getBearerAuthorizationHeader,
++  resolveVerifiedCustomerIdForCheckoutOrder,
++} from "./_lib/verifyAdminJwt";
+ 
+ const stripe = new Stripe(ENV.STRIPE_SECRET_KEY);
+ 
+@@ -105,6 +109,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
+       return res.status(503).json({ error: "Checkout persistence is not available." });
+     }
+ 
++    const bearerToken = getBearerAuthorizationHeader(req.headers?.authorization);
++    const linkedCustomerId = await resolveVerifiedCustomerIdForCheckoutOrder({
++      admin,
++      bearerAccessToken: bearerToken,
++    });
++
+     const checkoutRef = `cr_${randomBytes(12).toString("hex")}`;
+     const orderConfirmationKey = randomBytes(24).toString("hex");
+ 
+@@ -145,6 +155,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
+       order_confirmation_key: orderConfirmationKey,
+       customer_email: customerEmail,
+       customer_name: customerName,
++      customer_id: linkedCustomerId,
+       payment_status: "pending_payment" as const,
+       fulfillment_status: "processing" as const,
+       subtotal_cents: quote.subtotal_cents,
+diff --git a/server/index.ts b/server/index.ts
+index 2edb65e..4cfa641 100644
+--- a/server/index.ts
++++ b/server/index.ts
+@@ -16,6 +16,7 @@ import cartQuote from "../handlers/cart-quote";
+ import createBillingPortalSession from "../handlers/create-billing-portal-session";
+ import createPaymentIntent from "../handlers/create-payment-intent";
+ import createSubscriptionCheckoutSession from "../handlers/create-subscription-checkout-session";
++import customerAccountOrderHistory from "../handlers/customer-account-order-history";
+ import customerOrderStatus from "../handlers/customer-order-status";
+ import orderByPaymentIntent from "../handlers/order-by-payment-intent";
+ import orderLookupRequest from "../handlers/order-lookup-request";
+@@ -88,6 +89,7 @@ const jsonRoutes: Array<[string, ApiHandler]> = [
+   ["/api/create-payment-intent", createPaymentIntent],
+   ["/api/order-by-payment-intent", orderByPaymentIntent],
+   ["/api/customer-order-status", customerOrderStatus],
++  ["/api/customer-account-order-history", customerAccountOrderHistory],
+   ["/api/order-lookup-request", orderLookupRequest],
+   ["/api/product-waitlist", productWaitlist],
+   ["/api/admin-order-fulfillment", adminOrderFulfillment],
+@@ -110,6 +112,7 @@ app.use(
+     res: express.Response,
+     _next: express.NextFunction,
+   ): void => {
++    void _next;
+     const msg = err instanceof Error ? err.message : String(err);
+     if (!res.headersSent) {
+       res.status(500).type("text/plain").send(`handler error: ${msg}`);
+diff --git a/src/auth/AuthContext.tsx b/src/auth/AuthContext.tsx
+index b2d5e5e..2dfe1b3 100644
+--- a/src/auth/AuthContext.tsx
++++ b/src/auth/AuthContext.tsx
+@@ -1,4 +1,4 @@
+-import type { Session, User } from "@supabase/supabase-js";
++import type { EmailOtpType, Session, User } from "@supabase/supabase-js";
+ import React, {
+   createContext,
+   useCallback,
+@@ -7,6 +7,11 @@ import React, {
+   useMemo,
+   useState,
+ } from "react";
++import {
++  customerSignInWithEmailOtp,
++  verifyCustomerEmailOtp,
++  type CustomerEmailOtpResult,
++} from "./customerAuth";
+ import { getSupabaseBrowserClient, isSupabaseBrowserConfigured } from "../lib/supabaseBrowser";
+ 
+ export type AuthContextValue = {
+@@ -16,6 +21,16 @@ export type AuthContextValue = {
+   configured: boolean;
+   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+   signOut: () => Promise<void>;
++  customerSignInWithEmailOtp: (
++    email: string,
++    options?: { emailRedirectTo?: string }
++  ) => Promise<CustomerEmailOtpResult>;
++  verifyCustomerEmailOtp: (params: {
++    email: string;
++    token: string;
++    type: EmailOtpType;
++    redirectTo?: string;
++  }) => Promise<CustomerEmailOtpResult>;
+ };
+ 
+ const AuthContext = createContext<AuthContextValue | null>(null);
+@@ -75,9 +90,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
+     await supabase.auth.signOut();
+   }, [supabase]);
+ 
++  const otpSignIn = useCallback(
++    (email: string, options?: { emailRedirectTo?: string }) =>
++      customerSignInWithEmailOtp(email, options),
++    []
++  );
++
++  const otpVerify = useCallback(
++    (params: {
++      email: string;
++      token: string;
++      type: EmailOtpType;
++      redirectTo?: string;
++    }) => verifyCustomerEmailOtp(params),
++    []
++  );
++
+   const value = useMemo(
+-    () => ({ user, session, loading, configured, signIn, signOut }),
+-    [user, session, loading, configured, signIn, signOut]
++    () => ({
++      user,
++      session,
++      loading,
++      configured,
++      signIn,
++      signOut,
++      customerSignInWithEmailOtp: otpSignIn,
++      verifyCustomerEmailOtp: otpVerify,
++    }),
++    [user, session, loading, configured, signIn, signOut, otpSignIn, otpVerify]
+   );
+ 
+   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+diff --git a/src/cart/reconcile.ts b/src/cart/reconcile.ts
+index e4d9660..1984a96 100644
+--- a/src/cart/reconcile.ts
++++ b/src/cart/reconcile.ts
+@@ -84,7 +84,7 @@ export function resolveVariantForLine(
+   row: CatalogListItem
+ ): { variant: ProductVariant | null; skuNorm: string; ambiguous: boolean } {
+   const variants = row.product.variants;
+-  let skuNorm = normalizeLineSku(line.sku);
++  const skuNorm = normalizeLineSku(line.sku);
+ 
+   if (skuNorm === "") {
+     if (variants.length === 1) {
+diff --git a/src/components/App/App.tsx b/src/components/App/App.tsx
+index fecf012..9d752ee 100644
+--- a/src/components/App/App.tsx
++++ b/src/components/App/App.tsx
+@@ -15,6 +15,8 @@ import CheckoutPage from "../Cart/CheckoutPage";
+ import CollectionPage from "../Collection/CollectionPage";
+ // import StripeProvider from '../Cart/StripeProvider';
+ import HomePage from "../Home/HomePage";
++import AccountPage from "../../account/AccountPage";
++import AccountOrderDetailPage from "../../account/AccountOrderDetailPage";
+ import OrderConfirmation from '../OrderConfirmation/OrderConfirmation';
+ import CustomerOrderStatusPage from "../../order-status/CustomerOrderStatusPage";
+ import OrderStatusLookup from "../../order-status/OrderStatusLookup";
+@@ -82,6 +84,9 @@ export function AppRoutes() {
+ 
+             <Route path="/checkout" element={<CheckoutPage />} />
+ 
++            <Route path="/account" element={<AccountPage />} />
++            <Route path="/account/orders/:orderId" element={<AccountOrderDetailPage />} />
++
+             <Route
+               path="/order-confirmation"
+               element={
+diff --git a/src/components/Cart/CheckoutPage.tsx b/src/components/Cart/CheckoutPage.tsx
+index ee3fed9..5c47821 100644
+--- a/src/components/Cart/CheckoutPage.tsx
++++ b/src/components/Cart/CheckoutPage.tsx
+@@ -5,9 +5,10 @@ import { Link, useLocation, useNavigate, useSearchParams } from "react-router-do
+ import { ANALYTICS_EVENTS } from "../../analytics/events";
+ import { dispatchAnalyticsEvent } from "../../analytics/sink";
+ import {
+-  isCartOkForCheckout,
+-  validateStorefrontCartLines,
++    isCartOkForCheckout,
++    validateStorefrontCartLines,
+ } from "../../cart/reconcile";
++import { useAuth } from "../../auth/AuthContext";
+ import { CartContext } from "../../context/CartContext";
+ import { getDefaultCatalogAdapter } from "../../catalog/factory";
+ import type { CatalogListItem } from "../../catalog/types";
+@@ -137,6 +138,7 @@ const CheckoutPage = () => {
+     const navigate = useNavigate();
+     const location = useLocation();
+     const [searchParams] = useSearchParams();
++    const { session } = useAuth();
+     const checkoutCanceled = searchParams.get("checkout") === "canceled";
+ 
+     const [catalogList, setCatalogList] = useState<CatalogListItem[] | null>(null);
+@@ -273,6 +275,9 @@ const CheckoutPage = () => {
+         [checkoutLines, debouncedCheckoutContext]
+     );
+ 
++    /** Re-bootstrap PaymentIntent when auth session appears/changes — bearer drives server `customer_id` linkage (10-3). */
++    const storefrontAuthBootstrap = session?.user?.id ?? "_guest";
++
+     /** Stable fingerprint so catalog list fetch is not tied to cart array identity. */
+     const catalogFetchKey = useMemo(
+         () =>
+@@ -416,7 +421,12 @@ const CheckoutPage = () => {
+             try {
+                 const res = await fetch(apiUrl("/api/create-payment-intent"), {
+                     method: "POST",
+-                    headers: { "Content-Type": "application/json" },
++                    headers: {
++                        "Content-Type": "application/json",
++                        ...(session?.access_token
++                            ? { Authorization: `Bearer ${session.access_token}` }
++                            : {}),
++                    },
+                     body: JSON.stringify({
+                         items: checkoutLines,
+                         email: debouncedCheckoutContext.email || undefined,
+@@ -485,7 +495,7 @@ const CheckoutPage = () => {
+         };
+     // paymentBootstrapKey encodes checkoutLines + debounced contact/shipping
+     // eslint-disable-next-line react-hooks/exhaustive-deps -- avoid duplicate fetches when primitives match fingerprint
+-    }, [paymentBootstrapKey, checkoutOk, quote]);
++    }, [paymentBootstrapKey, storefrontAuthBootstrap, checkoutOk, quote]);
+ 
+     const handleSubmit = async (event: React.FormEvent) => {
+         event.preventDefault();
+diff --git a/src/components/Navbar/Navbar.scroll.test.tsx b/src/components/Navbar/Navbar.scroll.test.tsx
+index b23d545..efac7db 100644
+--- a/src/components/Navbar/Navbar.scroll.test.tsx
++++ b/src/components/Navbar/Navbar.scroll.test.tsx
+@@ -106,10 +106,10 @@ describe("Navbar scroll & mobile drawer behavior", () => {
+     expect(shopWomen).toHaveAttribute("href", "/women");
+   });
+ 
+-  it("order lookup icon links to order status (honest account affordance)", () => {
++  it("account icon links to the account route", () => {
+     renderNav();
+-    const orderLookup = screen.getByRole("link", { name: /order lookup/i });
+-    expect(orderLookup).toHaveAttribute("href", "/order-status");
++    const account = screen.getByRole("link", { name: /^account$/i });
++    expect(account).toHaveAttribute("href", "/account");
+   });
+ 
+ });
+diff --git a/src/components/Navbar/Navbar.tsx b/src/components/Navbar/Navbar.tsx
+index c748dd6..dad79ff 100644
+--- a/src/components/Navbar/Navbar.tsx
++++ b/src/components/Navbar/Navbar.tsx
+@@ -111,9 +111,9 @@ const Navbar: React.FC = () => {
+           <FontAwesomeIcon icon={faSearch} />
+         </Link>
+         <Link
+-          to="/order-status"
++          to="/account"
+           className="nav-icon-btn"
+-          aria-label="Order lookup"
++          aria-label="Account"
+           onClick={() => setIsMenuOpen(false)}
+         >
+           <FontAwesomeIcon icon={faUser} />
+diff --git a/src/components/Search/SearchPage.test.tsx b/src/components/Search/SearchPage.test.tsx
+index e0f18ff..d7de740 100644
+--- a/src/components/Search/SearchPage.test.tsx
++++ b/src/components/Search/SearchPage.test.tsx
+@@ -139,7 +139,6 @@ describe("SearchPage", () => {
+   });
+ 
+   it("shows designed empty state when nothing matches", async () => {
+-    const user = userEvent.setup();
+     vi.mocked(getDefaultCatalogAdapter).mockReturnValue({
+       listProducts: async () => alphaRow,
+       listProductsByCategory: async () => [],
+diff --git a/src/components/SubscriptionForm/SubscriptionForm.tsx b/src/components/SubscriptionForm/SubscriptionForm.tsx
+index 8affcfb..2ddb559 100644
+--- a/src/components/SubscriptionForm/SubscriptionForm.tsx
++++ b/src/components/SubscriptionForm/SubscriptionForm.tsx
+@@ -44,7 +44,7 @@ const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
+         const data = await response.json();
+         setError(data.message || 'Subscription failed');
+       }
+-    } catch (err) {
++    } catch {
+       setError('Network error. Please try again.');
+     } finally {
+       setLoading(false);
+diff --git a/src/lib/supabaseBrowser.ts b/src/lib/supabaseBrowser.ts
+index baecef9..a586a1f 100644
+--- a/src/lib/supabaseBrowser.ts
++++ b/src/lib/supabaseBrowser.ts
+@@ -20,7 +20,12 @@ export function getSupabaseBrowserClient(): SupabaseClient | null {
+     return null;
+   }
+   if (!client) {
+-    client = createClient(url!.trim(), anon!.trim());
++    client = createClient(url!.trim(), anon!.trim(), {
++      auth: {
++        detectSessionInUrl: true,
++        flowType: "pkce",
++      },
++    });
+   }
+   return client;
+ }
+diff --git a/src/routes.smoke.test.tsx b/src/routes.smoke.test.tsx
+index d8905b7..bbb26a6 100644
+--- a/src/routes.smoke.test.tsx
++++ b/src/routes.smoke.test.tsx
+@@ -77,6 +77,11 @@ describe("storefront route smoke (App.tsx router tree)", () => {
+     ["/", /Premium essentials/i],
+     ["/products", /Product List/i],
+     ["/search", /^Search$/i],
++    ["/account", /^Account$/i],
++    [
++      `/account/orders/${"11111111-1111-4111-8111-111111111111"}`,
++      /sign in required|Unavailable/i,
++    ],
+     ["/women", /Women.*essentials/i],
+     ["/men", /Refined everyday wear/i],
+     ["/kids", /Little wardrobe staples/i],

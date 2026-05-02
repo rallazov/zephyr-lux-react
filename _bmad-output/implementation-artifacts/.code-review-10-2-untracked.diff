@@ -1,0 +1,859 @@
+diff --git a/src/account/AccountPage.tsx b/src/account/AccountPage.tsx
+new file mode 100644
+index 0000000..2b5d1dc
+--- /dev/null
++++ b/src/account/AccountPage.tsx
+@@ -0,0 +1,279 @@
++import React, { useCallback, useEffect, useState } from "react";
++import { Link } from "react-router-dom";
++import { useAuth } from "../auth/AuthContext";
++import { resolveCustomerOtpRedirectUrl } from "../auth/customerAuth";
++import type { FulfillmentStatus, PaymentStatus } from "../domain/commerce/enums";
++import { formatCents } from "../lib/money";
++import { apiUrl } from "../lib/apiBase";
++import {
++  customerFulfillmentLabel,
++  customerPaymentLabel,
++  formatCustomerOrderDate,
++} from "../order-status/customerOrderStatusViewModel";
++import { formatPageTitleWithBrand, usePageMeta } from "../seo/meta";
++
++const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
++
++type ApiListRow = {
++  order_id: string;
++  order_number: string;
++  created_at: string;
++  payment_status: PaymentStatus;
++  fulfillment_status: FulfillmentStatus;
++  total_cents: number;
++  currency: string;
++  item_count: number;
++};
++
++type HistoryState =
++  | { status: "idle" }
++  | { status: "loading" }
++  | { status: "error"; message: string }
++  | { status: "ready"; orders: ApiListRow[] };
++
++const AccountPage: React.FC = () => {
++  usePageMeta({
++    title: formatPageTitleWithBrand("Account"),
++    description: "Sign in or review your Zephyr Lux account and order history.",
++    canonicalPath: "/account",
++  });
++
++  const {
++    signOut,
++    user,
++    session,
++    loading: authLoading,
++    configured,
++    customerSignInWithEmailOtp,
++  } = useAuth();
++
++  const [email, setEmail] = useState("");
++  const [signInPhase, setSignInPhase] = useState<"idle" | "submitting" | "sent">("idle");
++  const [signInError, setSignInError] = useState<string | null>(null);
++
++  const [history, setHistory] = useState<HistoryState>({ status: "idle" });
++
++  const loadHistory = useCallback(async (accessToken: string) => {
++    setHistory({ status: "loading" });
++    try {
++      const res = await fetch(apiUrl("/api/customer-account-order-history"), {
++        headers: { Authorization: `Bearer ${accessToken}` },
++      });
++      const body = (await res.json().catch(() => null)) as
++        | { orders?: ApiListRow[]; error?: string }
++        | null;
++      if (!res.ok) {
++        const msg =
++          typeof body?.error === "string" ? body.error : "Unable to load order history right now.";
++        setHistory({ status: "error", message: msg });
++        return;
++      }
++      const rows = Array.isArray(body?.orders) ? body!.orders! : [];
++      setHistory({ status: "ready", orders: rows });
++    } catch {
++      setHistory({ status: "error", message: "Unable to load order history right now." });
++    }
++  }, []);
++
++  useEffect(() => {
++    if (!user || !session?.access_token) {
++      setHistory({ status: "idle" });
++      return;
++    }
++    void loadHistory(session.access_token);
++  }, [user, session?.access_token, loadHistory]);
++
++  const onSubmitMagicLink = async (evt: React.FormEvent) => {
++    evt.preventDefault();
++    const trimmed = email.trim();
++    if (!EMAIL_PATTERN.test(trimmed)) {
++      setSignInError("Enter a valid email address.");
++      return;
++    }
++
++    setSignInPhase("submitting");
++    setSignInError(null);
++    const { error } = await customerSignInWithEmailOtp(trimmed, {
++      emailRedirectTo: resolveCustomerOtpRedirectUrl(),
++    });
++    if (error) {
++      setSignInPhase("idle");
++      setSignInError("We could not send a sign-in link. Try again in a moment.");
++      return;
++    }
++    setSignInPhase("sent");
++  };
++
++  if (!configured) {
++    return (
++      <main
++        className="min-h-[60vh] bg-stone-950 px-4 py-10 text-stone-100 sm:px-6"
++        data-testid="account-page"
++      >
++        <div className="mx-auto max-w-lg border border-stone-700 bg-stone-900 px-5 py-6">
++          <h1 className="text-2xl font-semibold">Account</h1>
++          <p className="mt-3 text-sm leading-6 text-stone-300" role="alert">
++            Sign-in is not available in this environment. Check that Supabase is configured.
++          </p>
++        </div>
++      </main>
++    );
++  }
++
++  return (
++    <main
++      className="min-h-[60vh] bg-stone-950 px-4 py-10 text-stone-50 sm:px-6 lg:py-14"
++      data-testid="account-page"
++    >
++      <div className="mx-auto flex max-w-3xl flex-col gap-10">
++        <header>
++          <h1 className="text-3xl font-semibold">Account</h1>
++          <p className="mt-2 max-w-xl text-sm text-stone-400">
++            Optional sign-in lets you revisit orders signed to your profile. Guests can always check out
++            and use secure order-status links — no password required here.
++          </p>
++          <Link
++            to="/order-status"
++            className="mt-6 inline-flex min-h-11 items-center rounded-md border border-stone-600 px-4 py-2 text-sm font-medium text-stone-100 underline-offset-4 hover:border-stone-400 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
++          >
++            Guest order lookup
++          </Link>
++        </header>
++
++        {authLoading ? (
++          <section
++            className="border border-stone-700 bg-stone-900 px-5 py-6 text-sm text-stone-200"
++            role="status"
++            data-testid="account-auth-loading"
++          >
++            Checking your session...
++          </section>
++        ) : !user ? (
++          <section className="border border-stone-700 bg-stone-900 px-5 py-6 sm:px-6">
++            <h2 className="text-lg font-semibold text-stone-50">Sign in without a password</h2>
++            <p className="mt-2 text-sm leading-6 text-stone-300">
++              Enter your email and we will send a one-time magic link.
++            </p>
++            <form className="mt-6 grid gap-4" onSubmit={onSubmitMagicLink} noValidate>
++              <label className="grid gap-1 text-sm font-medium text-stone-100" htmlFor="account-email">
++                Email
++                <input
++                  id="account-email"
++                  name="email"
++                  autoComplete="email"
++                  inputMode="email"
++                  disabled={signInPhase === "submitting" || signInPhase === "sent"}
++                  value={email}
++                  onChange={(e) => setEmail(e.target.value)}
++                  className="rounded-md border border-stone-600 bg-stone-950 px-3 py-2 text-stone-50 outline-none ring-amber-500/70 focus-visible:ring-2"
++                />
++              </label>
++
++              {signInError ? (
++                <p className="text-sm font-medium text-red-300" role="alert">
++                  {signInError}
++                </p>
++              ) : null}
++
++              {signInPhase === "sent" ? (
++                <p className="text-sm font-medium text-emerald-300" role="status">
++                  Check your email for a sign-in link. You can close this tab after you click it.
++                </p>
++              ) : null}
++
++              <button
++                type="submit"
++                disabled={signInPhase === "submitting" || signInPhase === "sent"}
++                className="inline-flex min-h-11 w-full max-w-xs items-center justify-center rounded-md bg-zlx-action px-4 py-2 text-sm font-semibold text-zlx-action-text hover:bg-zlx-action-hover disabled:cursor-not-allowed disabled:opacity-60"
++              >
++                {signInPhase === "submitting" ? "Sending link…" : "Email me a sign-in link"}
++              </button>
++            </form>
++          </section>
++        ) : (
++          <>
++            <section className="border border-stone-700 bg-stone-900 px-5 py-6 sm:px-6">
++              <h2 className="text-lg font-semibold text-stone-50">Signed in</h2>
++              <p className="mt-2 break-all text-sm text-stone-300" data-testid="account-profile-email">
++                {user.email ?? "—"}
++              </p>
++              <button
++                type="button"
++                className="mt-5 inline-flex min-h-11 items-center rounded-md border border-stone-500 px-4 py-2 text-sm font-semibold text-stone-100 hover:bg-stone-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
++                onClick={() => void signOut()}
++              >
++                Sign out
++              </button>
++            </section>
++
++            <section className="border border-stone-700 bg-stone-900 px-5 py-6 sm:px-6" aria-labelledby="order-history-heading">
++              <h2 id="order-history-heading" className="text-lg font-semibold text-stone-50">
++                Order history
++              </h2>
++
++              {history.status === "loading" || history.status === "idle" ? (
++                <p className="mt-4 text-sm text-stone-300" role="status" data-testid="account-history-loading">
++                  Loading your orders…
++                </p>
++              ) : null}
++
++              {history.status === "error" ? (
++                <p className="mt-4 text-sm font-medium text-red-300" role="alert" data-testid="account-history-error">
++                  {history.message}
++                </p>
++              ) : null}
++
++              {history.status === "ready" && history.orders.length === 0 ? (
++                <div className="mt-4 space-y-4" data-testid="account-history-empty">
++                  <p className="text-sm leading-6 text-stone-300">
++                    No orders are linked to this account yet. Guest purchases stay findable with a secure
++                    link from your email.
++                  </p>
++                  <Link
++                    to="/order-status"
++                    className="inline-flex min-h-11 items-center rounded-md bg-zlx-action px-4 py-2 text-sm font-semibold text-zlx-action-text hover:bg-zlx-action-hover"
++                  >
++                    Look up an order
++                  </Link>
++                </div>
++              ) : null}
++
++              {history.status === "ready" && history.orders.length > 0 ? (
++                <ul className="mt-4 grid gap-3" data-testid="account-history-list">
++                  {history.orders.map((o) => (
++                    <li key={o.order_id}>
++                      <Link
++                        to={`/account/orders/${encodeURIComponent(o.order_id)}`}
++                        className="block min-h-[4.5rem] rounded-md border border-stone-700 bg-stone-950/40 px-4 py-3 transition hover:border-amber-600/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 sm:flex sm:items-center sm:justify-between sm:gap-4"
++                      >
++                        <div className="min-w-0 flex-1">
++                          <p className="text-sm font-semibold text-stone-50">{o.order_number}</p>
++                          <p className="mt-1 text-xs uppercase text-stone-500">{formatCustomerOrderDate(o.created_at)}</p>
++                          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone-300">
++                            <span className="shrink-0">{customerPaymentLabel(o.payment_status)}</span>
++                            <span className="shrink-0">{customerFulfillmentLabel(o.fulfillment_status)}</span>
++                          </div>
++                          <p className="mt-1 text-xs text-stone-400">
++                            {o.item_count} item{o.item_count === 1 ? "" : "s"}
++                          </p>
++                        </div>
++                        <div className="mt-3 shrink-0 text-left sm:mt-0 sm:text-right">
++                          <p className="text-sm font-semibold text-stone-50 tabular-nums">
++                            {formatCents(o.total_cents, o.currency)}
++                          </p>
++                          <p className="mt-2 text-xs font-semibold uppercase text-amber-400">View status</p>
++                        </div>
++                      </Link>
++                    </li>
++                  ))}
++                </ul>
++              ) : null}
++            </section>
++          </>
++        )}
++      </div>
++    </main>
++  );
++};
++
++export default AccountPage;
+diff --git a/src/account/AccountPage.test.tsx b/src/account/AccountPage.test.tsx
+new file mode 100644
+index 0000000..0f44bae
+--- /dev/null
++++ b/src/account/AccountPage.test.tsx
+@@ -0,0 +1,223 @@
++import type { Session, User } from "@supabase/supabase-js";
++import { render, screen, waitFor } from "@testing-library/react";
++import userEvent from "@testing-library/user-event";
++import { MemoryRouter } from "react-router-dom";
++import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
++import AccountPage from "./AccountPage";
++
++const mockUseAuth = vi.fn();
++
++vi.mock("../auth/AuthContext", () => ({
++  useAuth: () => mockUseAuth(),
++}));
++
++vi.mock("../lib/apiBase", () => ({
++  apiUrl: (path: string) => path,
++}));
++
++function mockUser(overrides: Partial<User> = {}): User {
++  return {
++    id: "customer-1",
++    aud: "authenticated",
++    role: "authenticated",
++    email: "shopper@example.com",
++    app_metadata: {},
++    user_metadata: {},
++    ...overrides,
++  } as User;
++}
++
++function authValue(overrides: Record<string, unknown> = {}) {
++  return {
++    user: null,
++    session: null,
++    loading: false,
++    configured: true,
++    signIn: vi.fn(),
++    signOut: vi.fn(),
++    customerSignInWithEmailOtp: vi.fn().mockResolvedValue({ error: null }),
++    verifyCustomerEmailOtp: vi.fn(),
++    ...overrides,
++  };
++}
++
++function renderPage() {
++  return render(
++    <MemoryRouter initialEntries={["/account"]}>
++      <AccountPage />
++    </MemoryRouter>,
++  );
++}
++
++describe("AccountPage", () => {
++  beforeEach(() => {
++    mockUseAuth.mockReset();
++    vi.stubGlobal(
++      "fetch",
++      vi.fn().mockRejectedValue(new Error("fetch must be mocked per test")),
++    );
++  });
++
++  afterEach(() => {
++    vi.unstubAllGlobals();
++  });
++
++  it("shows a restrained unavailable state when Supabase auth is not configured", () => {
++    mockUseAuth.mockReturnValue(authValue({ configured: false }));
++
++    renderPage();
++
++    expect(screen.getByTestId("account-page")).toBeInTheDocument();
++    expect(
++      screen.getByText(/sign-in is not available in this environment/i),
++    ).toBeInTheDocument();
++    expect(screen.queryByRole("textbox", { name: /^email$/i })).not.toBeInTheDocument();
++  });
++
++  it("shows auth loading skeleton", () => {
++    mockUseAuth.mockReturnValue(authValue({ loading: true }));
++
++    renderPage();
++
++    expect(screen.getByTestId("account-auth-loading")).toBeInTheDocument();
++  });
++
++  it("renders a passwordless signed-out form with validation and success state", async () => {
++    const u = userEvent.setup();
++    const customerSignInWithEmailOtp = vi.fn().mockResolvedValue({ error: null });
++    mockUseAuth.mockReturnValue(authValue({ customerSignInWithEmailOtp }));
++
++    renderPage();
++
++    expect(screen.getByRole("heading", { name: /sign in without a password/i })).toBeInTheDocument();
++
++    await u.click(screen.getByRole("button", { name: /email me a sign-in link/i }));
++    expect(await screen.findByRole("alert")).toHaveTextContent(/valid email/i);
++    expect(customerSignInWithEmailOtp).not.toHaveBeenCalled();
++
++    await u.type(screen.getByRole("textbox", { name: /^email$/i }), "shopper@example.com");
++    await u.click(screen.getByRole("button", { name: /email me a sign-in link/i }));
++
++    expect(customerSignInWithEmailOtp).toHaveBeenCalledWith("shopper@example.com", {
++      emailRedirectTo: expect.stringMatching(/\/account$/),
++    });
++    expect(await screen.findByRole("status")).toHaveTextContent(/check your email/i);
++  });
++
++  it("announces provider failures without exposing provider internals", async () => {
++    const u = userEvent.setup();
++    const customerSignInWithEmailOtp = vi.fn().mockResolvedValue({
++      error: new Error("supabase auth 500 details"),
++    });
++    mockUseAuth.mockReturnValue(authValue({ customerSignInWithEmailOtp }));
++
++    renderPage();
++
++    await u.type(screen.getByRole("textbox", { name: /^email$/i }), "shopper@example.com");
++    await u.click(screen.getByRole("button", { name: /email me a sign-in link/i }));
++
++    const alert = await screen.findByRole("alert");
++    expect(alert).toHaveTextContent(/could not send a sign-in link/i);
++    expect(alert).not.toHaveTextContent(/supabase auth 500/i);
++  });
++
++  it("renders signed-in profile, invokes sign-out, and shows populated order history", async () => {
++    const u = userEvent.setup();
++    const signOut = vi.fn().mockResolvedValue(undefined);
++    const ordersPayload = [
++      {
++        order_id: "11111111-1111-4111-8111-111111111111",
++        order_number: "ZLX-1001",
++        created_at: "2026-01-15T12:00:00.000Z",
++        payment_status: "paid",
++        fulfillment_status: "processing",
++        total_cents: 12999,
++        currency: "USD",
++        item_count: 2,
++      },
++    ];
++
++    vi.stubGlobal(
++      "fetch",
++      vi.fn().mockResolvedValue({
++        ok: true,
++        status: 200,
++        json: async () => ({ orders: ordersPayload }),
++      }),
++    );
++
++    mockUseAuth.mockReturnValue(
++      authValue({
++        user: mockUser(),
++        session: {
++          access_token: "access-token-unit-test",
++          refresh_token: "r",
++          expires_in: 3600,
++          token_type: "bearer",
++        } as Session,
++        signOut,
++      }),
++    );
++
++    renderPage();
++
++    expect(screen.getByTestId("account-profile-email")).toHaveTextContent("shopper@example.com");
++    expect(await screen.findByTestId("account-history-list")).toBeInTheDocument();
++    expect(screen.getByText("ZLX-1001")).toBeInTheDocument();
++
++    await u.click(screen.getByRole("button", { name: /sign out/i }));
++    expect(signOut).toHaveBeenCalledTimes(1);
++  });
++
++  it("renders signed-in empty order history with guest lookup affordance", async () => {
++    vi.stubGlobal(
++      "fetch",
++      vi.fn().mockResolvedValue({
++        ok: true,
++        status: 200,
++        json: async () => ({ orders: [] }),
++      }),
++    );
++
++    mockUseAuth.mockReturnValue(
++      authValue({
++        user: mockUser(),
++        session: { access_token: "t" } as Session,
++      }),
++    );
++
++    renderPage();
++
++    await waitFor(() => {
++      expect(screen.getByTestId("account-history-empty")).toBeInTheDocument();
++    });
++    expect(screen.getByRole("link", { name: /look up an order/i })).toHaveAttribute(
++      "href",
++      "/order-status",
++    );
++  });
++
++  it("surfaces order history API failures", async () => {
++    vi.stubGlobal(
++      "fetch",
++      vi.fn().mockResolvedValue({
++        ok: false,
++        status: 500,
++        json: async () => ({ error: "upstream issue" }),
++      }),
++    );
++
++    mockUseAuth.mockReturnValue(
++      authValue({
++        user: mockUser(),
++        session: { access_token: "t" } as Session,
++      }),
++    );
++
++    renderPage();
++
++    await waitFor(() => {
++      expect(screen.getByTestId("account-history-error")).toHaveTextContent(/upstream issue/i);
++    });
++  });
++});
+diff --git a/src/auth/customerAuth.ts b/src/auth/customerAuth.ts
+new file mode 100644
+index 0000000..bc8c656
+--- /dev/null
++++ b/src/auth/customerAuth.ts
+@@ -0,0 +1,95 @@
++import type { EmailOtpType } from "@supabase/supabase-js";
++import { getSupabaseBrowserClient, isSupabaseBrowserConfigured } from "../lib/supabaseBrowser";
++
++/** Magic-link redirect path — list under Supabase Auth redirect URLs (10-2 implements `/account`). */
++export const CUSTOMER_OTP_ACCOUNT_REDIRECT_PATH = "/account";
++
++export type CustomerEmailOtpResult = { error: Error | null };
++
++export function resolveCustomerOtpRedirectUrl(): string {
++  if (typeof window === "undefined") {
++    return "";
++  }
++  return `${window.location.origin}${CUSTOMER_OTP_ACCOUNT_REDIRECT_PATH}`;
++}
++
++function resolveEmailRedirectTo(
++  options: { emailRedirectTo?: string } | undefined
++): string | null {
++  const raw =
++    options?.emailRedirectTo !== undefined
++      ? options.emailRedirectTo
++      : resolveCustomerOtpRedirectUrl();
++  const trimmed = raw.trim();
++  return trimmed.length > 0 ? trimmed : null;
++}
++
++export async function customerSignInWithEmailOtp (
++  email: string,
++  options?: { emailRedirectTo?: string }
++): Promise<CustomerEmailOtpResult> {
++  const supabase = getSupabaseBrowserClient();
++  if (!supabase || !isSupabaseBrowserConfigured()) {
++    return { error: new Error("Supabase is not configured") };
++  }
++  const trimmed = email.trim();
++  if (!trimmed) {
++    return { error: new Error("Email is required") };
++  }
++  const emailRedirectTo = resolveEmailRedirectTo(options);
++  if (!emailRedirectTo) {
++    return { error: new Error("Email redirect URL is required") };
++  }
++  const { error } = await supabase.auth.signInWithOtp({
++    email: trimmed,
++    options: {
++      emailRedirectTo,
++    },
++  });
++  return { error: (error ?? null) as Error | null };
++}
++
++export async function verifyCustomerEmailOtp (params: {
++  email: string;
++  token: string;
++  type: EmailOtpType;
++  redirectTo?: string;
++}): Promise<CustomerEmailOtpResult> {
++  const supabase = getSupabaseBrowserClient();
++  if (!supabase || !isSupabaseBrowserConfigured()) {
++    return { error: new Error("Supabase is not configured") };
++  }
++  const trimmedEmail = params.email.trim();
++  const trimmedToken = params.token.trim();
++  if (!trimmedEmail || !trimmedToken) {
++    return { error: new Error("Email and verification token are required") };
++  }
++  let redirectTo: string | undefined;
++  if (params.redirectTo !== undefined) {
++    const t = params.redirectTo.trim();
++    if (!t) {
++      return { error: new Error("Redirect URL cannot be empty") };
++    }
++    redirectTo = t;
++  }
++  const { error } = await supabase.auth.verifyOtp({
++    email: trimmedEmail,
++    token: trimmedToken,
++    type: params.type,
++    options: redirectTo ? { redirectTo } : undefined,
++  });
++  if (error) {
++    return { error: error as Error };
++  }
++  try {
++    const refreshed = await supabase.auth.refreshSession();
++    if (refreshed.error) {
++      return { error: refreshed.error as Error };
++    }
++  } catch (e) {
++    return {
++      error: e instanceof Error ? e : new Error(String(e)),
++    };
++  }
++  return { error: null };
++}
+diff --git a/src/auth/customerAuth.test.ts b/src/auth/customerAuth.test.ts
+new file mode 100644
+index 0000000..3f9d54b
+--- /dev/null
++++ b/src/auth/customerAuth.test.ts
+@@ -0,0 +1,185 @@
++import type { EmailOtpType } from "@supabase/supabase-js";
++import { beforeEach, describe, expect, it, vi } from "vitest";
++import {
++  customerSignInWithEmailOtp,
++  resolveCustomerOtpRedirectUrl,
++  verifyCustomerEmailOtp,
++} from "./customerAuth";
++
++const signInWithOtp = vi.fn();
++const verifyOtp = vi.fn();
++const refreshSession = vi.fn();
++const mockClient = {
++  auth: { signInWithOtp, verifyOtp, refreshSession },
++};
++const configuredRef = { value: true };
++const browserClientRef = { value: mockClient as typeof mockClient | null };
++
++vi.mock("../lib/supabaseBrowser", () => ({
++  getSupabaseBrowserClient: () => browserClientRef.value,
++  isSupabaseBrowserConfigured: () => configuredRef.value,
++}));
++
++describe("customerAuth", () => {
++  beforeEach(() => {
++    vi.clearAllMocks();
++    configuredRef.value = true;
++    browserClientRef.value = mockClient;
++    signInWithOtp.mockResolvedValue({ error: null });
++    verifyOtp.mockResolvedValue({ error: null });
++    refreshSession.mockResolvedValue({ error: null, data: { session: null } });
++  });
++
++  describe("resolveCustomerOtpRedirectUrl", () => {
++    it("appends the account path to window.location.origin in the browser test env", () => {
++      expect(resolveCustomerOtpRedirectUrl()).toBe(`${window.location.origin}/account`);
++    });
++  });
++
++  describe("customerSignInWithEmailOtp", () => {
++    it("returns a clear error when Supabase browser env is not configured", async () => {
++      configuredRef.value = false;
++      browserClientRef.value = null;
++
++      const { error } = await customerSignInWithEmailOtp("a@test.com");
++
++      expect(error?.message).toBe("Supabase is not configured");
++      expect(signInWithOtp).not.toHaveBeenCalled();
++    });
++
++    it("rejects blank email input", async () => {
++      const { error } = await customerSignInWithEmailOtp("   ");
++
++      expect(error?.message).toBe("Email is required");
++      expect(signInWithOtp).not.toHaveBeenCalled();
++    });
++
++    it("calls signInWithOtp with trimmed email and default redirect mapped to /account", async () => {
++      await customerSignInWithEmailOtp(" hi@test.com ");
++
++      expect(signInWithOtp).toHaveBeenCalledWith({
++        email: "hi@test.com",
++        options: { emailRedirectTo: `${window.location.origin}/account` },
++      });
++    });
++
++    it("honors explicit emailRedirectTo override", async () => {
++      await customerSignInWithEmailOtp("hi@test.com", {
++        emailRedirectTo: "https://example.com/callback",
++      });
++
++      expect(signInWithOtp).toHaveBeenCalledWith({
++        email: "hi@test.com",
++        options: { emailRedirectTo: "https://example.com/callback" },
++      });
++    });
++
++    it("rejects whitespace-only emailRedirectTo without calling signInWithOtp", async () => {
++      const { error } = await customerSignInWithEmailOtp("hi@test.com", {
++        emailRedirectTo: "   ",
++      });
++
++      expect(error?.message).toBe("Email redirect URL is required");
++      expect(signInWithOtp).not.toHaveBeenCalled();
++    });
++
++    it("surfaces Supabase errors as Error instances", async () => {
++      const authErr = Object.assign(new Error("rate limited"), { status: 429 });
++      signInWithOtp.mockResolvedValueOnce({ error: authErr });
++
++      const { error } = await customerSignInWithEmailOtp("hi@test.com");
++
++      expect(error).toBe(authErr);
++    });
++  });
++
++  describe("verifyCustomerEmailOtp", () => {
++    const base = {
++      email: "who@test.com",
++      token: "123456",
++      type: "email" as EmailOtpType,
++    };
++
++    it("returns a clear error when Supabase browser env is not configured", async () => {
++      configuredRef.value = false;
++      browserClientRef.value = null;
++
++      const { error } = await verifyCustomerEmailOtp(base);
++
++      expect(error?.message).toBe("Supabase is not configured");
++      expect(verifyOtp).not.toHaveBeenCalled();
++    });
++
++    it("rejects blank email or token before calling verifyOtp", async () => {
++      const missingEmail = await verifyCustomerEmailOtp({ ...base, email: "" });
++      expect(missingEmail.error?.message).toBe(
++        "Email and verification token are required"
++      );
++      expect(verifyOtp).not.toHaveBeenCalled();
++
++      verifyOtp.mockClear();
++      const missingToken = await verifyCustomerEmailOtp({ ...base, token: "  " });
++      expect(missingToken.error?.message).toBe(
++        "Email and verification token are required"
++      );
++      expect(verifyOtp).not.toHaveBeenCalled();
++    });
++
++    it("rejects whitespace-only redirectTo before calling verifyOtp", async () => {
++      const { error } = await verifyCustomerEmailOtp({
++        ...base,
++        redirectTo: "  ",
++      });
++
++      expect(error?.message).toBe("Redirect URL cannot be empty");
++      expect(verifyOtp).not.toHaveBeenCalled();
++    });
++
++    it("returns refreshSession errors after successful OTP verification", async () => {
++      const sessErr = new Error("refresh failed");
++      refreshSession.mockResolvedValueOnce({ error: sessErr, data: { session: null } });
++
++      const { error } = await verifyCustomerEmailOtp(base);
++
++      expect(error).toBe(sessErr);
++      expect(verifyOtp).toHaveBeenCalledTimes(1);
++    });
++
++    it("calls verifyOtp with trimmed identifiers and forwards redirectTo option", async () => {
++      await verifyCustomerEmailOtp({
++        email: " a@test.com ",
++        token: " 999 ",
++        type: "signup",
++        redirectTo: "https://example.com/next",
++      });
++
++      expect(verifyOtp).toHaveBeenCalledWith({
++        email: "a@test.com",
++        token: "999",
++        type: "signup",
++        options: { redirectTo: "https://example.com/next" },
++      });
++      expect(refreshSession).toHaveBeenCalledTimes(1);
++    });
++
++    it("does not refresh the session after a failed OTP verification", async () => {
++      const authErr = new Error("otp invalid");
++      verifyOtp.mockResolvedValueOnce({ error: authErr });
++
++      const { error } = await verifyCustomerEmailOtp(base);
++
++      expect(error).toBe(authErr);
++      expect(refreshSession).not.toHaveBeenCalled();
++    });
++
++    it("omits redirect options when redirectTo not provided", async () => {
++      await verifyCustomerEmailOtp(base);
++
++      expect(verifyOtp).toHaveBeenCalledWith({
++        ...base,
++        options: undefined,
++      });
++      expect(refreshSession).toHaveBeenCalledTimes(1);
++    });
++  });
++});
+diff --git a/src/auth/customersMigration.test.ts b/src/auth/customersMigration.test.ts
+new file mode 100644
+index 0000000..d08483f
+--- /dev/null
++++ b/src/auth/customersMigration.test.ts
+@@ -0,0 +1,47 @@
++import { readFileSync } from "node:fs";
++import { resolve } from "node:path";
++import { describe, expect, it } from "vitest";
++
++const migrationSql = readFileSync(
++  resolve(process.cwd(), "supabase/migrations/20260502103000_public_customers_identity.sql"),
++  "utf8"
++);
++
++describe("customers identity migration", () => {
++  it("creates first-class customer identity with auth linkage and provisioning", () => {
++    expect(migrationSql).toContain("CREATE TABLE public.customers");
++    expect(migrationSql).toContain(
++      "CONSTRAINT customers_auth_user_id_key UNIQUE (auth_user_id)"
++    );
++    expect(migrationSql).toContain(
++      "CONSTRAINT customers_auth_users_fkey FOREIGN KEY (auth_user_id) REFERENCES auth.users (id) ON DELETE CASCADE"
++    );
++    expect(migrationSql).toContain("CREATE TRIGGER customers_after_auth_user_insert");
++    expect(migrationSql).toMatch(
++      /INSERT INTO public\.customers \(auth_user_id, email\)[\s\S]*FROM auth\.users u/
++    );
++  });
++
++  it("keeps historical guest rows deploy-safe while indexing customer-linked reads", () => {
++    expect(migrationSql).toContain("CREATE INDEX orders_customer_id_idx");
++    expect(migrationSql).toContain("CREATE INDEX customer_subscriptions_customer_id_idx");
++    expect(migrationSql).toMatch(/orders_customer_id_fkey[\s\S]*ON DELETE SET NULL NOT VALID/);
++    expect(migrationSql).toMatch(
++      /customer_subscriptions_customer_id_fkey[\s\S]*ON DELETE SET NULL NOT VALID/
++    );
++  });
++
++  it("upserts customer email on auth.users email update when row may be missing", () => {
++    expect(migrationSql).toMatch(
++      /customers_sync_email_after_auth_update[\s\S]*ON CONFLICT \(auth_user_id\)[\s\S]*DO UPDATE SET/
++    );
++  });
++
++  it("documents and enforces narrow customer RLS boundaries", () => {
++    expect(migrationSql).toContain("REVIEW NOTES (RLS / FK / service-role)");
++    expect(migrationSql).toContain("ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY");
++    expect(migrationSql).toContain("auth.uid () = auth_user_id");
++    expect(migrationSql).toContain("app_metadata' ->> 'role'), '') = 'admin'");
++    expect(migrationSql).toContain("CREATE POLICY customers_update_own");
++  });
++});
