@@ -16,6 +16,7 @@ export interface ConfirmationItemLine {
 export interface OrderConfirmationLocationState {
   paymentRef?: string;
   orderId?: string;
+  orderNumber?: string;
   total?: number;
   email?: string;
   items?: ConfirmationItemLine[];
@@ -71,6 +72,7 @@ export interface ResolveConfirmationViewResult {
   mode: ConfirmationViewMode;
   /** Primary payment / session id for display (never labeled as a store order #). */
   paymentRef: string | null;
+  orderNumber: string | null;
   total: number | null;
   email: string | null;
   items: ConfirmationItemLine[] | null;
@@ -108,6 +110,10 @@ function parseLocationState(raw: unknown): OrderConfirmationLocationState | null
     (typeof o.paymentRef === "string" && o.paymentRef) ||
     (typeof o.orderId === "string" && o.orderId) ||
     null;
+  const orderNumber =
+    typeof o.orderNumber === "string" && o.orderNumber.trim()
+      ? o.orderNumber.trim()
+      : null;
   const total = typeof o.total === "number" && Number.isFinite(o.total) ? o.total : null;
   const email = typeof o.email === "string" && o.email ? o.email : null;
   const items = Array.isArray(o.items)
@@ -116,6 +122,7 @@ function parseLocationState(raw: unknown): OrderConfirmationLocationState | null
   return {
     paymentRef: paymentRef ?? undefined,
     orderId: typeof o.orderId === "string" ? o.orderId : undefined,
+    orderNumber: orderNumber ?? undefined,
     total: total ?? undefined,
     email: email ?? undefined,
     items: items && items.length ? items : undefined,
@@ -148,6 +155,7 @@ export function resolveConfirmationView(
     return {
       mode: "full",
       paymentRef: stateRef,
+      orderNumber: state?.orderNumber ?? null,
       total: state!.total ?? null,
       email: state!.email ?? null,
       items: state?.items && state.items.length ? state.items : null,
@@ -159,6 +167,7 @@ export function resolveConfirmationView(
     return {
       mode: "queryPartial",
       paymentRef: queryRef,
+      orderNumber: null,
       total: null,
       email: null,
       items: null,
@@ -171,6 +180,7 @@ export function resolveConfirmationView(
     return {
       mode: "queryPartial",
       paymentRef: stateRef,
+      orderNumber: state?.orderNumber ?? null,
       total: state!.total ?? null,
       email: state!.email ?? null,
       items: null,
@@ -181,6 +191,7 @@ export function resolveConfirmationView(
   return {
     mode: "fallback",
     paymentRef: null,
+    orderNumber: null,
     total: null,
     email: null,
     items: null,

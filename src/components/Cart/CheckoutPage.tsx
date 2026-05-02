@@ -63,6 +63,10 @@ const InnerCheckoutForm: React.FC<{
             navigate("/order-confirmation", {
                 state: {
                     orderId: id ?? "unknown",
+                    orderNumber:
+                        id === "pi_mock_123"
+                            ? `MOCK-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Date.now().toString().slice(-4)}`
+                            : undefined,
                     total: orderTotalDollars ?? 0,
                     items: cartItems.length ? cartItems : [],
                     email: customerEmail || undefined,
@@ -383,22 +387,14 @@ const CheckoutPage = () => {
 
     const mockStripe = {
         confirmPayment: async (): Promise<PaymentIntentResult> => {
-            return new Promise((resolve, reject) => {
+            return new Promise((resolve) => {
                 setTimeout(() => {
-                    if (Math.random() > 0.3) {
-                        resolve({
-                            paymentIntent: {
-                                id: "pi_mock_123",
-                                status: "succeeded",
-                            },
-                        });
-                    } else {
-                        reject({
-                            error: {
-                                message: "Mock payment failed (simulated).",
-                            },
-                        });
-                    }
+                    resolve({
+                        paymentIntent: {
+                            id: "pi_mock_123",
+                            status: "succeeded",
+                        },
+                    });
                 }, 1000);
             });
         },
@@ -549,6 +545,10 @@ const CheckoutPage = () => {
             navigate("/order-confirmation", {
                 state: {
                     orderId: id ?? "unknown",
+                    orderNumber:
+                        id === "pi_mock_123"
+                            ? `MOCK-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Date.now().toString().slice(-4)}`
+                            : undefined,
                     total: quote ? quote.total_cents / 100 : 0,
                     items: cartItems.length ? cartItems : [],
                     email: formData.email || undefined,
