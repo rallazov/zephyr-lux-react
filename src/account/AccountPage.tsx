@@ -250,7 +250,7 @@ const AccountPage: React.FC = () => {
               </p>
               <button
                 type="button"
-                className="mt-5 inline-flex min-h-11 items-center rounded-md border border-stone-500 px-4 py-2 text-sm font-semibold text-stone-100 hover:bg-stone-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
+                className="mt-5 inline-flex min-h-11 items-center rounded-md border border-stone-500 bg-stone-950 px-4 py-2 text-sm font-semibold text-stone-100 hover:border-stone-300 hover:bg-stone-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
                 onClick={() => void signOut()}
               >
                 Sign out

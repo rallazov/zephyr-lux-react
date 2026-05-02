@@ -58,7 +58,8 @@ describe("Navbar scroll & mobile drawer behavior", () => {
     expect(list).toHaveClass("open");
     expect(within(list).getByRole("link", { name: /^shop$/i })).toHaveAttribute("href", "/products");
     expect(within(list).getByRole("link", { name: /^women$/i })).toHaveAttribute("href", "/women");
-    expect(within(list).getByRole("link", { name: /^search$/i })).toHaveAttribute("href", "/search");
+    expect(within(list).queryByRole("link", { name: /^search$/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^search products$/i })).toHaveAttribute("href", "/search");
   });
 
   it("closes the mobile menu after window scroll (integrated listener)", async () => {

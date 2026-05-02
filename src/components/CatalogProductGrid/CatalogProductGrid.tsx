@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { isPurchasableVariant } from "../../catalog/parse";
+import { PDP_IMAGE_PLACEHOLDER } from "../../catalog/pdpImage";
 import type { CatalogListItem } from "../../catalog/types";
 import { useCart } from "../../context/CartContext";
 import "../ProductList/ProductList.css";
@@ -51,6 +52,10 @@ export default function CatalogProductGrid({ products }: Props) {
               <img
                 src={heroImageUrl}
                 alt={product.title}
+                onError={(event) => {
+                  event.currentTarget.onerror = null;
+                  event.currentTarget.src = PDP_IMAGE_PLACEHOLDER;
+                }}
               />
             </Link>
             <h3>
