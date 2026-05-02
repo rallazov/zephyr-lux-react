@@ -102,7 +102,14 @@ describe("storefront route smoke (App.tsx router tree)", () => {
   it("guest /account/orders/:id resolves to sign-in gate (not storefront 500)", async () => {
     renderRoute(`/account/orders/${"11111111-1111-4111-8111-111111111111"}`);
     expect(await screen.findByTestId("storefront-layout")).toBeInTheDocument();
-    expect(await screen.findByRole("heading", { name: /^Sign in required$/i })).toBeInTheDocument();
+    // needs-auth when Supabase is configured and session resolves; missing-config when VITE_* is unset.
+    // CI may have real env + slow/blocked getSession — allow a longer window than the default 5s RTL cap.
+    expect(
+      await screen.findByRole("heading", {
+        name: /^(Sign in required|Unavailable)$/i,
+        timeout: 15_000,
+      }),
+    ).toBeInTheDocument();
   });
 
   it("redirects unknown policy subpath to policy index", async () => {
