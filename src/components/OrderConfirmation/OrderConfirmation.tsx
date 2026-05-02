@@ -284,6 +284,12 @@ const OrderConfirmation: React.FC = () => {
           {view.paymentRef}
         </p>
       )}
+      {view.orderNumber && (
+        <p className="text-neutral-200 font-medium mb-1">
+          <span className="text-gray-400">Mock order number: </span>
+          {view.orderNumber}
+        </p>
+      )}
       {view.email && (
         <p className="text-gray-300 mb-4">
           <span className="text-gray-400">Email: </span>
@@ -314,9 +320,9 @@ const OrderConfirmation: React.FC = () => {
         </p>
       )}
       <p className="text-gray-300 mb-4" role="status">
-        You’ll receive a confirmation email when your payment has been fully
-        recorded. If you don’t see it within a few minutes, check spam or contact
-        support.
+        {view.orderNumber?.startsWith("MOCK-")
+          ? "This is a mock checkout confirmation. It does not create a paid order in Supabase or send a customer confirmation email."
+          : "You’ll receive a confirmation email when your payment has been fully recorded. If you don’t see it within a few minutes, check spam or contact support."}
       </p>
       <p className="text-sm text-gray-500 mb-8">
         If your payment reference starts with <code className="text-gray-400">pi_</code>,

@@ -15,6 +15,8 @@ E-commerce front end with Vite, React Router, Stripe checkout, and a **Node HTTP
 
 Payment-focused setup (Stripe CLI, webhook forwarding) is in [README-payments.md](README-payments.md).
 
+The production services, provider accounts, and main dependencies are listed in [docs/services-and-dependencies.md](docs/services-and-dependencies.md).
+
 ## End-to-end tests (Playwright)
 
 Browser tests run in **Chromium** (desktop + Pixel 5–sized mobile). Default flow uses `vite preview` on `http://127.0.0.1:4173` (started for you unless one is already running).
