@@ -105,10 +105,11 @@ describe("storefront route smoke (App.tsx router tree)", () => {
     // needs-auth when Supabase is configured and session resolves; missing-config when VITE_* is unset.
     // CI may have real env + slow/blocked getSession — allow a longer window than the default 5s RTL cap.
     expect(
-      await screen.findByRole("heading", {
-        name: /^(Sign in required|Unavailable)$/i,
-        timeout: 15_000,
-      }),
+      await screen.findByRole(
+        "heading",
+        { name: /^(Sign in required|Unavailable)$/i },
+        { timeout: 15_000 },
+      ),
     ).toBeInTheDocument();
   });
 
@@ -156,9 +157,11 @@ describe("storefront route smoke (App.tsx router tree)", () => {
     }
     renderRoute(path);
     expect(await screen.findByTestId("storefront-layout")).toBeInTheDocument();
-    const headingOpts =
-      path === "/checkout" ? { name: textMatcher, timeout: 15_000 } : { name: textMatcher };
-    expect(await screen.findByRole("heading", headingOpts)).toBeInTheDocument();
+    if (path === "/checkout") {
+      expect(await screen.findByRole("heading", { name: textMatcher }, { timeout: 15_000 })).toBeInTheDocument();
+    } else {
+      expect(await screen.findByRole("heading", { name: textMatcher })).toBeInTheDocument();
+    }
     if (path.startsWith("/product/")) {
       expect(await screen.findByTestId("pdp")).toBeInTheDocument();
       expect(await screen.findByTestId("pdp-variant-selector")).toBeInTheDocument();
