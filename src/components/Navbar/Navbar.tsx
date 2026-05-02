@@ -95,11 +95,6 @@ const Navbar: React.FC = () => {
         ))}
         <li><Link to="/" onClick={() => setIsMenuOpen(false)}>Home</Link></li>
         <li><Link to="/products" onClick={() => setIsMenuOpen(false)}>Shop</Link></li>
-        <li>
-          <Link to="/search" onClick={() => setIsMenuOpen(false)}>
-            Search
-          </Link>
-        </li>
       </ul>
       <div className="nav-icons">
         <Link

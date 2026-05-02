@@ -1,4 +1,6 @@
 import { FormEvent, useEffect, useId, useMemo, useRef, useState } from "react";
+import { faMagnifyingGlass, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   filterCatalogItemsBySearchQuery,
@@ -8,7 +10,7 @@ import { getDefaultCatalogAdapter } from "../../catalog/factory";
 import type { CatalogListItem } from "../../catalog/types";
 import { usePageMeta, formatPageTitleWithBrand } from "../../seo/meta";
 import CatalogProductGrid from "../CatalogProductGrid/CatalogProductGrid";
-import "../ProductList/ProductList.css";
+import "./SearchPage.css";
 
 const Q_PARAM = "q";
 
@@ -62,6 +64,14 @@ export default function SearchPage() {
   }, [products, qInUrl, hasCommittedSearch]);
 
   const trimmedDraftHasChars = normalizeSearchNeedle(draft) !== null;
+  const visibleProducts = hasCommittedSearch ? hits : products;
+  const resultHeading = hasCommittedSearch
+    ? `Results for "${qInUrl.trim()}"`
+    : "Browse the catalog";
+  const resultCount =
+    visibleProducts.length === 1
+      ? "1 product"
+      : `${visibleProducts.length} products`;
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -82,129 +92,140 @@ export default function SearchPage() {
   };
 
   return (
-    <div className="product-list bg-black text-neutral-100">
-      <h1>Search</h1>
+    <div className="search-page">
+      <header className="search-page__header">
+        <div>
+          <p className="search-page__eyebrow">Product discovery</p>
+          <h1>Search</h1>
+          <p className="search-page__intro">
+            Find Zephyr Lux styles by product name or category.
+          </p>
+        </div>
 
-      {loading && !loadError && <div style={{ padding: 16 }}>Loading…</div>}
-
-      {!loading && (
-        <>
-          <form onSubmit={onSubmit} style={{ marginBottom: 24, maxWidth: 480 }}>
-            <label
-              htmlFor={fieldId}
-              style={{ display: "block", marginBottom: 8, color: "#e5e5e5" }}
-            >
-              Search products
-            </label>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
-              <input
-                ref={inputRef}
-                id={fieldId}
-                type="search"
-                autoComplete="off"
-                placeholder="Product name or category"
-                value={draft}
-                onChange={(ev) => setDraft(ev.target.value)}
-                onKeyDown={(ev) => {
-                  if (ev.key === "Escape") {
-                    ev.preventDefault();
-                    setDraft("");
-                    setSearchParams(
-                      (prev) => {
-                        const next = new URLSearchParams(prev);
-                        next.delete(Q_PARAM);
-                        return next;
-                      },
-                      { replace: true },
-                    );
-                    inputRef.current?.blur();
-                  }
-                }}
-                style={{
-                  flex: "1 1 220px",
-                  padding: "10px 12px",
-                  borderRadius: 6,
-                  border: "1px solid #404040",
-                  background: "#0a0a0a",
-                  color: "#fafafa",
-                }}
-              />
-              <button
-                type="submit"
-                disabled={!trimmedDraftHasChars || Boolean(loadError)}
-                style={{
-                  padding: "10px 18px",
-                  borderRadius: 6,
-                  border: "none",
-                  background:
-                    trimmedDraftHasChars && !loadError ? "#fafafa" : "#525252",
-                  color: trimmedDraftHasChars && !loadError ? "#0a0a0a" : "#a3a3a3",
-                  cursor:
-                    trimmedDraftHasChars && !loadError ? "pointer" : "not-allowed",
-                }}
-              >
-                Search
-              </button>
-            </div>
-            {!trimmedDraftHasChars && !loadError && (
-              <p style={{ marginTop: 12, fontSize: 14, color: "#a3a3a3" }}>
-                Enter a search term and press Enter or Search to find products.
-              </p>
-            )}
-          </form>
-
-          {loadError && (
-            <p style={{ color: "#b00020", marginBottom: 16 }} role="alert">
-              {loadError}
-            </p>
-          )}
-
-          {whitespaceSubmitted && (
-            <p role="status" style={{ marginBottom: 16, color: "#d4d4d4" }}>
-              Enter a search term to see matching products — spaces alone are not enough.
-            </p>
-          )}
-
-          {!loadError && hasCommittedSearch && hits.length === 0 && (
-            <section
-              aria-labelledby="search-empty-heading"
-              style={{
-                padding: "32px 0",
-                maxWidth: 440,
-                borderTop: "1px solid #262626",
+        <form className="search-page__form" role="search" onSubmit={onSubmit}>
+          <label className="search-page__label" htmlFor={fieldId}>
+            Search products
+          </label>
+          <div className="search-page__control">
+            <input
+              ref={inputRef}
+              id={fieldId}
+              className="search-page__input"
+              type="search"
+              autoComplete="off"
+              placeholder="Product name or category"
+              value={draft}
+              onChange={(ev) => setDraft(ev.target.value)}
+              onKeyDown={(ev) => {
+                if (ev.key === "Escape") {
+                  ev.preventDefault();
+                  setDraft("");
+                  setSearchParams(
+                    (prev) => {
+                      const next = new URLSearchParams(prev);
+                      next.delete(Q_PARAM);
+                      return next;
+                    },
+                    { replace: true },
+                  );
+                  inputRef.current?.blur();
+                }
+              }}
+            />
+            <button
+              className="search-page__icon-button search-page__clear"
+              type="button"
+              aria-label="Clear search"
+              title="Clear search"
+              disabled={draft.length === 0}
+              onClick={() => {
+                setDraft("");
+                setSearchParams(
+                  (prev) => {
+                    const next = new URLSearchParams(prev);
+                    next.delete(Q_PARAM);
+                    return next;
+                  },
+                  { replace: true },
+                );
+                inputRef.current?.focus();
               }}
             >
-              <h2 id="search-empty-heading" style={{ fontSize: "1.25rem", marginBottom: 12 }}>
-                No matching products
-              </h2>
-              <p style={{ marginBottom: 20, color: "#d4d4d4" }}>
-                Nothing in the catalog matches &ldquo;{qInUrl.trim()}&rdquo;. Try another term or
-                browse the full catalog.
-              </p>
-              <p style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
-                <Link
-                  to="/products"
-                  style={{ color: "#ffffff", textDecoration: "underline", fontWeight: 500 }}
-                >
-                  Browse all products
-                </Link>
-                <Link to="/" style={{ color: "#ffffff", textDecoration: "underline" }}>
-                  Return home
-                </Link>
-              </p>
-            </section>
-          )}
+              <FontAwesomeIcon icon={faXmark} />
+            </button>
+            <button
+              className="search-page__icon-button search-page__submit"
+              type="submit"
+              aria-label="Search"
+              title="Search"
+              disabled={!trimmedDraftHasChars || Boolean(loadError)}
+            >
+              <FontAwesomeIcon icon={faMagnifyingGlass} />
+            </button>
+          </div>
 
-          {!loadError && hasCommittedSearch && hits.length > 0 && (
-            <>
-              <p style={{ marginBottom: 16, color: "#a3a3a3" }} aria-live="polite">
-                {hits.length === 1 ? "1 match" : `${hits.length} matches`}
-              </p>
-              <CatalogProductGrid products={hits} />
-            </>
+          {whitespaceSubmitted && (
+            <p role="status" className="search-page__message">
+              Search needs a product name or category; spaces alone will not return products.
+            </p>
           )}
-        </>
-      )}
+        </form>
+      </header>
+
+      <div className="search-page__body">
+        {loading && !loadError && <p className="search-page__message">Loading catalog...</p>}
+
+        {!loading && (
+          <>
+            {loadError && (
+              <p className="search-page__message search-page__message--error" role="alert">
+                {loadError}
+              </p>
+            )}
+
+            {!loadError && hasCommittedSearch && hits.length === 0 && (
+              <section className="search-page__empty" aria-labelledby="search-empty-heading">
+                <h2 id="search-empty-heading">No matching products</h2>
+                <p>
+                  Nothing in the catalog matches &ldquo;{qInUrl.trim()}&rdquo;.
+                </p>
+                <div className="search-page__links">
+                  <Link to="/products" className="search-page__link">
+                    Browse all products
+                  </Link>
+                  <Link to="/" className="search-page__link">
+                    Return home
+                  </Link>
+                </div>
+              </section>
+            )}
+
+            {!loadError && visibleProducts.length > 0 && (
+              <section aria-labelledby="search-results-heading">
+                <div className="search-page__results-bar">
+                  <h2 id="search-results-heading">{resultHeading}</h2>
+                  <p className="search-page__count" aria-live="polite">
+                    {resultCount}
+                  </p>
+                </div>
+                <CatalogProductGrid products={visibleProducts} />
+              </section>
+            )}
+
+            {!loadError && !hasCommittedSearch && visibleProducts.length === 0 && (
+              <section className="search-page__empty" aria-labelledby="search-empty-heading">
+                <h2 id="search-empty-heading">No products available</h2>
+                <p>The catalog is empty right now.</p>
+                <div className="search-page__links">
+                  <Link to="/" className="search-page__link">
+                    Return home
+                  </Link>
+                </div>
+              </section>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

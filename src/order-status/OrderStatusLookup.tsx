@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { faArrowRight, faEnvelope, faLock } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { formatPageTitleWithBrand, usePageMeta } from "../seo/meta";
 import {
   ORDER_LOOKUP_NEUTRAL_MESSAGE,
@@ -7,6 +9,7 @@ import {
   type OrderLookupFieldErrors,
 } from "./orderLookupRequest";
 import { apiUrl } from "../lib/apiBase";
+import "./OrderStatusLookup.css";
 
 const SUPPORT_MAIL = "mailto:support@zephyrlux.com";
 
@@ -59,44 +62,51 @@ const OrderStatusLookup: React.FC = () => {
 
   const emailErrorId = "order-status-email-error";
   const orderNumberErrorId = "order-status-order-number-error";
+  const emailDescribedBy = fieldErrors.email ? emailErrorId : undefined;
+  const orderNumberDescribedBy = fieldErrors.order_number
+    ? orderNumberErrorId
+    : "order-status-order-number-hint";
 
   return (
-    <main className="min-h-[70vh] bg-stone-950 text-stone-50">
-      <section className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-16">
-        <div className="flex flex-col justify-center">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-neutral-400">
-            Guest order help
+    <main className="order-lookup-page">
+      <section className="order-lookup-page__shell">
+        <div className="order-lookup-page__intro">
+          <p className="order-lookup-page__eyebrow">Guest order lookup</p>
+          <h1>Order status</h1>
+          <p className="order-lookup-page__copy">
+            Request a private order-status link using the email from checkout and your
+            Zephyr Lux order number.
           </p>
-          <h1 className="mt-3 text-3xl font-semibold leading-tight sm:text-4xl">
-            Order status
-          </h1>
-          <p className="mt-4 max-w-xl text-base leading-7 text-stone-300">
-            Enter the email used at checkout and your Zephyr Lux order number. We will send a
-            private link when those details match our records.
-          </p>
-          <p className="mt-6 max-w-xl text-sm leading-6 text-stone-400">
-            Need help right away?{" "}
-            <a className="font-medium text-neutral-300 underline-offset-4 hover:text-amber-200 hover:underline" href={SUPPORT_MAIL}>
-              Email support
-            </a>
-            .
-          </p>
+          <div className="order-lookup-page__support">
+            <span className="order-lookup-page__support-icon" aria-hidden="true">
+              <FontAwesomeIcon icon={faLock} />
+            </span>
+            <p>
+              Need help right away?{" "}
+              <a href={SUPPORT_MAIL}>Email support</a>
+            </p>
+          </div>
         </div>
 
         <form
           noValidate
           aria-busy={submitState === "submitting"}
-          className="w-full border border-stone-700 bg-stone-900/80 p-5 shadow-2xl shadow-black/20 sm:p-6"
+          className="order-lookup-form"
           onSubmit={handleSubmit}
         >
-          <div className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-stone-100" htmlFor="order-status-email">
+          <div className="order-lookup-form__header">
+            <p className="order-lookup-form__kicker">Secure link request</p>
+            <p className="order-lookup-form__note">No account required</p>
+          </div>
+
+          <div className="order-lookup-form__fields">
+            <div className="order-lookup-form__field">
+              <label className="order-lookup-form__label" htmlFor="order-status-email">
                 Email address
               </label>
               <input
                 autoComplete="email"
-                className="mt-2 block min-h-12 w-full rounded-md border border-stone-600 bg-stone-950 px-4 py-3 text-base text-stone-50 outline-none transition focus:border-amber-500/80 focus:ring-2 focus:ring-amber-500/25"
+                className="order-lookup-form__input"
                 id="order-status-email"
                 inputMode="email"
                 name="email"
@@ -104,21 +114,21 @@ const OrderStatusLookup: React.FC = () => {
                   setEmail(event.target.value);
                   if (fieldErrors.email) setFieldErrors((current) => ({ ...current, email: undefined }));
                 }}
-                aria-describedby={fieldErrors.email ? emailErrorId : undefined}
+                aria-describedby={emailDescribedBy}
                 aria-invalid={Boolean(fieldErrors.email)}
                 type="email"
                 value={email}
               />
               {fieldErrors.email && (
-                <p className="mt-2 text-sm text-red-300" id={emailErrorId} role="alert">
+                <p className="order-lookup-form__error" id={emailErrorId} role="alert">
                   {fieldErrors.email}
                 </p>
               )}
             </div>
 
-            <div>
+            <div className="order-lookup-form__field">
               <label
-                className="block text-sm font-medium text-stone-100"
+                className="order-lookup-form__label"
                 htmlFor="order-status-order-number"
               >
                 Order number
@@ -126,7 +136,7 @@ const OrderStatusLookup: React.FC = () => {
               <input
                 autoCapitalize="characters"
                 autoComplete="off"
-                className="mt-2 block min-h-12 w-full rounded-md border border-stone-600 bg-stone-950 px-4 py-3 font-mono text-base uppercase text-stone-50 outline-none transition focus:border-amber-500/80 focus:ring-2 focus:ring-amber-500/25"
+                className="order-lookup-form__input order-lookup-form__input--order"
                 id="order-status-order-number"
                 inputMode="text"
                 name="order_number"
@@ -136,13 +146,18 @@ const OrderStatusLookup: React.FC = () => {
                     setFieldErrors((current) => ({ ...current, order_number: undefined }));
                   }
                 }}
-                aria-describedby={fieldErrors.order_number ? orderNumberErrorId : undefined}
+                aria-describedby={orderNumberDescribedBy}
                 aria-invalid={Boolean(fieldErrors.order_number)}
                 placeholder="ZLX-20260428-0001"
                 value={orderNumber}
               />
+              {!fieldErrors.order_number && (
+                <p className="order-lookup-form__hint" id="order-status-order-number-hint">
+                  Example: ZLX-20260428-0001
+                </p>
+              )}
               {fieldErrors.order_number && (
-                <p className="mt-2 text-sm text-red-300" id={orderNumberErrorId} role="alert">
+                <p className="order-lookup-form__error" id={orderNumberErrorId} role="alert">
                   {fieldErrors.order_number}
                 </p>
               )}
@@ -150,25 +165,26 @@ const OrderStatusLookup: React.FC = () => {
           </div>
 
           <button
-            className="mt-6 min-h-12 w-full rounded-md bg-zlx-action px-5 py-3 text-base font-semibold text-zlx-action-text transition hover:bg-zlx-action-hover disabled:cursor-not-allowed disabled:bg-stone-600 disabled:text-stone-300"
+            className="order-lookup-form__submit"
             disabled={submitState === "submitting"}
             type="submit"
           >
-            {submitState === "submitting" ? "Sending..." : "Send secure link"}
+            <FontAwesomeIcon icon={submitState === "submitting" ? faEnvelope : faArrowRight} />
+            <span>{submitState === "submitting" ? "Sending..." : "Send secure link"}</span>
           </button>
 
           {submitState === "submitting" && (
-            <p className="mt-4 text-sm text-stone-300" role="status">
+            <p className="order-lookup-form__status" role="status">
               Sending request...
             </p>
           )}
           {submitState === "success" && (
-            <p className="mt-4 rounded-md border border-neutral-600 bg-neutral-900 px-4 py-3 text-sm text-neutral-200" role="status">
+            <p className="order-lookup-form__status order-lookup-form__status--success" role="status">
               {ORDER_LOOKUP_NEUTRAL_MESSAGE}
             </p>
           )}
           {submitState === "error" && (
-            <p className="mt-4 rounded-md border border-red-500/40 bg-red-950/50 px-4 py-3 text-sm text-red-100" role="alert">
+            <p className="order-lookup-form__status order-lookup-form__status--error" role="alert">
               We could not send the request right now. Please try again or email support.
             </p>
           )}
