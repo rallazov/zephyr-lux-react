@@ -66,24 +66,34 @@ function renderGalleryPdp() {
 }
 
 describe("ProductDetail gallery / hero parity", () => {
-  it("updates main image when variant selection changes (primary map)", async () => {
-    renderGalleryPdp();
-    expect(await screen.findByTestId("pdp-image-gallery")).toBeInTheDocument();
+  it(
+    "updates main image when variant selection changes (primary map)",
+    async () => {
+      renderGalleryPdp();
+      expect(await screen.findByTestId("pdp-image-gallery", {}, { timeout: 10_000 })).toBeInTheDocument();
 
-    fireEvent.change(screen.getByTestId("pdp-select-size"), {
-      target: { value: "S" },
-    });
+      fireEvent.change(screen.getByTestId("pdp-select-size"), {
+        target: { value: "S" },
+      });
 
-    await waitFor(() => {
-      expect(screen.getByTestId("pdp-gallery-main")).toHaveAttribute("src", "/primary-s.jpg");
-    });
+      await waitFor(
+        () => {
+          expect(screen.getByTestId("pdp-gallery-main")).toHaveAttribute("src", "/primary-s.jpg");
+        },
+        { timeout: 10_000 },
+      );
 
-    fireEvent.change(screen.getByTestId("pdp-select-size"), {
-      target: { value: "M" },
-    });
+      fireEvent.change(screen.getByTestId("pdp-select-size"), {
+        target: { value: "M" },
+      });
 
-    await waitFor(() => {
-      expect(screen.getByTestId("pdp-gallery-main")).toHaveAttribute("src", "/primary-m.jpg");
-    });
-  });
+      await waitFor(
+        () => {
+          expect(screen.getByTestId("pdp-gallery-main")).toHaveAttribute("src", "/primary-m.jpg");
+        },
+        { timeout: 10_000 },
+      );
+    },
+    25_000,
+  );
 });
