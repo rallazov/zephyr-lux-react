@@ -4,10 +4,24 @@ import type { StorefrontCartLine } from "../cart/cartLine";
 import { isServerCartQuote, type ServerCartQuote } from "../lib/cartQuoteTypes";
 import { apiUrl } from "../lib/apiBase";
 
+export type UseCartQuoteOptions = {
+  /**
+   * Suppresses the network call. Use when the cart already has a structural problem
+   * (e.g. unknown SKU after a catalog migration) so the server doesn't 400 redundantly
+   * — the cart-page validation banner already tells the user what to fix.
+   */
+  skip?: boolean;
+};
+
 /**
- * Fetches server catalog quote for current cart. Skips when there are no checkout SKUs.
+ * Fetches server catalog quote for current cart. Skips when there are no checkout SKUs
+ * or when the caller marks the cart as known-bad via `options.skip`.
  */
-export function useCartQuote(cartItems: StorefrontCartLine[]) {
+export function useCartQuote(
+  cartItems: StorefrontCartLine[],
+  options: UseCartQuoteOptions = {},
+) {
+  const { skip = false } = options;
   const drafts = useMemo(() => toCheckoutLines(cartItems), [cartItems]);
 
   const [quote, setQuote] = useState<ServerCartQuote | null>(null);
@@ -20,7 +34,7 @@ export function useCartQuote(cartItems: StorefrontCartLine[]) {
   }, []);
 
   useEffect(() => {
-    if (drafts.length === 0) {
+    if (skip || drafts.length === 0) {
       setQuote(null);
       setError(null);
       setLoading(false);
@@ -78,7 +92,7 @@ export function useCartQuote(cartItems: StorefrontCartLine[]) {
       clearTimeout(t);
       ctrl.abort();
     };
-  }, [drafts, retryToken]);
+  }, [drafts, retryToken, skip]);
 
   return { quote, loading, error, refetch, drafts } as const;
 }

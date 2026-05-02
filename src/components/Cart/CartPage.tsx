@@ -4,6 +4,7 @@ import React, { useContext, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { normalizeLineSku } from "../../cart/lineKey";
 import {
+  cartHasUnpriceableLine,
   isCartOkForCheckout,
   validateStorefrontCartLines,
 } from "../../cart/reconcile";
@@ -92,8 +93,9 @@ const CartPage: React.FC = () => {
     cartItems.length > 0 &&
     isCartOkForCheckout(validations);
 
+  const skipQuote = cartHasUnpriceableLine(validations);
   const { quote, loading: quoteLoading, error: quoteError, refetch: refetchQuote, drafts: checkoutDrafts } =
-    useCartQuote(cartItems);
+    useCartQuote(cartItems, { skip: skipQuote });
 
   const subtotal = useMemo(() => {
     if (!validations) {
