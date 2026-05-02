@@ -537,10 +537,10 @@ const ProductDetail: React.FC = () => {
     >
       <div>
         <ProductImageGallery
+          key={gallerySelectionKey}
           urls={catalogGallery.displayGalleryUrls}
           resolvedHeroUrl={resolvedHeroUrl}
           alt={product.title}
-          selectionKey={gallerySelectionKey}
         />
       </div>
       <div className="flex min-w-0 flex-col">
