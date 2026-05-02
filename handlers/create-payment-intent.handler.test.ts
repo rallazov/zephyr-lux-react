@@ -207,4 +207,30 @@ describe("create-payment-intent handler (Stripe create)", () => {
     );
     expect(capture.lastOrderInsert?.customer_id).toBe(linked);
   });
+
+  it("returns a safe diagnostic code when Stripe PaymentIntent creation fails", async () => {
+    mockCreate.mockRejectedValueOnce(new Error("Invalid API Key provided"));
+
+    const req = {
+      method: "POST",
+      body: {
+        items: [{ sku: "ZLX-2PK-S", quantity: 1 }],
+        currency: "usd",
+        email: "buyer@example.com",
+      },
+    } as VercelRequest;
+    const resJson = vi.fn();
+    const res = {
+      setHeader: vi.fn(),
+      status: vi.fn().mockReturnValue({ json: resJson }),
+    } as unknown as VercelResponse;
+
+    await handler(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(resJson).toHaveBeenCalledWith({
+      error: "Payment setup failed. Please try again.",
+      error_code: "STRIPE_CREATE_FAILED",
+    });
+  });
 });

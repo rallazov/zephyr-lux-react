@@ -21,6 +21,13 @@ const stripe = new Stripe(ENV.STRIPE_SECRET_KEY);
 
 const ORDER_PI_LINK_RETRIES = 3;
 
+function paymentSetupFailure(res: VercelResponse, errorCode: string, status = 500) {
+  return res.status(status).json({
+    error: "Payment setup failed. Please try again.",
+    error_code: errorCode,
+  });
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
@@ -92,7 +99,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json(payload);
       }
       log.error({ err }, "create-payment-intent: unexpected catalog pricing failure");
-      return res.status(500).json({ error: "Payment setup failed. Please try again." });
+      return paymentSetupFailure(res, "CATALOG_PRICING_FAILED");
     }
 
     const amount = quote.total_cents;
@@ -141,7 +148,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { data: orderNumber, error: numErr } = await admin.rpc("allocate_order_number");
     if (numErr || typeof orderNumber !== "string") {
       log.error({ err: numErr }, "create-payment-intent: allocate_order_number failed");
-      return res.status(500).json({ error: "Payment setup failed. Please try again." });
+      return paymentSetupFailure(res, "ORDER_NUMBER_FAILED");
     }
 
     let itemRows: ReturnType<typeof orderItemRowsFromQuote>;
@@ -149,7 +156,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       itemRows = orderItemRowsFromQuote(quote);
     } catch (err) {
       log.error({ err }, "create-payment-intent: snapshot build failed");
-      return res.status(500).json({ error: "Payment setup failed. Please try again." });
+      return paymentSetupFailure(res, "ORDER_SNAPSHOT_FAILED");
     }
 
     const customerName = data.customer_name?.trim().slice(0, 200) || null;
@@ -181,7 +188,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (orderErr || !orderRow?.id) {
       log.error({ err: orderErr }, "create-payment-intent: order insert failed");
-      return res.status(500).json({ error: "Payment setup failed. Please try again." });
+      return paymentSetupFailure(res, "ORDER_INSERT_FAILED");
     }
 
     const orderId = orderRow.id as string;
@@ -208,7 +215,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       log.error({ err: itemsErr }, "create-payment-intent: order_items insert failed");
       await admin.from("orders").delete().eq("id", orderId);
       pendingOrderCleanupId = null;
-      return res.status(500).json({ error: "Payment setup failed. Please try again." });
+      return paymentSetupFailure(res, "ORDER_ITEMS_INSERT_FAILED");
     }
 
     const metadata: Record<string, string> = {
@@ -234,7 +241,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       log.error({ err: stripeErr }, "create-payment-intent: Stripe PaymentIntent create failed");
       await admin.from("orders").delete().eq("id", orderId);
       pendingOrderCleanupId = null;
-      return res.status(500).json({ error: "Payment setup failed. Please try again." });
+      return paymentSetupFailure(res, "STRIPE_CREATE_FAILED");
     }
 
     if (!pi.client_secret) {
@@ -244,7 +251,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       );
       await admin.from("orders").delete().eq("id", orderId);
       pendingOrderCleanupId = null;
-      return res.status(500).json({ error: "Payment setup failed. Please try again." });
+      return paymentSetupFailure(res, "STRIPE_CLIENT_SECRET_MISSING");
     }
 
     const { error: linkErr } = await linkOrderToPaymentIntentId({
@@ -268,7 +275,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       await admin.from("orders").delete().eq("id", orderId);
       pendingOrderCleanupId = null;
-      return res.status(500).json({ error: "Payment setup failed. Please try again." });
+      return paymentSetupFailure(res, "ORDER_PAYMENT_LINK_FAILED");
     }
 
     pendingOrderCleanupId = null;
@@ -304,6 +311,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
     }
-    return res.status(500).json({ error: "Payment setup failed. Please try again." });
+    return paymentSetupFailure(res, "PAYMENT_SETUP_UNEXPECTED");
   }
 }

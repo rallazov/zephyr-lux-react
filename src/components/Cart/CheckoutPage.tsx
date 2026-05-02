@@ -453,15 +453,19 @@ const CheckoutPage = () => {
                 const json = (await res.json()) as {
                     clientSecret?: string;
                     error?: string;
+                    error_code?: string;
                     checkoutRef?: string;
                     orderLookupKey?: string;
                 };
                 if (cancelled) return;
                 if (!res.ok) {
                     setClientSecret(null);
+                    const diagnostic = json.error_code ? ` Reference: ${json.error_code}.` : "";
                     setPaymentError(
-                        json.error ??
+                        `${
+                            json.error ??
                             "We could not start payment for your bag. Please return to your bag and try again."
+                        }${diagnostic}`
                     );
                     return;
                 }
