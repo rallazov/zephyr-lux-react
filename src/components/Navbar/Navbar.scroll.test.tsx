@@ -106,10 +106,10 @@ describe("Navbar scroll & mobile drawer behavior", () => {
     expect(shopWomen).toHaveAttribute("href", "/women");
   });
 
-  it("order lookup icon links to order status (honest account affordance)", () => {
+  it("account icon links to the account route", () => {
     renderNav();
-    const orderLookup = screen.getByRole("link", { name: /order lookup/i });
-    expect(orderLookup).toHaveAttribute("href", "/order-status");
+    const account = screen.getByRole("link", { name: /^account$/i });
+    expect(account).toHaveAttribute("href", "/account");
   });
 
 });

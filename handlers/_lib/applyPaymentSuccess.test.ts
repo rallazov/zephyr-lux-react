@@ -111,6 +111,12 @@ describe("applyPaymentIntentSucceeded", () => {
     );
     expect(markFailed).not.toHaveBeenCalled();
     expect(updateFn).toHaveBeenCalled();
+    const patch = updateFn.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(patch).toMatchObject({
+      payment_status: "paid",
+      customer_email: "buyer@example.com",
+    });
+    expect("customer_id" in patch).toBe(false);
   });
 
   it("marks ledger failed when PI amount does not match order", async () => {

@@ -12,6 +12,10 @@ import { log } from "./_lib/logger";
 import { isUnsendableCustomerEmail } from "./_lib/customerOrderConfirmation";
 import { orderItemRowsFromQuote, PENDING_CHECKOUT_SHIPPING_JSON } from "./_lib/orderSnapshots";
 import { getSupabaseAdmin } from "./_lib/supabaseAdmin";
+import {
+  getBearerAuthorizationHeader,
+  resolveVerifiedCustomerIdForCheckoutOrder,
+} from "./_lib/verifyAdminJwt";
 
 const stripe = new Stripe(ENV.STRIPE_SECRET_KEY);
 
@@ -105,6 +109,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(503).json({ error: "Checkout persistence is not available." });
     }
 
+    const bearerToken = getBearerAuthorizationHeader(req.headers?.authorization);
+    if (bearerToken && !ENV.SUPABASE_ANON_KEY.trim()) {
+      log.warn(
+        "create-payment-intent: Authorization Bearer present but SUPABASE_ANON_KEY is unset; customer linkage will be skipped",
+      );
+    }
+    const linkedCustomerId = await resolveVerifiedCustomerIdForCheckoutOrder({
+      admin,
+      bearerAccessToken: bearerToken,
+    });
+
     const checkoutRef = `cr_${randomBytes(12).toString("hex")}`;
     const orderConfirmationKey = randomBytes(24).toString("hex");
 
@@ -145,6 +160,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       order_confirmation_key: orderConfirmationKey,
       customer_email: customerEmail,
       customer_name: customerName,
+      customer_id: linkedCustomerId,
       payment_status: "pending_payment" as const,
       fulfillment_status: "processing" as const,
       subtotal_cents: quote.subtotal_cents,

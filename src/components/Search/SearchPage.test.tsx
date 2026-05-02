@@ -139,7 +139,6 @@ describe("SearchPage", () => {
   });
 
   it("shows designed empty state when nothing matches", async () => {
-    const user = userEvent.setup();
     vi.mocked(getDefaultCatalogAdapter).mockReturnValue({
       listProducts: async () => alphaRow,
       listProductsByCategory: async () => [],

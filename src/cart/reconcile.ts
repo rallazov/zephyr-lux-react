@@ -84,7 +84,7 @@ export function resolveVariantForLine(
   row: CatalogListItem
 ): { variant: ProductVariant | null; skuNorm: string; ambiguous: boolean } {
   const variants = row.product.variants;
-  let skuNorm = normalizeLineSku(line.sku);
+  const skuNorm = normalizeLineSku(line.sku);
 
   if (skuNorm === "") {
     if (variants.length === 1) {

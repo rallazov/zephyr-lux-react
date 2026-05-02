@@ -5,9 +5,10 @@ import { Link, useLocation, useNavigate, useSearchParams } from "react-router-do
 import { ANALYTICS_EVENTS } from "../../analytics/events";
 import { dispatchAnalyticsEvent } from "../../analytics/sink";
 import {
-  isCartOkForCheckout,
-  validateStorefrontCartLines,
+    isCartOkForCheckout,
+    validateStorefrontCartLines,
 } from "../../cart/reconcile";
+import { useAuth } from "../../auth/AuthContext";
 import { CartContext } from "../../context/CartContext";
 import { getDefaultCatalogAdapter } from "../../catalog/factory";
 import type { CatalogListItem } from "../../catalog/types";
@@ -137,6 +138,7 @@ const CheckoutPage = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const [searchParams] = useSearchParams();
+    const { session } = useAuth();
     const checkoutCanceled = searchParams.get("checkout") === "canceled";
 
     const [catalogList, setCatalogList] = useState<CatalogListItem[] | null>(null);
@@ -272,6 +274,9 @@ const CheckoutPage = () => {
         () => JSON.stringify({ lines: checkoutLines, ...debouncedCheckoutContext }),
         [checkoutLines, debouncedCheckoutContext]
     );
+
+    /** Re-bootstrap PaymentIntent when auth session appears/changes — bearer drives server `customer_id` linkage (10-3). */
+    const storefrontAuthBootstrap = session?.user?.id ?? "_guest";
 
     /** Stable fingerprint so catalog list fetch is not tied to cart array identity. */
     const catalogFetchKey = useMemo(
@@ -416,7 +421,12 @@ const CheckoutPage = () => {
             try {
                 const res = await fetch(apiUrl("/api/create-payment-intent"), {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: {
+                        "Content-Type": "application/json",
+                        ...(session?.access_token
+                            ? { Authorization: `Bearer ${session.access_token}` }
+                            : {}),
+                    },
                     body: JSON.stringify({
                         items: checkoutLines,
                         email: debouncedCheckoutContext.email || undefined,
@@ -483,9 +493,9 @@ const CheckoutPage = () => {
         return () => {
             cancelled = true;
         };
-    // paymentBootstrapKey encodes checkoutLines + debounced contact/shipping
+    // paymentBootstrapKey encodes checkoutLines + debounced contact/shipping; session access token rotates independently of stable user ids.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- avoid duplicate fetches when primitives match fingerprint
-    }, [paymentBootstrapKey, checkoutOk, quote]);
+    }, [paymentBootstrapKey, storefrontAuthBootstrap, session?.access_token, checkoutOk, quote]);
 
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();

@@ -15,6 +15,8 @@ import CheckoutPage from "../Cart/CheckoutPage";
 import CollectionPage from "../Collection/CollectionPage";
 // import StripeProvider from '../Cart/StripeProvider';
 import HomePage from "../Home/HomePage";
+import AccountPage from "../../account/AccountPage";
+import AccountOrderDetailPage from "../../account/AccountOrderDetailPage";
 import OrderConfirmation from '../OrderConfirmation/OrderConfirmation';
 import CustomerOrderStatusPage from "../../order-status/CustomerOrderStatusPage";
 import OrderStatusLookup from "../../order-status/OrderStatusLookup";
@@ -81,6 +83,9 @@ export function AppRoutes() {
             />
 
             <Route path="/checkout" element={<CheckoutPage />} />
+
+            <Route path="/account" element={<AccountPage />} />
+            <Route path="/account/orders/:orderId" element={<AccountOrderDetailPage />} />
 
             <Route
               path="/order-confirmation"

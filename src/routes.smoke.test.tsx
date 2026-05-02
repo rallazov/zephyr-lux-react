@@ -77,6 +77,7 @@ describe("storefront route smoke (App.tsx router tree)", () => {
     ["/", /Premium essentials/i],
     ["/products", /Product List/i],
     ["/search", /^Search$/i],
+    ["/account", /^Account$/i],
     ["/women", /Women.*essentials/i],
     ["/men", /Refined everyday wear/i],
     ["/kids", /Little wardrobe staples/i],
@@ -97,6 +98,20 @@ describe("storefront route smoke (App.tsx router tree)", () => {
     ["/subscription/checkout/success", /Thank you/i],
     ["/subscription/checkout/canceled", /Checkout canceled/i],
   ];
+
+  it("guest /account/orders/:id resolves to sign-in gate (not storefront 500)", async () => {
+    renderRoute(`/account/orders/${"11111111-1111-4111-8111-111111111111"}`);
+    expect(await screen.findByTestId("storefront-layout")).toBeInTheDocument();
+    // needs-auth when Supabase is configured and session resolves; missing-config when VITE_* is unset.
+    // CI may have real env + slow/blocked getSession — allow a longer window than the default 5s RTL cap.
+    expect(
+      await screen.findByRole(
+        "heading",
+        { name: /^(Sign in required|Unavailable)$/i },
+        { timeout: 15_000 },
+      ),
+    ).toBeInTheDocument();
+  });
 
   it("redirects unknown policy subpath to policy index", async () => {
     renderRoute("/policies/__no_such_policy__");
@@ -142,9 +157,11 @@ describe("storefront route smoke (App.tsx router tree)", () => {
     }
     renderRoute(path);
     expect(await screen.findByTestId("storefront-layout")).toBeInTheDocument();
-    const headingOpts =
-      path === "/checkout" ? { name: textMatcher, timeout: 15_000 } : { name: textMatcher };
-    expect(await screen.findByRole("heading", headingOpts)).toBeInTheDocument();
+    if (path === "/checkout") {
+      expect(await screen.findByRole("heading", { name: textMatcher }, { timeout: 15_000 })).toBeInTheDocument();
+    } else {
+      expect(await screen.findByRole("heading", { name: textMatcher })).toBeInTheDocument();
+    }
     if (path.startsWith("/product/")) {
       expect(await screen.findByTestId("pdp")).toBeInTheDocument();
       expect(await screen.findByTestId("pdp-variant-selector")).toBeInTheDocument();

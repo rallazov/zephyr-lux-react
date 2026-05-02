@@ -1,26 +1,21 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 type Props = {
   urls: string[];
   resolvedHeroUrl: string;
   alt: string;
-  /** Resets manual thumbnail selection when variant selection changes (e.g. selected SKU). */
-  selectionKey: string;
 };
 
 /**
  * PDP image region: single hero + optional thumbnail strip (scroll-snap on narrow viewports).
- * Manual pick updates the visible hero; variant changes reset to `resolvedHeroUrl`.
+ * Manual pick updates the visible hero. Parent remounts this component when the variant context
+ * changes (`key` on `ProductDetail`) so thumbnail index never leaks across SKUs.
  */
 const ProductImageGallery: React.FC<Props> = (props) => {
-  const { urls, resolvedHeroUrl, alt, selectionKey } = props;
+  const { urls, resolvedHeroUrl, alt } = props;
   const slides =
     urls.length > 0 ? urls : [resolvedHeroUrl].filter((u) => u.trim().length > 0);
   const [userSlide, setUserSlide] = useState<number | null>(null);
-
-  useEffect(() => {
-    setUserSlide(null);
-  }, [selectionKey]);
 
   const defaultIdx = Math.max(
     0,

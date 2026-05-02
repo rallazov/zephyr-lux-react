@@ -115,13 +115,15 @@ const CustomerOrderStatusPage: React.FC = () => {
           </div>
         )}
 
-        {loadState.status === "ready" && <OrderStatusReady view={loadState.view} />}
+        {loadState.status === "ready" && (
+          <CustomerOrderStatusReady view={loadState.view} />
+        )}
       </section>
     </main>
   );
 };
 
-function OrderStatusReady({ view }: { view: CustomerOrderStatusViewModel }) {
+export function CustomerOrderStatusReady({ view }: { view: CustomerOrderStatusViewModel }) {
   return (
     <div className="order-print-customer-ready space-y-6">
       <section className="grid gap-5 border border-stone-700 bg-stone-900 px-5 py-6 sm:grid-cols-[1.2fr_0.8fr] sm:px-6">
