@@ -251,6 +251,27 @@ export function isCartOkForCheckout(validation: CartLineValidation[]): boolean {
 }
 
 /**
+ * `true` when at least one line references something the server can't price
+ * (unknown product/SKU or a legacy multi-variant line missing its SKU).
+ * Stock/quantity issues are excluded — those still quote successfully server-side.
+ *
+ * Callers use this to suppress `/api/cart-quote` calls that we know will 400.
+ */
+export function cartHasUnpriceableLine(
+  validation: CartLineValidation[] | null | undefined,
+): boolean {
+  if (!validation) return false;
+  return validation.some((v) =>
+    v.issues.some(
+      (i) =>
+        i.code === "unknown_sku" ||
+        i.code === "unknown_product" ||
+        i.code === "missing_variant",
+    ),
+  );
+}
+
+/**
  * Refresh catalog-backed fields without removing lines. Fills SKU for single-variant products.
  */
 export function syncCartLinesFromCatalog(

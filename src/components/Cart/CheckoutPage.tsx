@@ -5,6 +5,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from "react-router-do
 import { ANALYTICS_EVENTS } from "../../analytics/events";
 import { dispatchAnalyticsEvent } from "../../analytics/sink";
 import {
+    cartHasUnpriceableLine,
     isCartOkForCheckout,
     validateStorefrontCartLines,
 } from "../../cart/reconcile";
@@ -144,20 +145,22 @@ const CheckoutPage = () => {
     const [catalogList, setCatalogList] = useState<CatalogListItem[] | null>(null);
     const [catalogError, setCatalogError] = useState(false);
 
-    const {
-        quote,
-        error: cartQuoteError,
-        refetch: refetchCartQuote,
-        drafts: checkoutLines,
-        loading: cartQuoteLoading,
-    } = useCartQuote(cartItems);
-
     const [clientSecret, setClientSecret] = useState<string | null>(null);
 
     const validations = useMemo(() => {
         if (!catalogList) return null;
         return validateStorefrontCartLines(cartItems, catalogList);
     }, [cartItems, catalogList]);
+
+    const skipCartQuote = cartHasUnpriceableLine(validations);
+
+    const {
+        quote,
+        error: cartQuoteError,
+        refetch: refetchCartQuote,
+        drafts: checkoutLines,
+        loading: cartQuoteLoading,
+    } = useCartQuote(cartItems, { skip: skipCartQuote });
 
     const checkoutOk =
         catalogList != null &&
