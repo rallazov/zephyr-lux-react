@@ -15,6 +15,8 @@ import { SITE_BRAND } from "../../seo/site";
 import { apiUrl } from "../../lib/apiBase";
 
 const SUPPORT_MAIL = "mailto:support@zephyrlux.com";
+const ORDER_LOOKUP_POLL_ATTEMPTS = 15;
+const ORDER_LOOKUP_POLL_DELAY_MS = 2_000;
 
 type PaidOrderApiResponse = {
   order_number: string;
@@ -99,20 +101,35 @@ const OrderConfirmation: React.FC = () => {
       return;
     }
     const lq = encodeURIComponent(lookup);
-    fetch(
-      apiUrl(`/api/order-by-payment-intent?payment_intent_id=${q}&order_lookup=${lq}`),
-    )
-      .then(async (r) => {
-        if (!r.ok) return null;
-        return r.json() as Promise<PaidOrderApiResponse>;
-      })
-      .then((data) => {
-        if (cancelled) return;
-        if (data?.order_number) setPaidOrder(data);
-      })
-      .finally(() => {
-        if (!cancelled) setPaidOrderLoading(false);
+    const lookupUrl = apiUrl(`/api/order-by-payment-intent?payment_intent_id=${q}&order_lookup=${lq}`);
+    const wait = (ms: number) =>
+      new Promise((resolve) => {
+        window.setTimeout(resolve, ms);
       });
+
+    const poll = async () => {
+      for (let attempt = 0; attempt < ORDER_LOOKUP_POLL_ATTEMPTS && !cancelled; attempt += 1) {
+        try {
+          const response = await fetch(lookupUrl);
+          if (response.ok) {
+            const data = (await response.json()) as PaidOrderApiResponse;
+            if (!cancelled && data?.order_number) {
+              setPaidOrder(data);
+              setPaidOrderLoading(false);
+              return;
+            }
+          }
+        } catch {
+          /* Keep polling briefly; Stripe webhooks can land a moment after redirect. */
+        }
+        if (attempt < ORDER_LOOKUP_POLL_ATTEMPTS - 1) {
+          await wait(ORDER_LOOKUP_POLL_DELAY_MS);
+        }
+      }
+      if (!cancelled) setPaidOrderLoading(false);
+    };
+
+    void poll();
     return () => {
       cancelled = true;
     };
@@ -240,24 +257,25 @@ const OrderConfirmation: React.FC = () => {
           </p>
         )}
         {paidOrderLoading && (
-          <p className="text-sm text-gray-400 mb-4" role="status">
-            Checking your order in our system…
-          </p>
+          <div className="mb-4 rounded-lg border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-amber-100" role="status">
+            Recording your order number. This can take a few seconds after Stripe authorizes the payment.
+          </div>
         )}
         <p className="text-gray-300 mb-6">{sub}</p>
         <p className="text-sm text-gray-500 mb-8" role="status">
-          Your order is confirmed in our system only after we receive a successful
-          payment notification — you’ll get email confirmation when that happens.
+          {paidOrderLoading
+            ? "We are checking for the paid order record now. The order number will appear here as soon as the webhook finishes."
+            : "If the order number does not appear, check the payment webhook and confirmation email logs. Your card authorization alone is not the final store order record."}
         </p>
         <div className="flex flex-col sm:flex-row gap-4">
           <Link
             to="/cart"
-            className="inline-block text-center border border-gray-500 rounded px-4 py-2 hover:bg-gray-800"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-neutral-200 bg-white px-5 py-2 text-center font-semibold text-black hover:bg-neutral-200"
           >
             Back to bag
           </Link>
           <a
-            className="inline-block text-center rounded border border-neutral-500 px-4 py-2 text-neutral-100 hover:bg-neutral-900"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-neutral-600 px-5 py-2 text-center font-semibold text-neutral-100 hover:border-neutral-300 hover:bg-neutral-900"
             href={SUPPORT_MAIL}
           >
             Email support
