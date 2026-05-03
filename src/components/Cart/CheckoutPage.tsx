@@ -407,7 +407,13 @@ const CheckoutPage = () => {
     }, [checkoutOk]);
 
     useEffect(() => {
-        if (IS_MOCK_PAYMENT || !checkoutOk || !quote || checkoutLines.length === 0) {
+        if (
+            IS_MOCK_PAYMENT ||
+            !checkoutOk ||
+            !quote ||
+            checkoutLines.length === 0 ||
+            !debouncedCheckoutContext.email
+        ) {
             if (!IS_MOCK_PAYMENT) {
                 setClientSecret(null);
             }

@@ -233,4 +233,33 @@ describe("create-payment-intent handler (Stripe create)", () => {
       error_code: "STRIPE_CREATE_FAILED",
     });
   });
+
+  it("returns a safe database cause code when pending order insert fails", async () => {
+    orderInsertSingle.mockResolvedValueOnce({
+      data: null,
+      error: { code: "42703", message: "column does not exist" },
+    });
+
+    const req = {
+      method: "POST",
+      body: {
+        items: [{ sku: "ZLX-2PK-S", quantity: 1 }],
+        currency: "usd",
+        email: "buyer@example.com",
+      },
+    } as VercelRequest;
+    const resJson = vi.fn();
+    const res = {
+      setHeader: vi.fn(),
+      status: vi.fn().mockReturnValue({ json: resJson }),
+    } as unknown as VercelResponse;
+
+    await handler(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(resJson).toHaveBeenCalledWith({
+      error: "Payment setup failed. Please try again.",
+      error_code: "ORDER_INSERT_FAILED/42703",
+    });
+  });
 });

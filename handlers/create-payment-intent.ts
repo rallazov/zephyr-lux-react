@@ -21,11 +21,19 @@ const stripe = new Stripe(ENV.STRIPE_SECRET_KEY);
 
 const ORDER_PI_LINK_RETRIES = 3;
 
-function paymentSetupFailure(res: VercelResponse, errorCode: string, status = 500) {
+function paymentSetupFailure(res: VercelResponse, errorCode: string, status = 500, causeCode?: string) {
   return res.status(status).json({
     error: "Payment setup failed. Please try again.",
-    error_code: errorCode,
+    error_code: causeCode ? `${errorCode}/${causeCode}` : errorCode,
   });
+}
+
+function safeProviderCauseCode(err: unknown): string | undefined {
+  if (!err || typeof err !== "object") return undefined;
+  const code = (err as { code?: unknown }).code;
+  if (typeof code !== "string") return undefined;
+  const clean = code.trim().toUpperCase();
+  return /^[A-Z0-9_]{2,32}$/.test(clean) ? clean : undefined;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -188,7 +196,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (orderErr || !orderRow?.id) {
       log.error({ err: orderErr }, "create-payment-intent: order insert failed");
-      return paymentSetupFailure(res, "ORDER_INSERT_FAILED");
+      return paymentSetupFailure(res, "ORDER_INSERT_FAILED", 500, safeProviderCauseCode(orderErr));
     }
 
     const orderId = orderRow.id as string;
