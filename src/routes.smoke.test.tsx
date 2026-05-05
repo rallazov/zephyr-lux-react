@@ -39,6 +39,11 @@ describe("storefront route smoke (App.tsx router tree)", () => {
     expect(screen.queryByTestId("storefront-layout")).not.toBeInTheDocument();
   });
 
+  it("unauthenticated /admin/variant-templates shows sign-in experience (11-2)", async () => {
+    renderRoute("/admin/variant-templates");
+    expect(await screen.findByRole("heading", { name: /admin sign in/i })).toBeInTheDocument();
+  });
+
   it("unauthenticated /admin/products shows sign-in experience (AC1)", async () => {
     renderRoute("/admin/products");
     expect(await screen.findByRole("heading", { name: /admin sign in/i })).toBeInTheDocument();
@@ -51,6 +56,11 @@ describe("storefront route smoke (App.tsx router tree)", () => {
 
   it("unauthenticated /admin/orders/:id shows sign-in experience", async () => {
     renderRoute("/admin/orders/00000000-0000-4000-8000-000000000001");
+    expect(await screen.findByRole("heading", { name: /admin sign in/i })).toBeInTheDocument();
+  });
+
+  it("unauthenticated /admin/variant-templates shows sign-in gate (11-2)", async () => {
+    renderRoute("/admin/variant-templates");
     expect(await screen.findByRole("heading", { name: /admin sign in/i })).toBeInTheDocument();
   });
 

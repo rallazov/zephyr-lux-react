@@ -51,6 +51,17 @@ export default function AdminLayout() {
                 >
                   Products
                 </NavLink>
+                <NavLink
+                  to="/admin/variant-templates"
+                  className={({ isActive }) =>
+                    [
+                      "shrink-0 inline-flex items-center justify-center min-h-11 px-3 rounded-md text-sm transition-colors",
+                      isActive ? "bg-blue-50 text-blue-800 font-medium" : "text-slate-600 hover:bg-slate-100",
+                    ].join(" ")
+                  }
+                >
+                  Templates
+                </NavLink>
                 <a
                   className="shrink-0 inline-flex items-center justify-center min-h-11 px-3 rounded-md text-sm text-slate-600 hover:bg-slate-100"
                   href="/"

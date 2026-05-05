@@ -2,6 +2,12 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import type { z } from "zod";
 import { useAuth } from "../auth/AuthContext";
+import type { ProductStatus, ProductVariantStatus } from "../domain/commerce/enums";
+import type { VariantTemplate } from "../domain/commerce/variantTemplate";
+import {
+  parseVariantTemplateJoinRow,
+  variantsSatisfyTemplate,
+} from "./variantTemplateValidation";
 import {
   adminImageRowSchema,
   adminSaveBundleSchema,
@@ -12,7 +18,6 @@ import {
   validateMergedProduct,
 } from "./validation";
 import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
-import type { ProductStatus, ProductVariantStatus } from "../domain/commerce/enums";
 
 type VRow = z.infer<typeof adminVariantRowSchema>;
 type IRow = z.infer<typeof adminImageRowSchema>;
@@ -103,9 +108,40 @@ export default function AdminProductForm() {
   const [care, setCare] = useState("");
   const [origin, setOrigin] = useState("");
   const [status, setStatus] = useState<ProductStatus>("draft");
+  const [variantTemplateId, setVariantTemplateId] = useState<string | null>(null);
+  const [variantTemplates, setVariantTemplates] = useState<
+    { id: string; name: string; status: string; domain: VariantTemplate }[]
+  >([]);
+  const [templatesLoadErr, setTemplatesLoadErr] = useState<string | null>(null);
   const [variants, setVariants] = useState<VRow[]>(() => [newVariantRow()]);
   const [images, setImages] = useState<IRow[]>([]);
   const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlanAdminRow[]>(() => []);
+
+  useEffect(() => {
+    if (!supabase) return;
+    void (async () => {
+      setTemplatesLoadErr(null);
+      const { data, error } = await supabase
+        .from("variant_templates")
+        .select(
+          "id, name, status, variant_template_axes(id, axis_key, label, sort_order, variant_template_axis_options(id, option_key, label, sort_order))",
+        )
+        .order("name");
+      if (error) {
+        setTemplatesLoadErr(error.message);
+        setVariantTemplates([]);
+        return;
+      }
+      setVariantTemplates(
+        (data ?? []).map((row) => ({
+          id: row.id as string,
+          name: row.name as string,
+          status: row.status as string,
+          domain: parseVariantTemplateJoinRow(row as Record<string, unknown>),
+        })),
+      );
+    })();
+  }, [supabase]);
 
   useEffect(() => {
     if (isNew || !productId || !supabase) {
@@ -142,6 +178,9 @@ export default function AdminProductForm() {
       setCare((data as { care_instructions: string | null }).care_instructions ?? "");
       setOrigin((data as { origin: string | null }).origin ?? "");
       setStatus((data as { status: ProductStatus }).status);
+      setVariantTemplateId(
+        (data as { variant_template_id?: string | null }).variant_template_id ?? null,
+      );
 
       const vRows = (data as { product_variants: Record<string, unknown>[] }).product_variants
         .slice()
@@ -215,6 +254,7 @@ export default function AdminProductForm() {
       }
       const productPart = {
         id: productId ?? undefined,
+        variant_template_id: variantTemplateId,
         slug: slug.trim(),
         title: title.trim(),
         subtitle: subtitle.trim() || undefined,
@@ -259,6 +299,26 @@ export default function AdminProductForm() {
       if (!domain.success) {
         setFormErr(formatZodError(domain.error));
         return;
+      }
+      const tid = parse.data.product.variant_template_id;
+      if (tid) {
+        const entry = variantTemplates.find((t) => t.id === tid);
+        if (!entry) {
+          setFormErr("Selected variant template could not be loaded. Refresh and try again.");
+          return;
+        }
+        const sat = variantsSatisfyTemplate(
+          parse.data.variants.map((v) => ({
+            sku: v.sku,
+            size: v.size,
+            color: v.color,
+          })),
+          entry.domain,
+        );
+        if (!sat.ok) {
+          setFormErr(sat.message);
+          return;
+        }
       }
       setSaving(true);
       try {
@@ -305,7 +365,9 @@ export default function AdminProductForm() {
       care,
       origin,
       status,
+      variantTemplateId,
       variants,
+      variantTemplates,
       images,
       subscriptionPlans,
       isNew,
@@ -455,6 +517,71 @@ export default function AdminProductForm() {
             </select>
           </label>
         </div>
+      </section>
+
+      <section
+        className="bg-white border border-slate-200 rounded-lg p-4 space-y-3"
+        data-testid="admin-product-variant-template-section"
+      >
+        <h2 className="font-semibold text-slate-800">Variant template</h2>
+        <p className="text-xs text-slate-500 max-w-2xl">
+          Optional. Assign a reusable axis layout from{" "}
+          <span className="font-medium">Admin → Templates</span>. Leave unset to keep classic size/color only.
+        </p>
+        {templatesLoadErr ? (
+          <p className="text-sm text-amber-800" role="status">
+            Could not load templates: {templatesLoadErr}
+          </p>
+        ) : null}
+        <label className="block text-sm max-w-xl">
+          <span className="text-slate-600">Template</span>
+          <select
+            className="mt-1 w-full border border-slate-300 rounded px-2 py-1.5"
+            value={variantTemplateId ?? ""}
+            onChange={(e) => {
+              const v = e.target.value;
+              setVariantTemplateId(v === "" ? null : v);
+            }}
+          >
+            <option value="">(none — legacy size / color only)</option>
+            {variantTemplates
+              .filter((t) => t.status !== "archived" || t.id === variantTemplateId)
+              .map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name} ({t.status})
+                </option>
+              ))}
+          </select>
+        </label>
+        {variantTemplateId ? (
+          <div
+            className="text-sm text-slate-700 border border-slate-100 rounded p-3 bg-slate-50"
+            data-testid="admin-product-variant-template-summary"
+          >
+            {(() => {
+              const sel = variantTemplates.find((x) => x.id === variantTemplateId);
+              if (!sel) {
+                return <p>Template details loading…</p>;
+              }
+              const d = sel.domain;
+              return (
+                <ul className="list-disc pl-5 space-y-1">
+                  <li className="list-none -ml-5 mb-2">
+                    <span className="font-medium">{d.name}</span>
+                    <span className="text-slate-500"> — {d.status}</span>
+                  </li>
+                  {d.axes.map((ax) => (
+                    <li key={ax.id}>
+                      Axis <span className="font-mono">{ax.axis_key}</span>
+                      {ax.label ? ` (${ax.label})` : ""}: {ax.options.length} option
+                      {ax.options.length === 1 ? "" : "s"}
+                    </li>
+                  ))}
+                </ul>
+              );
+            })()}
+          </div>
+        ) : null}
       </section>
 
       <section className="bg-white border border-slate-200 rounded-lg p-4 space-y-3">

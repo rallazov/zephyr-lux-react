@@ -33,5 +33,8 @@ describe("AdminLayout (mobile-friendly chrome)", () => {
 
     const ordersLink = screen.getByRole("link", { name: "Orders" });
     expect(ordersLink).toHaveClass("min-h-11");
+
+    const templatesLink = screen.getByRole("link", { name: "Templates" });
+    expect(templatesLink).toHaveClass("min-h-11");
   });
 });

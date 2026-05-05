@@ -8,3 +8,4 @@ export * from "./shipment";
 export * from "./shipmentImage";
 export * from "./subscription";
 export * from "./trackingUrl";
+export * from "./variantTemplate";

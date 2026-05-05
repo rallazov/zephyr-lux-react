@@ -306,8 +306,46 @@ Optional logged-in experience: Supabase customer auth, `/account`, order history
 | 10-3 | Link paid orders to customer records through checkout/webhook-safe server logic without exposing customer PII through browser queries |
 | 10-4 | Authenticated account order history view that reuses customer-safe order status semantics and does not replace secure magic-link lookup |
 
-### Epic 11 — Variant template builder (backlog)
+### Epic 11 — Variant template builder
 
-Admin-defined variant axes beyond fixed size/color columns; only after multiple product families justify dynamic schemas.
+**Goal:** Let admins define **variant axes** (beyond fixed `size` / `color` columns on `product_variants`) and attach a **template** to a product so PDP selectors and admin variant editing stay coherent as assortment grows across product families.
 
-**Deferred from immediate phase:** Customer push/SMS alerts beyond email (owner push prototype already exists); full configurable bundle composer.
+**Prerequisites:** Epic 2 catalog schema (`products`, `product_variants`), admin save path ([2-6](../implementation-artifacts/2-6-admin-create-edit-product-variants.md)), and storefront variant selection ([2-4](../implementation-artifacts/2-4-variant-selector-size-color-price-stock.md)). **Epic 9** fixed-assortment / single-axis behaviors must **remain correct** for products **without** a template (legacy columns only).
+
+**Out of scope (still deferred):** Customer push/SMS beyond email; full configurable bundle composer; arbitrary customer-facing “build your own bundle.”
+
+**Suggested implementation order:** **11-1 → 11-2 → 11-3** (strict); **11-4** after **11-3** or in parallel once **11-1** is stable.
+
+| Story | Summary |
+|-------|---------|
+| **11-1** | **Template schema + RLS + domain types** — Persist variant templates (axes, allowed values or constraints), optional `products.template_id`, backward-compatible nullable FK; admin-only writes; Zod/domain alignment with existing `productVariantSchema` evolution strategy documented in Dev Notes. |
+| **11-2** | **Admin template CRUD + assign to product** — Screens/API to create/edit/archive templates, assign template to a product, validate axis keys (stable identifiers) and option lists; guardrails for combination explosion (warn or cap). |
+| **11-3** | **Dynamic admin variants + storefront selectors** — Product form renders axes from template; PDP/cart use axis metadata for labels and selection while **checkout identity stays SKU-based**; keyboard/a11y parity with current selectors ([UX-DR12–DR13](#accessibility-baseline)). |
+| **11-4** | **Legacy coexistence + rollout** — Catalog adapter (Supabase + static seed path if still used) resolves template vs legacy variants consistently; migration notes or optional script to attach templates to existing products without breaking SKU uniqueness or Epic 9 pack semantics. |
+
+#### Story 11-1 — Variant template schema, RLS, and domain types
+
+1. **Given** the existing `product_variants` table with `size`/`color` text columns, **when** migrations run, **then** new template-related tables (or documented additive columns) exist with clear naming, indexes, and **no breaking change** to storefront reads for rows that omit `template_id`.
+2. **Given** a product row, **when** `template_id` is null, **then** variant behavior matches today’s **legacy** size/color model end-to-end (admin + PDP + cart).
+3. **Given** catalog write policies from Epic 2/5/6, **when** templates are mutated, **then** only **admin** principals can insert/update/delete template definitions and product→template assignment; **anon** storefront rules unchanged.
+4. **Given** shared commerce types, **when** types are extended, **then** validation boundaries (admin save + any RPC) use **one** coherent model—avoid a parallel “template Product” type tree without explicit deprecation plan.
+
+#### Story 11-2 — Admin template CRUD and product assignment
+
+1. **Given** an admin session, **when** they create a template with ordered axes (e.g. `inseam`, `waist`) and option sets, **then** saves persist and reload round-trip without losing ordering or stable axis ids.
+2. **Given** a template edit would invalidate existing SKUs, **when** the owner attempts a destructive change, **then** the UI/API blocks or requires an explicit acknowledgment workflow (no silent data loss).
+3. **Given** a product in draft or active state, **when** admin assigns or clears a template, **then** validation prevents illegal states (e.g. mismatched variant rows vs template) or surfaces actionable errors.
+4. **Given** **NFR-A11Y-002**, **when** template forms render, **then** fields have visible labels and validation states.
+
+#### Story 11-3 — Dynamic variant editing (admin) and storefront selectors
+
+1. **Given** a product with a template, **when** admin edits variants, **then** the form presents **template-driven** axes instead of only fixed size/color fields, while **SKU**, **price**, **inventory**, **status**, and **images** remain first-class.
+2. **Given** a product with a template, **when** a customer opens PDP, **then** selectors reflect template axis labels/order and update price/stock/availability using existing commerce rules.
+3. **Given** cart and checkout (Epic 3), **when** a line item is added, **then** identity remains **`(storefrontProductId, sku)`** (or current canonical key); template metadata is display/UX only unless explicitly promoted to persisted columns later.
+4. **Given** keyboard-only shoppers, **when** they traverse PDP variant controls, **then** behavior meets **UX-DR12** baseline.
+
+#### Story 11-4 — Legacy coexistence, adapter behavior, and rollout
+
+1. **Given** mixed catalog data (some products templated, some legacy), **when** PLP/PDP/loaders resolve variants, **then** both shapes resolve without throwing and without cross-product leakage.
+2. **Given** Epic 9 fixed-assortment or hidden-axis conventions, **when** a product uses those patterns, **then** attaching a template **does not** regress pack semantics unless a future story explicitly replaces them.
+3. **Given** completion, **when** CI runs, **then** tests cover at least: legacy-only product, templated product, and admin assign/clear template path; `npm test`, `npm run build`, and `npm run smoke` remain green.
