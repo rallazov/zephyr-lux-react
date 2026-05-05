@@ -7,6 +7,8 @@ import AdminOrderDetail from "../../admin/AdminOrderDetail";
 import AdminOrderList from "../../admin/AdminOrderList";
 import AdminProductForm from "../../admin/AdminProductForm";
 import AdminProductList from "../../admin/AdminProductList";
+import AdminVariantTemplateForm from "../../admin/AdminVariantTemplateForm";
+import AdminVariantTemplateList from "../../admin/AdminVariantTemplateList";
 import RequireAdmin from "../../admin/RequireAdmin";
 import { COLLECTION_ROUTES } from "../../catalog/collections";
 import { CartProvider } from "../../context/CartContext";
@@ -52,6 +54,9 @@ export function AppRoutes() {
                 <Route path="products" element={<AdminProductList />} />
                 <Route path="products/new" element={<AdminProductForm />} />
                 <Route path="products/:id" element={<AdminProductForm />} />
+                <Route path="variant-templates" element={<AdminVariantTemplateList />} />
+                <Route path="variant-templates/new" element={<AdminVariantTemplateForm />} />
+                <Route path="variant-templates/:id" element={<AdminVariantTemplateForm />} />
                 <Route path="orders" element={<AdminOrderList />} />
                 <Route path="orders/:id" element={<AdminOrderDetail />} />
               </Route>

@@ -38,6 +38,7 @@ export type SupabaseProductVariantRow = {
 
 export type SupabaseProductRow = {
   id: string;
+  variant_template_id?: string | null;
   slug: string;
   title: string;
   subtitle: string | null;
@@ -143,6 +144,7 @@ export function supabaseRowsToProduct(row: SupabaseProductWithRelations): Produc
 
   return productSchema.parse({
     id: row.id,
+    variant_template_id: row.variant_template_id ?? undefined,
     slug: row.slug,
     title: row.title,
     subtitle: row.subtitle ?? undefined,

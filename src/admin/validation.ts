@@ -100,6 +100,7 @@ export const adminSubscriptionPlanRowSchema = z
 export const adminProductPartSchema = z
   .object({
     id: z.string().uuid().optional(),
+    variant_template_id: z.string().uuid().nullish(),
     slug: z.string().min(1),
     title: z.string().min(1),
     subtitle: z.string().optional(),
