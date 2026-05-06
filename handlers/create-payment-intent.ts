@@ -216,7 +216,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         image_url: row.image_url,
         product_id: row.product_id,
         variant_id: row.variant_id,
-        variant_options_snapshot: row.variant_options_snapshot,
+        // Omit key when null — avoids inserts referencing a missing `variant_options_snapshot` column on older DBs.
+        ...(row.variant_options_snapshot != null
+          ? { variant_options_snapshot: row.variant_options_snapshot }
+          : {}),
       })),
     );
 
@@ -224,7 +227,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       log.error({ err: itemsErr }, "create-payment-intent: order_items insert failed");
       await admin.from("orders").delete().eq("id", orderId);
       pendingOrderCleanupId = null;
-      return paymentSetupFailure(res, "ORDER_ITEMS_INSERT_FAILED");
+      return paymentSetupFailure(
+        res,
+        "ORDER_ITEMS_INSERT_FAILED",
+        500,
+        safeProviderCauseCode(itemsErr),
+      );
     }
 
     const metadata: Record<string, string> = {
