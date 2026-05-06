@@ -5,12 +5,19 @@ import {
   productVariantStatusSchema,
 } from "./enums";
 
+const templateOptionValuePairSchema = z.object({
+  axis_id: z.string().uuid(),
+  option_id: z.string().uuid(),
+});
+
 export const productVariantSchema = z.object({
   id: z.string().uuid().optional(),
   product_id: z.string().uuid().optional(),
   sku: z.string().min(1),
   size: z.string().optional(),
   color: z.string().optional(),
+  /** When the parent product has `variant_template_id`, selections live here (Epic 11-3). */
+  template_option_values: z.array(templateOptionValuePairSchema).optional(),
   price_cents: z.number().int().nonnegative(),
   currency: iso4217CurrencySchema,
   inventory_quantity: z.number().int().nonnegative(),

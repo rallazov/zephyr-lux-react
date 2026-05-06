@@ -1,12 +1,20 @@
 import { z } from "zod";
 import { addressSchema } from "../../src/domain/commerce/address";
 
+const variantDisplaySnapshotSchema = z.array(
+  z.object({
+    axis_label: z.string(),
+    option_label: z.string(),
+  }),
+);
+
 /** One checkout line; `quantity` is the public Epic 3 field (mirrors `checkoutLineDraftSchema`). */
 export const paymentIntentLineItemSchema = z.object({
   sku: z.string().min(1),
   quantity: z.number().int().positive(),
   variant_id: z.string().uuid().optional(),
   product_slug: z.string().min(1).optional(),
+  variant_display_snapshot: variantDisplaySnapshotSchema.optional(),
 });
 
 export type PaymentIntentLineItem = z.infer<typeof paymentIntentLineItemSchema>;

@@ -35,6 +35,25 @@ function normalizeItem(raw: unknown): StorefrontCartLine | null {
   const sku = typeof o.sku === "string" ? o.sku : undefined;
   const variant_id = typeof o.variant_id === "string" ? o.variant_id : undefined;
   const product_slug = typeof o.product_slug === "string" ? o.product_slug : undefined;
+  let variant_display_snapshot: StorefrontCartLine["variant_display_snapshot"];
+  const snap = o.variant_display_snapshot;
+  if (Array.isArray(snap)) {
+    variant_display_snapshot = snap
+      .filter(
+        (x): x is { axis_label: string; option_label: string } =>
+          x !== null &&
+          typeof x === "object" &&
+          typeof (x as { axis_label?: unknown }).axis_label === "string" &&
+          typeof (x as { option_label?: unknown }).option_label === "string",
+      )
+      .map((x) => ({
+        axis_label: x.axis_label,
+        option_label: x.option_label,
+      }));
+    if (variant_display_snapshot.length === 0) {
+      variant_display_snapshot = undefined;
+    }
+  }
   return {
     id,
     name,
@@ -44,6 +63,7 @@ function normalizeItem(raw: unknown): StorefrontCartLine | null {
     sku: normalizeLineSku(sku) || undefined,
     variant_id,
     product_slug,
+    ...(variant_display_snapshot ? { variant_display_snapshot } : {}),
   };
 }
 

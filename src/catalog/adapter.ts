@@ -19,39 +19,17 @@ export interface CatalogAdapter {
 
 const DEFAULT_ENV_KEY = "VITE_CATALOG_BACKEND";
 
-/** Columns for PostgREST embeds on `products`. */
-const PRODUCTS_CATALOG_SELECT = `
-  id,
-  slug,
-  title,
-  subtitle,
-  description,
-  brand,
-  category,
-  fabric_type,
-  care_instructions,
-  origin,
-  status,
-  legacy_storefront_id,
-  product_variants (
-    id,
-    product_id,
-    sku,
-    size,
-    color,
-    price_cents,
-    currency,
-    inventory_quantity,
-    low_stock_threshold,
-    status
-  ),
+const PRODUCT_IMAGES_EMBED = `
   product_images (
     product_id,
     variant_id,
     storage_path,
     sort_order,
     is_primary
-  ),
+  )
+`;
+
+const PRODUCT_PLANS_EMBED = `
   product_subscription_plans (
     id,
     product_id,
@@ -67,6 +45,90 @@ const PRODUCTS_CATALOG_SELECT = `
     trial_period_days,
     status
   )
+`;
+
+/** PDP + template axes: embed option values and template graph (Epic 11-3). */
+const PRODUCTS_DETAIL_SELECT = `
+  id,
+  slug,
+  title,
+  subtitle,
+  description,
+  brand,
+  category,
+  fabric_type,
+  care_instructions,
+  origin,
+  status,
+  legacy_storefront_id,
+  variant_template_id,
+  variant_templates (
+    id,
+    name,
+    status,
+    variant_template_axes (
+      id,
+      axis_key,
+      label,
+      sort_order,
+      variant_template_axis_options (
+        id,
+        axis_id,
+        option_key,
+        label,
+        sort_order
+      )
+    )
+  ),
+  product_variants (
+    id,
+    product_id,
+    sku,
+    size,
+    color,
+    price_cents,
+    currency,
+    inventory_quantity,
+    low_stock_threshold,
+    status,
+    product_variant_option_values (
+      axis_id,
+      option_id
+    )
+  ),
+  ${PRODUCT_IMAGES_EMBED},
+  ${PRODUCT_PLANS_EMBED}
+`;
+
+/** PLP list: omit template graph + per-variant option rows. */
+const PRODUCTS_LIST_SELECT = `
+  id,
+  slug,
+  title,
+  subtitle,
+  description,
+  brand,
+  category,
+  fabric_type,
+  care_instructions,
+  origin,
+  status,
+  legacy_storefront_id,
+  variant_template_id,
+  product_variants (
+    id,
+    product_id,
+    sku,
+    size,
+    color,
+    price_cents,
+    currency,
+    inventory_quantity,
+    low_stock_threshold,
+    status
+  ),
+  ${PRODUCT_IMAGES_EMBED},
+  ${PRODUCT_PLANS_EMBED}
 `;
 
 export class StaticCatalogAdapter implements CatalogAdapter {
@@ -106,7 +168,7 @@ export class SupabaseCatalogAdapter implements CatalogAdapter {
   async listProducts(): Promise<CatalogListItem[]> {
     const { data, error } = await this.client
       .from("products")
-      .select(PRODUCTS_CATALOG_SELECT.replace(/\s+/g, " ").trim())
+      .select(PRODUCTS_LIST_SELECT.replace(/\s+/g, " ").trim())
       .in("status", ["active", "coming_soon"])
       .order("title", { ascending: true });
 
@@ -128,7 +190,7 @@ export class SupabaseCatalogAdapter implements CatalogAdapter {
     if (!s) return null;
     const { data, error } = await this.client
       .from("products")
-      .select(PRODUCTS_CATALOG_SELECT.replace(/\s+/g, " ").trim())
+      .select(PRODUCTS_DETAIL_SELECT.replace(/\s+/g, " ").trim())
       .eq("slug", s)
       .in("status", ["active", "coming_soon"])
       .maybeSingle();

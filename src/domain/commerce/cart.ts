@@ -24,11 +24,19 @@ export type DomainCartLineItem = z.infer<typeof cartItemSchema>;
 export type CartItem = DomainCartLineItem;
 
 /** Minimal serializable payload for future checkout POST (no client-trusted price). */
+const variantDisplaySnapshotSchema = z.array(
+  z.object({
+    axis_label: z.string(),
+    option_label: z.string(),
+  }),
+);
+
 export const checkoutLineDraftSchema = z.object({
   sku: z.string().min(1),
   quantity: z.number().int().positive(),
   variant_id: z.string().uuid().optional(),
   product_slug: z.string().min(1).optional(),
+  variant_display_snapshot: variantDisplaySnapshotSchema.optional(),
 });
 
 export type CheckoutLineDraft = z.infer<typeof checkoutLineDraftSchema>;

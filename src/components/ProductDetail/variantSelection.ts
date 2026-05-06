@@ -1,4 +1,5 @@
 import type { Product, ProductVariant } from "../../domain/commerce";
+import type { CatalogVariantAxis } from "../../catalog/types";
 
 export function isPurchasable(v: ProductVariant): boolean {
   return v.status === "active" && v.inventory_quantity > 0;
@@ -198,7 +199,90 @@ export function formatOptionLabel(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-/** Distinct color values in stock for a size (2D). */
+/** Per-axis selected option id (template PDP). */
+export type TemplateAxisSelection = Record<string, string | null>;
+
+export function allowedOptionIdsForAxisIndex(
+  axisIndex: number,
+  axes: CatalogVariantAxis[],
+  selected: TemplateAxisSelection,
+  purchasable: ProductVariant[]
+): Set<string> {
+  const allowed = new Set<string>();
+  for (const v of purchasable) {
+    let prefixOk = true;
+    for (let i = 0; i < axisIndex; i++) {
+      const ax = axes[i]!;
+      const sel = selected[ax.id];
+      const vid = v.template_option_values?.find((t) => t.axis_id === ax.id)?.option_id;
+      if (sel == null || sel === "" || vid !== sel) {
+        prefixOk = false;
+        break;
+      }
+    }
+    if (!prefixOk) continue;
+    const thisAxis = axes[axisIndex]!;
+    const vid = v.template_option_values?.find((t) => t.axis_id === thisAxis.id)?.option_id;
+    if (vid) allowed.add(vid);
+  }
+  return allowed;
+}
+
+/**
+ * Resolves SKU from N-axis template selection (mirrors {@link resolveSelection} outcomes).
+ */
+export function resolveTemplateSelection(
+  allVariants: ProductVariant[],
+  purchasable: ProductVariant[],
+  axesSorted: CatalogVariantAxis[],
+  selected: TemplateAxisSelection
+):
+  | { kind: "purchasable"; variant: ProductVariant }
+  | { kind: "incomplete" }
+  | { kind: "unavailable" }
+  | { kind: "not_purchasable"; variant: ProductVariant } {
+  const axes = axesSorted;
+  if (axes.length === 0) {
+    return { kind: "unavailable" };
+  }
+
+  if (purchasable.length === 1) {
+    return { kind: "purchasable", variant: purchasable[0]! };
+  }
+
+  for (const ax of axes) {
+    const val = selected[ax.id];
+    if (val == null || val === "") {
+      return { kind: "incomplete" };
+    }
+  }
+
+  const match = (v: ProductVariant) =>
+    axes.every((ax) => {
+      const want = selected[ax.id];
+      const got = v.template_option_values?.find((t) => t.axis_id === ax.id)?.option_id;
+      return want != null && got === want;
+    });
+
+  const buying = purchasable.filter(match);
+  if (buying.length === 1) {
+    return { kind: "purchasable", variant: buying[0]! };
+  }
+  if (buying.length > 1) {
+    return { kind: "unavailable" };
+  }
+  const any = allVariants.find(match);
+  if (any) {
+    return { kind: "not_purchasable", variant: any };
+  }
+  return { kind: "unavailable" };
+}
+
+export function formatVariantNameSuffixFromLabels(parts: string[]): string {
+  const cleaned = parts.map((p) => p.trim()).filter(Boolean);
+  return cleaned.length ? ` — ${cleaned.join(" / ")}` : "";
+}
+
 export function colorsForSize(
   purchasable: ProductVariant[],
   size: string | null

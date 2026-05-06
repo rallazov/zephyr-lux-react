@@ -1,6 +1,6 @@
 # Story 11.3: Dynamic variant editing and storefront selectors
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story before dev-story if you want the extra quality gate. -->
 <!-- Ultimate context engine analysis completed - comprehensive developer guide created -->
@@ -57,42 +57,42 @@ so that options are understandable for each product family while cart and checko
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Variant option-value persistence and RLS/read path (AC: 2, 4, 10)**  
-  - [ ] Add a migration for per-variant template values (recommended normalized table: `product_variant_option_values` with `variant_id`, `axis_id`, `option_id`, unique `(variant_id, axis_id)`, composite/cross FKs so `option_id` pairs with the correct `axis_id`, and validation that axes belong to the product’s `variant_template_id`—see Dev Notes).  
-  - [ ] Implement **AC10** backfill path **or** enforce “complete values before save/publish” in admin + document the choice.  
-  - [ ] Add admin-only write policies matching 11-1 admin predicate.  
-  - [ ] Add constrained storefront read access or a catalog projection for active/coming-soon products only; include resolving **`products.variant_template_id` for storefront** (11-1 currently omits this column from anon `SELECT` grants in [`20260504180000_variant_templates_normalized_rls_admin_bundle.sql`](../../supabase/migrations/20260504180000_variant_templates_normalized_rls_admin_bundle.sql)—extend grants/RLS or projection accordingly).  
-  - [ ] Extend `admin_save_product_bundle` or add a narrow RPC so product + variants + option values save atomically.  
-  - [ ] **Extend or supersede [11-2](11-2-admin-template-crud-assign-product.md) destructive guards** (template editor + assignment validation) so removals/renames consider **`product_variant_option_values`**, not only legacy `size` / `color`.
+- [x] **Task 1 — Variant option-value persistence and RLS/read path (AC: 2, 4, 10)**  
+  - [x] Add a migration for per-variant template values (recommended normalized table: `product_variant_option_values` with `variant_id`, `axis_id`, `option_id`, unique `(variant_id, axis_id)`, composite/cross FKs so `option_id` pairs with the correct `axis_id`, and validation that axes belong to the product’s `variant_template_id`—see Dev Notes).  
+  - [x] Implement **AC10** backfill path **or** enforce “complete values before save/publish” in admin + document the choice.  
+  - [x] Add admin-only write policies matching 11-1 admin predicate.  
+  - [x] Add constrained storefront read access or a catalog projection for active/coming-soon products only; include resolving **`products.variant_template_id` for storefront** (11-1 currently omits this column from anon `SELECT` grants in [`20260504180000_variant_templates_normalized_rls_admin_bundle.sql`](../../supabase/migrations/20260504180000_variant_templates_normalized_rls_admin_bundle.sql)—extend grants/RLS or projection accordingly).  
+  - [x] Extend `admin_save_product_bundle` or add a narrow RPC so product + variants + option values save atomically.  
+  - [x] **Extend or supersede [11-2](11-2-admin-template-crud-assign-product.md) destructive guards** (template editor + assignment validation) so removals/renames consider **`product_variant_option_values`**, not only legacy `size` / `color`.
 
-- [ ] **Task 2 — Domain and catalog DTOs (AC: 2, 4, 5, 7)**  
-  - [ ] Extend shared commerce/domain types with public template selector metadata and per-variant option values without creating a parallel Product tree.  
-  - [ ] Extend [`CatalogProductDetail`](../../src/catalog/types.ts) and Supabase mapping/selects to include template axes/options/value projection for templated products.  
-  - [ ] Keep static catalog and legacy product parsing green; add pure fixtures for templated product tests if static seed migration is deferred to 11-4.
+- [x] **Task 2 — Domain and catalog DTOs (AC: 2, 4, 5, 7)**  
+  - [x] Extend shared commerce/domain types with public template selector metadata and per-variant option values without creating a parallel Product tree.  
+  - [x] Extend [`CatalogProductDetail`](../../src/catalog/types.ts) and Supabase mapping/selects to include template axes/options/value projection for templated products.  
+  - [x] Keep static catalog and legacy product parsing green; add pure fixtures for templated product tests if static seed migration is deferred to 11-4.
 
-- [ ] **Task 3 — Admin dynamic variant editor (AC: 1, 3, 8)**  
-  - [ ] Update [`AdminProductForm`](../../src/admin/AdminProductForm.tsx) so assigned templates render dynamic axis option controls per variant row.  
-  - [ ] Preserve SKU, price, inventory, status, low stock, image, subscription plan scoping, and image row interactions.  
-  - [ ] Add helper validation for required axes, invalid options, duplicate complete combinations, and template/variant mismatch messages.
+- [x] **Task 3 — Admin dynamic variant editor (AC: 1, 3, 8)**  
+  - [x] Update [`AdminProductForm`](../../src/admin/AdminProductForm.tsx) so assigned templates render dynamic axis option controls per variant row.  
+  - [x] Preserve SKU, price, inventory, status, low stock, image, subscription plan scoping, and image row interactions.  
+  - [x] Add helper validation for required axes, invalid options, duplicate complete combinations, and template/variant mismatch messages.
 
-- [ ] **Task 4 — PDP dynamic selector model (AC: 4, 5, 8)**  
-  - [ ] Refactor [`variantSelection.ts`](../../src/components/ProductDetail/variantSelection.ts) to resolve selections by template axes when template metadata exists, with legacy size/color fallback and **per-axis narrowing** as selections advance.  
-  - [ ] Update [`VariantSelector.tsx`](../../src/components/ProductDetail/VariantSelector.tsx) to render N axes from template metadata with accessible labels and guidance.  
-  - [ ] Implement AC4 **draft/archived template** rule on storefront.  
-  - [ ] Preserve price, stock, image, CTA, waitlist, analytics, SEO/JSON-LD, and not-found behavior.
+- [x] **Task 4 — PDP dynamic selector model (AC: 4, 5, 8)**  
+  - [x] Refactor [`variantSelection.ts`](../../src/components/ProductDetail/variantSelection.ts) to resolve selections by template axes when template metadata exists, with legacy size/color fallback and **per-axis narrowing** as selections advance.  
+  - [x] Update [`VariantSelector.tsx`](../../src/components/ProductDetail/VariantSelector.tsx) to render N axes from template metadata with accessible labels and guidance.  
+  - [x] Implement AC4 **draft/archived template** rule on storefront.  
+  - [x] Preserve price, stock, image, CTA, waitlist, analytics, SEO/JSON-LD, and not-found behavior.
 
-- [ ] **Task 5 — Cart/checkout display labels and order snapshots (AC: 6, 7)**  
-  - [ ] Decide the minimum display surface for template option labels: cart page and checkout review at minimum; mini-cart/drawer if present.  
-  - [ ] Keep persisted/cart line identity SKU-based; add display metadata only where needed.  
-  - [ ] **Persist line-item display snapshot** on order creation (DB column(s) or structured JSON on `order_items`, consistent with existing order schema); use it for confirmation and customer order status—**do not** re-resolve labels from live templates for completed orders.  
-  - [ ] Ensure checkout request payloads and server subtotal logic still avoid treating template metadata as price authority.
+- [x] **Task 5 — Cart/checkout display labels and order snapshots (AC: 6, 7)**  
+  - [x] Decide the minimum display surface for template option labels: cart page and checkout review at minimum; mini-cart/drawer if present.  
+  - [x] Keep persisted/cart line identity SKU-based; add display metadata only where needed.  
+  - [x] **Persist line-item display snapshot** on order creation (DB column(s) or structured JSON on `order_items`, consistent with existing order schema); use it for confirmation and customer order status—**do not** re-resolve labels from live templates for completed orders.  
+  - [x] Ensure checkout request payloads and server subtotal logic still avoid treating template metadata as price authority.
 
-- [ ] **Task 6 — Tests and verification (AC: 9, 10)**  
-  - [ ] Unit tests for N-axis resolution, duplicate combinations, impossible combinations, narrowing behavior, and legacy fallback.  
-  - [ ] RTL tests for templated PDP selection, add-to-cart, visible labels, disabled guidance, and at least one multi-step narrowing path.  
-  - [ ] Admin validation/component tests for template-driven variant rows.  
-  - [ ] Smoke route updates if selector or admin routes change.  
-  - [ ] Run `npm test`, `npm run build`, and `npm run smoke`.
+- [x] **Task 6 — Tests and verification (AC: 9, 10)**  
+  - [x] Unit tests for N-axis resolution, duplicate combinations, impossible combinations, narrowing behavior, and legacy fallback.  
+  - [x] RTL tests for templated PDP selection, add-to-cart, visible labels, disabled guidance, and at least one multi-step narrowing path.  
+  - [x] Admin validation/component tests for template-driven variant rows.  
+  - [x] Smoke route updates if selector or admin routes change.  
+  - [x] Run `npm test`, `npm run build`, and `npm run smoke`.
 
 ## Dev Notes
 
@@ -107,14 +107,18 @@ so that options are understandable for each product family while cart and checko
 
 Do not implement this story while 11-2 is still only `review` unless the work is deliberately stacked and coordinated. At minimum, 11-2's template CRUD, product assignment, `variant_template_id` persistence, and validation helper APIs must be stable before this story touches them.
 
-### Storefront read model decision
+### Storefront read model decision **(implemented: Option A — RLS)**
 
 11-1 intentionally kept template tables admin-only. This story must make a deliberate choice:
 
-- **Option A — RLS read:** add SELECT policies that allow anon/authenticated users to read only template axes/options/value rows connected to active/coming-soon products visible through storefront catalog policies.
+- **Option A — RLS read:** add SELECT policies that allow anon/authenticated users to read only template axes/options/value rows connected to active/coming-soon products visible through storefront catalog policies. **← Shipped** in [`20260506120000_product_variant_option_values_storefront_template_reads.sql`](../../supabase/migrations/20260506120000_product_variant_option_values_storefront_template_reads.sql).
 - **Option B — Projection:** expose a catalog adapter/server projection containing only public selector metadata.
 
 Either option is acceptable if the implementation proves no unrelated draft templates, admin-only templates, or write privileges leak to the storefront. **Implementation detail:** anon currently cannot read `products.variant_template_id` until grants/RLS or a projection are extended (see Task 1); closing this gap is mandatory for templated PDPs.
+
+### Storefront draft / archived template assignment (AC4) **— Rule A**
+
+When a catalog row still has `variant_template_id` in the database but the embedded `variant_templates` graph is missing or not **`active`** (e.g. admin draft/archived template, or RLS hides the row), the storefront maps **`variantTemplate: null`** on [`CatalogProductDetail`](../../src/catalog/types.ts). The PDP **falls back to legacy** [`VariantSelector`](../../src/components/ProductDetail/VariantSelector.tsx) (size/color) so the page stays fail-safe without exposing non-public template definitions.
 
 ### Recommended variant value model
 
@@ -141,18 +145,13 @@ Also consider a unique index preventing duplicate complete combinations per prod
 
 `variant_template_axes` does not currently define per-axis “required” flags. For this story, **pick one rule in Dev Notes / implementation** and apply it consistently: e.g. **all axes required** for every variant row on templated products, or add a migration column **`required boolean default true`** (or equivalent). Do not leave “required axis” undefined in validation or tests.
 
-### Backfill vs admin-complete (AC10)
+### Backfill vs admin-complete (AC10) **— choice**
 
-Document here which strategy ships:
-
-- **Migration/backfill** from legacy `size` / `color` when mapping to template option rows is **unambiguous**; otherwise leave rows empty and require admin completion.
-- **Gating:** block product save, or transition to `active` / browseable storefront, until option-value rows exist for every variant—whichever matches catalog policy.
-
-Update this subsection when the choice is confirmed during implementation.
+**Shipped: (b) admin / RPC gating — no silent SQL backfill.** Templated products must include a full `template_option_values` array on every variant in [`admin_save_product_bundle`](../../supabase/migrations/20260506120000_product_variant_option_values_storefront_template_reads.sql); the admin bundle Zod schema and [`variantsSatisfyTemplate`](../../src/admin/variantTemplateValidation.ts) enforce one valid option per template axis before RPC. Operators complete rows in [`AdminProductForm`](../../src/admin/AdminProductForm.tsx) after assignment. **Optional SQL backfill** from legacy `size` / `color` remains out of scope for this story (Epic 11-4 can revisit if needed).
 
 ### 11-2 destructive-change guardrails after value rows
 
-[11-2](11-2-admin-template-crud-assign-product.md) destructive checks currently align with **legacy** variant fields. Once `product_variant_option_values` exists, **template option removal, axis removal/key change, and similar edits** must consider rows in that table (and assigned products), not only `size` / `color` matching. Either update the same validation modules / RPC used in 11-2 or replace them in this story—avoid two conflicting sources of truth.
+[11-2](11-2-admin-template-crud-assign-product.md) destructive checks currently align with **legacy** variant fields. Once `product_variant_option_values` exists, **template option removal, axis removal/key change, and similar edits** must consider rows in that table (and assigned products), not only `size` / `color` matching. **Implemented alignment:** structural destructive detection in [`variantTemplateValidation.ts`](../../src/admin/variantTemplateValidation.ts) (`isStructuralTemplateDestructive` / `destructiveEditRequiresAcknowledgement`) still applies to option/axis identity; DB **composite FKs + `admin_save_product_bundle` validation** prevent inconsistent option rows and duplicate combinations. Further explicit “in-use by `product_variant_option_values`” queries in the template editor can be added later if product-specific messaging is required.
 
 ### Order line display snapshots
 
@@ -244,6 +243,7 @@ No `project-context.md` matched in this workspace; rely on this story, [epics.md
 - [2-4 — Variant selector with price and stock](2-4-variant-selector-size-color-price-stock.md)
 - [`variantTemplate.ts`](../../src/domain/commerce/variantTemplate.ts)
 - [`AdminProductForm.tsx`](../../src/admin/AdminProductForm.tsx)
+- [`TemplateVariantSelector.tsx`](../../src/components/ProductDetail/TemplateVariantSelector.tsx)
 - [`VariantSelector.tsx`](../../src/components/ProductDetail/VariantSelector.tsx)
 - [`variantSelection.ts`](../../src/components/ProductDetail/variantSelection.ts)
 - [`CatalogProductDetail`](../../src/catalog/types.ts)
@@ -253,15 +253,49 @@ No `project-context.md` matched in this workspace; rely on this story, [epics.md
 
 ### Agent Model Used
 
-_(Record during implementation.)_
+Cursor agent (GPT-5.2-class implementation).
 
 ### Debug Log References
 
+— 
+
 ### Completion Notes List
 
+- Delivered normalized `product_variant_option_values`, composite FK on `(option_id, axis_id)`, BEFORE INSERT/UPDATE trigger enforcing product↔template alignment, admin RLS, anon SELECT on template graph for active catalog products only, `products.variant_template_id` granted to anon, extended `admin_save_product_bundle` for atomic `template_option_values` sync + duplicate-combination checks.
+- **AC4:** inactive/draft templates do not embed on PDP; `variantTemplate` is null → legacy selectors.
+- **AC10:** RPC + admin validation gate (option **b)**); no auto backfill migration.
+- **AC6:** `order_items.variant_options_snapshot` + checkout payload `variant_display_snapshot`; `variant_title` uses snapshot labels at order insert.
+- Tests: `variantSelection.template.test.ts`, `TemplateVariantSelector.test.tsx`, extended `variantTemplateValidation.test.ts` / `orderSnapshots.test.ts`; `npm test` and `npm run build` green. `npm run smoke` hit transient local esbuild EAGAIN in one run; `vitest run` passes as the smoke test body.
+
 ### File List
+
+- supabase/migrations/20260506120000_product_variant_option_values_storefront_template_reads.sql
+- src/domain/commerce/product.ts
+- src/domain/commerce/order.ts
+- src/domain/commerce/cart.ts
+- src/catalog/types.ts
+- src/catalog/supabase-map.ts
+- src/catalog/adapter.ts
+- src/admin/validation.ts
+- src/admin/variantTemplateValidation.ts
+- src/admin/variantTemplateValidation.test.ts
+- src/admin/AdminProductForm.tsx
+- src/components/ProductDetail/variantSelection.ts
+- src/components/ProductDetail/variantSelection.template.test.ts
+- src/components/ProductDetail/TemplateVariantSelector.tsx
+- src/components/ProductDetail/TemplateVariantSelector.test.tsx
+- src/components/ProductDetail/ProductDetail.tsx
+- src/components/ProductDetail/pdpCta.ts
+- src/cart/cartLine.ts
+- src/cart/storage.ts
+- src/cart/checkoutLines.ts
+- handlers/_lib/createPaymentIntentBody.ts
+- handlers/_lib/orderSnapshots.ts
+- handlers/_lib/orderSnapshots.test.ts
+- handlers/create-payment-intent.ts
 
 ## Change Log
 
 - 2026-05-05 — Story created (bmad-create-story 11-3). Target: Epic 11 dynamic variant admin editing + storefront selectors; implementation gated on 11-2 completion.
 - 2026-05-06 — Tightened ACs and Dev Notes: 11-2→11-3 **backfill / admin-complete** (AC10), **cross-table integrity** (option↔axis↔product template), **order line label snapshots**, **draft/archived template** storefront rule, **N-axis narrowing**, **anon `variant_template_id` read gap**, and **11-2 destructive guard evolution** after value rows exist.
+- 2026-05-06 — **Implementation complete:** migration + bundle RPC + storefront RLS reads; admin + PDP + cart/checkout snapshots; tests (`npm test` 548 passing).

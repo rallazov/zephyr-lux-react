@@ -1,5 +1,12 @@
 # Deferred work (from reviews and triage)
 
+## Deferred from: code review of 11-2-admin-template-crud-assign-product.md (2026-05-05)
+
+- **Destructive template edit acknowledgement has no persisted audit/event** — UI checkbox blocks submit but does not write an immutable audit row/event; aligns with MVP but not the strictest reading of AC4 “auditable in code”.
+- **Destructive guards lean on structural diff + assigned-product count vs per-variant option references** — May allow/shape flows where products exist but variants do not individually reference removed options yet; tighten when data-quality guarantees matter.
+- **Client-provided `variant_display_snapshot` on payment-intent payloads** — Server accepts labels without reconciling against catalog/templates; spoofing/readability risk deferred to verification/derivation work.
+- **Storefront PDP/catalog/checkout anomalies bundled in Epic 11 working tree** — Treat as Epic 11-3 / 11-4 ownership (list/detail divergence, PDP branching, anon column grants per migration sequencing), not gates for closing admin-template CRUD if scope is deliberately stacked.
+
 ## Deferred from: code review of 10-4-account-order-history.md (2026-05-01)
 
 - **Sprint / epic bookkeeping in one diff** — `sprint-status.yaml` and related Epic closure rows bundled with Story 10-4 wiring; carve separate commits/PR hygiene when release train requires pristine story scope.

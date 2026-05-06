@@ -71,54 +71,72 @@ export const adminVariantTemplateFormSchema = z
 
 export type AdminVariantTemplateForm = z.infer<typeof adminVariantTemplateFormSchema>;
 
-/** Maps template axis keys to legacy `product_variants` columns (Epic 11-2; more axes in 11-3). */
-export function legacyVariantColumnForAxis(axisKey: string): "size" | "color" | null {
-  const k = normalizeMerchKey(axisKey);
-  if (k === "size") return "size";
-  if (k === "color") return "color";
-  return null;
-}
-
 export type VariantRowLite = {
   sku: string;
   size?: string | null;
   color?: string | null;
+  template_option_values?: Array<{ axis_id: string; option_id: string }>;
 };
 
 /**
- * Returns whether every variant row has values that match template options for each axis.
- * Only `size` and `color` axis keys are supported against current DB columns.
+ * Validates each variant row has exactly one valid option per template axis, no duplicate
+ * full combinations, and options belong to the template (Epic 11-3).
  */
 export function variantsSatisfyTemplate(
   variants: VariantRowLite[],
   template: VariantTemplate,
 ): { ok: true } | { ok: false; message: string } {
   const axes = [...template.axes].sort((a, b) => a.sort_order - b.sort_order);
-  for (const axis of axes) {
-    const col = legacyVariantColumnForAxis(axis.axis_key);
-    if (!col) {
+  if (axes.length === 0) {
+    return { ok: false, message: "Selected template has no axes." };
+  }
+  const allowedByAxis = new Map(
+    axes.map((ax) => [ax.id, new Set(ax.options.map((o) => o.id))] as const),
+  );
+  const sigs = new Set<string>();
+
+  for (const v of variants) {
+    const pairs = v.template_option_values ?? [];
+    if (pairs.length !== axes.length) {
       return {
         ok: false,
-        message: `Template uses axis "${axis.axis_key}" which is not yet supported on variant rows (only size and color until dynamic editing ships).`,
+        message: `Variant ${v.sku || "(sku)"} needs one template option selected for each axis (${axes.length} axes).`,
       };
     }
-    const allowed = new Set(axis.options.map((o) => normalizeMerchKey(o.option_key)));
-    for (const v of variants) {
-      const raw = col === "size" ? v.size : v.color;
-      const cell = normalizeMerchKey(raw);
-      if (!cell) {
+    const seenAxis = new Set<string>();
+    const parts: string[] = [];
+    for (const ax of axes) {
+      const hit = pairs.find((p) => p.axis_id === ax.id);
+      if (!hit) {
         return {
           ok: false,
-          message: `Variant ${v.sku || "(missing sku)"} needs a ${axis.axis_key} value for this template.`,
+          message: `Variant ${v.sku || "(sku)"} is missing a selection for axis "${ax.axis_key}".`,
         };
       }
-      if (!allowed.has(cell)) {
+      if (seenAxis.has(ax.id)) {
         return {
           ok: false,
-          message: `Variant ${v.sku || "(missing sku)"}: ${axis.axis_key} "${raw ?? ""}" is not an option on the selected template.`,
+          message: `Variant ${v.sku || "(sku)"} has duplicate selections for an axis.`,
         };
       }
+      seenAxis.add(ax.id);
+      const allow = allowedByAxis.get(ax.id);
+      if (!allow?.has(hit.option_id)) {
+        return {
+          ok: false,
+          message: `Variant ${v.sku || "(sku)"} has an invalid option for axis "${ax.axis_key}".`,
+        };
+      }
+      parts.push(`${hit.axis_id}:${hit.option_id}`);
     }
+    const sig = [...parts].sort().join("|");
+    if (sigs.has(sig)) {
+      return {
+        ok: false,
+        message: `More than one variant row uses the same template combination (see SKU ${v.sku || "?"}).`,
+      };
+    }
+    sigs.add(sig);
   }
   return { ok: true };
 }

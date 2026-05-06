@@ -25,7 +25,7 @@
 #   - Dev moves story to 'review', then runs code-review
 
 generated: 2026-04-26T00:00:00Z
-last_updated: 2026-05-05T23:59:59Z
+last_updated: 2026-05-06T16:05:00Z
 project: zephyr-lux-react
 project_key: zlx
 tracking_system: file-system
@@ -139,6 +139,6 @@ development_status:
   # Epic 11 stories — see epics.md § Epic 11 (decomposed 2026-05-04); implement 11-1 → 11-2 → 11-3, then 11-4.
   11-1-variant-template-schema-rls-domain: done
   11-2-admin-template-crud-assign-product: review
-  11-3-dynamic-variant-admin-storefront-selectors: ready-for-dev
-  11-4-template-legacy-coexistence-rollout: backlog
+  11-3-dynamic-variant-admin-storefront-selectors: review
+  11-4-template-legacy-coexistence-rollout: ready-for-dev
   epic-11-retrospective: optional

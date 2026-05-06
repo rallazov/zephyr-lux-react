@@ -1,10 +1,10 @@
-import { type FormEvent, useEffect, useId, useMemo, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useId, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { ANALYTICS_EVENTS } from "../../analytics/events";
 import { dispatchAnalyticsEvent } from "../../analytics/sink";
 import { getDefaultCatalogAdapter } from "../../catalog/factory";
 import { resolvePdpHeroImageUrl } from "../../catalog/pdpImage";
-import type { CatalogProductDetail } from "../../catalog/types";
+import type { CatalogProductDetail, CatalogVariantTemplateSlice, VariantDisplaySnapshotLine } from "../../catalog/types";
 import { useCart } from "../../context/CartContext";
 import type { ProductVariant } from "../../domain/commerce";
 import { apiUrl } from "../../lib/apiBase";
@@ -23,20 +23,24 @@ import {
   toPublicAbsoluteUrl,
 } from "../../seo/site";
 import ProductImageGallery from "./ProductImageGallery";
-import { pdpCtaState } from "./pdpCta";
+import { pdpCtaState, pdpCtaTemplateState } from "./pdpCta";
 import { PdpSubscriptionBlock } from "../subscription/PdpSubscriptionBlock";
 import {
   colorsForSize,
   computeOptionLayout,
   formatOptionLabel,
+  formatVariantNameSuffixFromLabels,
   getPurchasableVariants,
   lowStockMessage,
   minMaxPriceCentsFromPurchasable,
   resolveSelection,
+  resolveTemplateSelection,
+  type TemplateAxisSelection,
 } from "./variantSelection";
 import VariantSelector from "./VariantSelector";
+import TemplateVariantSelector from "./TemplateVariantSelector";
 
-function variantNameSuffix(v: ProductVariant | null): string {
+function variantNameSuffixLegacy(v: ProductVariant | null): string {
   if (!v) {
     return "";
   }
@@ -48,6 +52,46 @@ function variantNameSuffix(v: ProductVariant | null): string {
     parts.push(formatOptionLabel(String(v.color)));
   }
   return parts.length ? ` — ${parts.join(" / ")}` : "";
+}
+
+function variantNameSuffixForDetail(
+  v: ProductVariant | null,
+  tmpl: CatalogVariantTemplateSlice | null | undefined,
+): string {
+  if (!v) {
+    return "";
+  }
+  if (tmpl) {
+    const axes = [...tmpl.axes].sort((a, b) => a.sort_order - b.sort_order);
+    const parts: string[] = [];
+    for (const ax of axes) {
+      const optId = v.template_option_values?.find((t) => t.axis_id === ax.id)?.option_id;
+      const opt = ax.options.find((o) => o.id === optId);
+      const s = opt?.label?.trim() || opt?.option_key || "";
+      if (s) {
+        parts.push(s);
+      }
+    }
+    return formatVariantNameSuffixFromLabels(parts);
+  }
+  return variantNameSuffixLegacy(v);
+}
+
+function buildVariantDisplaySnapshot(
+  variant: ProductVariant,
+  tmpl: CatalogVariantTemplateSlice,
+): VariantDisplaySnapshotLine[] {
+  const axes = [...tmpl.axes].sort((a, b) => a.sort_order - b.sort_order);
+  const out: VariantDisplaySnapshotLine[] = [];
+  for (const ax of axes) {
+    const optId = variant.template_option_values?.find((t) => t.axis_id === ax.id)?.option_id;
+    const opt = ax.options.find((o) => o.id === optId);
+    out.push({
+      axis_label: ax.label?.trim() || ax.axis_key,
+      option_label: opt?.label?.trim() || opt?.option_key || "",
+    });
+  }
+  return out;
 }
 
 function ComingSoonWaitlistPanel({ productId }: { productId: string | undefined }) {
@@ -180,6 +224,7 @@ const ProductDetail: React.FC = () => {
   const { addToCart } = useCart();
   const [selSize, setSelSize] = useState<string | null>(null);
   const [selColor, setSelColor] = useState<string | null>(null);
+  const [templateSel, setTemplateSel] = useState<TemplateAxisSelection>({});
 
   useEffect(() => {
     const load = async () => {
@@ -228,6 +273,12 @@ const ProductDetail: React.FC = () => {
 
   const product = row?.product;
   const isComingSoon = product?.status === "coming_soon";
+  const tmpl = row?.variantTemplate ?? null;
+  const axesSorted = useMemo(
+    () =>
+      tmpl ? [...tmpl.axes].sort((a, b) => a.sort_order - b.sort_order) : [],
+    [tmpl],
+  );
 
   const indicativeVariantPricing = useMemo(() => {
     if (!product?.variants?.length) return { min: 0, max: 0 };
@@ -265,7 +316,7 @@ const ProductDetail: React.FC = () => {
   );
 
   useEffect(() => {
-    if (!product) {
+    if (!product || tmpl) {
       return;
     }
     if (layout.autoSelectSingle && purchasable.length === 1) {
@@ -276,10 +327,29 @@ const ProductDetail: React.FC = () => {
       setSelSize(null);
       setSelColor(null);
     }
-  }, [product, layout.autoSelectSingle, purchasableSkuKey, purchasable]);
+  }, [product, tmpl, layout.autoSelectSingle, purchasableSkuKey, purchasable]);
 
   useEffect(() => {
-    if (!layout.showSize || !layout.showColor) {
+    if (!tmpl || !product) {
+      setTemplateSel({});
+      return;
+    }
+    const axes = [...tmpl.axes].sort((a, b) => a.sort_order - b.sort_order);
+    if (purchasable.length === 1) {
+      const v = purchasable[0]!;
+      const next: TemplateAxisSelection = {};
+      for (const ax of axes) {
+        const hit = v.template_option_values?.find((t) => t.axis_id === ax.id);
+        next[ax.id] = hit?.option_id ?? null;
+      }
+      setTemplateSel(next);
+      return;
+    }
+    setTemplateSel({});
+  }, [tmpl, product, purchasable, purchasableSkuKey]);
+
+  useEffect(() => {
+    if (tmpl || !layout.showSize || !layout.showColor) {
       return;
     }
     if (!selSize) {
@@ -289,38 +359,93 @@ const ProductDetail: React.FC = () => {
     if (selColor && !valid.includes(selColor)) {
       setSelColor(null);
     }
-  }, [selSize, purchasable, layout.showSize, layout.showColor, selColor]);
+  }, [selSize, purchasable, layout.showSize, layout.showColor, selColor, tmpl]);
 
-  const selectionRes = useMemo(
-    () =>
-      product
-        ? resolveSelection(
-            product.variants,
-            purchasable,
-            layout,
-            { size: selSize, color: selColor }
-          )
-        : { kind: "incomplete" as const },
-    [product, purchasable, layout, selSize, selColor]
+  const setTemplateAxisSelection = useCallback(
+    (axisId: string, optionId: string | null) => {
+      if (!tmpl) {
+        return;
+      }
+      const axes = [...tmpl.axes].sort((a, b) => a.sort_order - b.sort_order);
+      const idx = axes.findIndex((a) => a.id === axisId);
+      setTemplateSel((prev) => {
+        const next = { ...prev, [axisId]: optionId };
+        if (idx < 0) {
+          return next;
+        }
+        for (let j = idx + 1; j < axes.length; j++) {
+          next[axes[j]!.id] = null;
+        }
+        return next;
+      });
+    },
+    [tmpl],
   );
+
+  const selectionRes = useMemo(() => {
+    if (!product) {
+      return { kind: "incomplete" as const };
+    }
+    if (tmpl && axesSorted.length > 0) {
+      return resolveTemplateSelection(
+        product.variants,
+        purchasable,
+        axesSorted,
+        templateSel,
+      );
+    }
+    return resolveSelection(product.variants, purchasable, layout, {
+      size: selSize,
+      color: selColor,
+    });
+  }, [
+    product,
+    tmpl,
+    axesSorted,
+    templateSel,
+    purchasable,
+    layout,
+    selSize,
+    selColor,
+  ]);
 
   const selectedVariant: ProductVariant | null =
     selectionRes.kind === "purchasable" ? selectionRes.variant : null;
 
-  const gallerySelectionKey = `${selectedVariant?.sku ?? "none"}|${selSize ?? ""}|${selColor ?? ""}`;
+  const gallerySelectionKey = `${selectedVariant?.sku ?? "none"}|${selSize ?? ""}|${selColor ?? ""}|${tmpl ? JSON.stringify(templateSel) : ""}`;
 
   const { min: pMin, max: pMax } = useMemo(
     () => (product ? minMaxPriceCentsFromPurchasable(purchasable) : { min: 0, max: 0 }),
     [product, purchasable]
   );
 
-  const cta = product
-    ? pdpCtaState(purchasable, layout, product.variants, selSize, selColor)
-    : {
+  const cta = useMemo(() => {
+    if (!product) {
+      return {
         disabled: true,
         text: "Add to cart",
         hint: "",
       };
+    }
+    if (tmpl && axesSorted.length > 0) {
+      return pdpCtaTemplateState(
+        product.variants,
+        purchasable,
+        axesSorted,
+        templateSel,
+      );
+    }
+    return pdpCtaState(purchasable, layout, product.variants, selSize, selColor);
+  }, [
+    product,
+    tmpl,
+    axesSorted,
+    templateSel,
+    purchasable,
+    layout,
+    selSize,
+    selColor,
+  ]);
 
   const resolvedHeroUrl = useMemo(() => {
     if (!product) {
@@ -520,13 +645,16 @@ const ProductDetail: React.FC = () => {
     });
     addToCart({
       id: storefrontProductId,
-      name: `${product.title}${variantNameSuffix(selectedVariant)}`,
+      name: `${product.title}${variantNameSuffixForDetail(selectedVariant, tmpl)}`,
       quantity: 1,
       price,
       image: img,
       sku: selectedVariant.sku,
       variant_id: selectedVariant.id,
       product_slug: product.slug,
+      variant_display_snapshot: tmpl
+        ? buildVariantDisplaySnapshot(selectedVariant, tmpl)
+        : undefined,
     });
   };
 
@@ -618,14 +746,23 @@ const ProductDetail: React.FC = () => {
           </>
         )}
         {!isComingSoon ? (
-          <VariantSelector
-            purchasable={purchasable}
-            layout={layout}
-            selectedSize={selSize}
-            selectedColor={selColor}
-            onSizeChange={setSelSize}
-            onColorChange={setSelColor}
-          />
+          tmpl && axesSorted.length > 0 && purchasable.length > 1 ? (
+            <TemplateVariantSelector
+              axes={axesSorted}
+              purchasable={purchasable}
+              selected={templateSel}
+              onChange={setTemplateAxisSelection}
+            />
+          ) : (
+            <VariantSelector
+              purchasable={purchasable}
+              layout={layout}
+              selectedSize={selSize}
+              selectedColor={selColor}
+              onSizeChange={setSelSize}
+              onColorChange={setSelColor}
+            />
+          )
         ) : null}
 
         {!isComingSoon ? (

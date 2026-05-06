@@ -197,6 +197,28 @@ Python 3 resolver `resolve_customization.py` failed on PATH Python <3.11; workfl
 - `src/admin/AdminProductForm.tsx`
 - `src/routes.smoke.test.tsx`
 
+### Review Findings
+
+- [ ] [Review][Decision] **Clarify stacked Epic 11 scope before closing 11-2** — The review diff captured a wide working tree (storefront PDP/cart/checkout/catalog paths and Epic 11-3 sprint/docs changes alongside template admin work). Decide whether delivery is intentional **stacked Epic 11** vs **must split commits/PRs** so Story 11-2 acceptance traces only template CRUD + product assignment.
+
+- [ ] [Review][Decision] **Reconcile variant editor UX with AC6 (“summary vs dynamic axes”)** — `AdminProductForm` includes per-variant “Template axes” `<select>`s per SKU row (`fieldset`). Story AC6 states the editor can show assignment **summary** and does **not** need dynamic template-driven controls for rows (11-3). Confirm retaining this richer UI vs peeling back for scope alignment.
+
+- [ ] [Review][Patch] **Dedupe SKU snapshot merge ignores later `variant_display_snapshot`** `[handlers/_lib/orderSnapshots.ts:~47]`
+
+- [ ] [Review][Patch] **Preserve `variant_display_snapshot` when retrying checkout line parse without `variant_id`** `[src/cart/checkoutLines.ts:~31]`
+
+- [ ] [Review][Patch] **Stale `template_option_values` when `variant_template_id` changes before templates load** `[src/admin/AdminProductForm.tsx:~568]`
+
+- [ ] [Review][Patch] **Broaden RTL beyond validation/unit coverage for AC8** (`AdminVariantTemplateList` / form assignment flows vs smoke-only gate).
+
+- [x] [Review][Defer] **Destructive template edit acknowledgement has no persisted audit/event** `[src/admin/AdminVariantTemplateForm.tsx]` — deferred; acknowledgement is UX-only vs AC4 “auditable” wording.
+
+- [x] [Review][Defer] **Destructive guards lean on structural diff + assignment count vs per-variant option-id usage** `[src/admin/variantTemplateValidation.ts]` — deferred refinement for “option already referenced” precision.
+
+- [x] [Review][Defer] **`variant_display_snapshot` / display labels trusted from client on payment intent payload** `[handlers/_lib/createPaymentIntentBody.ts]` — deferred to hardening story (derive or verify server-side).
+
+- [x] [Review][Defer] **Storefront PDP/catalog/checkout edge gaps in stacked hunks** (e.g. list vs detail selects, PDP branch conditions, RLS anon column posture) — deferred to owning **11-3 / 11-4** stories rather than blocking 11-2 template admin closure.
+
 ## Change Log
 
 - 2026-05-05 — Story created (bmad-create-story). Target: Epic 11 admin template CRUD + product assignment; depends on 11-1 schema/RLS/domain completion.
