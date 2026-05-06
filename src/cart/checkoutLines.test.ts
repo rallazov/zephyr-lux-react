@@ -4,6 +4,33 @@ import { toCheckoutLines } from "./checkoutLines";
 import { domainLineFromStorefront } from "./domainBridge";
 
 describe("toCheckoutLines", () => {
+  it("carries variant_display_snapshot alongside SKU for templated receipts", () => {
+    const snap = [
+      { axis_label: "Size", option_label: "M" },
+      { axis_label: "Color", option_label: "Navy" },
+    ];
+    const drafts = toCheckoutLines([
+      {
+        id: 1,
+        name: "T",
+        quantity: 2,
+        price: 10,
+        image: "",
+        sku: "SKU-TPL-1",
+        product_slug: "templated-test",
+        variant_display_snapshot: snap,
+      },
+    ]);
+    expect(drafts).toEqual([
+      {
+        sku: "SKU-TPL-1",
+        quantity: 2,
+        product_slug: "templated-test",
+        variant_display_snapshot: snap,
+      },
+    ]);
+  });
+
   it("produces SKU-forward drafts with optional ids", () => {
     const lines: StorefrontCartLine[] = [
       {

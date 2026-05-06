@@ -84,6 +84,122 @@ export type SupabaseProductWithRelations = SupabaseProductRow & {
   product_subscription_plans?: SubscriptionPlanEmbedRow[] | null;
 };
 
+/**
+ * Validates mixed legacy + templated Supabase payloads before domain mapping:
+ * rejects cross-product FK leakage, inactive/missing embeds, and option rows that
+ * do not belong to the assigned template. Degrades to legacy size/color when the
+ * templated row is not coherent (Story 11-4).
+ */
+export function sanitizeSupabaseProductBundle(
+  row: SupabaseProductWithRelations
+): SupabaseProductWithRelations {
+  const variantsRaw = row.product_variants ?? [];
+
+  const tid = row.variant_template_id;
+  const hasTid = tid != null && String(tid).trim() !== "";
+
+  const stripToLegacy = (): SupabaseProductWithRelations => ({
+    ...row,
+    variant_template_id: null,
+    variant_templates: null,
+    product_variants: variantsRaw.map((v) => ({
+      ...v,
+      product_variant_option_values: undefined,
+    })),
+  });
+
+  if (!hasTid) {
+    return stripToLegacy();
+  }
+
+  const emb = row.variant_templates;
+  const embedOk =
+    emb != null &&
+    String(emb.id) === String(tid) &&
+    String(emb.status).toLowerCase() === "active";
+
+  if (!embedOk) {
+    return stripToLegacy();
+  }
+
+  if (variantsRaw.length === 0) {
+    return stripToLegacy();
+  }
+
+  const axesSorted = [...(emb.variant_template_axes ?? [])].sort(
+    (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+  );
+  if (axesSorted.length === 0) {
+    return stripToLegacy();
+  }
+
+  const uniqueAxisIds = new Set(axesSorted.map((a) => String(a.id)));
+  if (uniqueAxisIds.size !== axesSorted.length) {
+    return stripToLegacy();
+  }
+
+  const axisById = new Map(
+    axesSorted.map((a) => [String(a.id), a] as const)
+  );
+  const allowedOptionIdsForAxisId = new Map<string, Set<string>>();
+  for (const a of axesSorted) {
+    const opts = a.variant_template_axis_options ?? [];
+    const set = new Set(
+      opts
+        .filter((o) => String(o.axis_id) === String(a.id))
+        .map((o) => String(o.id))
+    );
+    allowedOptionIdsForAxisId.set(String(a.id), set);
+  }
+
+  const filteredVariants = variantsRaw.map((v) => {
+    const rows = v.product_variant_option_values ?? [];
+    const filtered = rows.filter((r) => {
+      const axId = String(r.axis_id);
+      const axis = axisById.get(axId);
+      if (!axis) return false;
+      const allowed = allowedOptionIdsForAxisId.get(axId);
+      return allowed?.has(String(r.option_id)) ?? false;
+    });
+    return {
+      ...v,
+      product_variant_option_values:
+        filtered.length > 0 ? filtered : undefined,
+    };
+  });
+
+  const coherent = (): boolean => {
+    const axisIds = new Set(axesSorted.map((a) => String(a.id)));
+    for (const v of filteredVariants) {
+      const pairs = v.product_variant_option_values ?? [];
+      if (pairs.length !== axesSorted.length) {
+        return false;
+      }
+      for (const ax of axesSorted) {
+        const id = String(ax.id);
+        const forAxis = pairs.filter((p) => String(p.axis_id) === id);
+        if (forAxis.length !== 1) {
+          return false;
+        }
+      }
+      if (pairs.some((p) => !axisIds.has(String(p.axis_id)))) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  if (!coherent()) {
+    return stripToLegacy();
+  }
+
+  return {
+    ...row,
+    variant_templates: emb,
+    product_variants: filteredVariants,
+  };
+}
+
 function sortImageCandidates(
   rows: SupabaseProductImageRow[]
 ): SupabaseProductImageRow[] {
@@ -142,7 +258,7 @@ export function resolveVariantImageUrl(
   );
 }
 
-export function supabaseRowsToProduct(row: SupabaseProductWithRelations): Product {
+function supabaseRowsToProductInner(row: SupabaseProductWithRelations): Product {
   const variantsRaw = row.product_variants ?? [];
   const images = row.product_images ?? [];
 
@@ -186,6 +302,10 @@ export function supabaseRowsToProduct(row: SupabaseProductWithRelations): Produc
     status: row.status,
     variants,
   });
+}
+
+export function supabaseRowsToProduct(row: SupabaseProductWithRelations): Product {
+  return supabaseRowsToProductInner(sanitizeSupabaseProductBundle(row));
 }
 
 function requireLegacyStorefrontId(
@@ -238,13 +358,14 @@ function storefrontVariantTemplateFromEmbed(
 export function supabaseBundleToCatalogDetail(
   row: SupabaseProductWithRelations
 ): CatalogProductDetail {
-  const product = supabaseRowsToProduct(row);
+  const sanitized = sanitizeSupabaseProductBundle(row);
+  const product = supabaseRowsToProductInner(sanitized);
   const storefrontProductId = requireLegacyStorefrontId(
-    row,
+    sanitized,
     "Supabase catalog"
   );
-  const images = row.product_images ?? [];
-  const galleryImages = orderedProductLevelGalleryUrls(images, row.id);
+  const images = sanitized.product_images ?? [];
+  const galleryImages = orderedProductLevelGalleryUrls(images, sanitized.id);
   const variantPrimaryImageBySku: Partial<Record<string, string>> = {};
   for (const v of product.variants) {
     const path = pickVariantOnlyPrimary(v.id, images);
@@ -256,7 +377,7 @@ export function supabaseBundleToCatalogDetail(
     variantPrimaryImageBySku
   );
   const subscriptionPlans = subscriptionPlansPurchasableFromEmbed(
-    row.product_subscription_plans,
+    sanitized.product_subscription_plans,
   );
   return {
     product,
@@ -265,7 +386,7 @@ export function supabaseBundleToCatalogDetail(
     displayGalleryUrls,
     variantPrimaryImageBySku,
     subscriptionPlans,
-    variantTemplate: storefrontVariantTemplateFromEmbed(row),
+    variantTemplate: storefrontVariantTemplateFromEmbed(sanitized),
   };
 }
 

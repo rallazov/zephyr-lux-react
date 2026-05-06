@@ -1,6 +1,10 @@
 import { type Product, productSchema } from "../domain/commerce";
 import { buildDisplayGalleryUrls } from "./pdpImage";
-import { type CatalogListItem, type CatalogProductDetail } from "./types";
+import {
+  type CatalogListItem,
+  type CatalogProductDetail,
+  type CatalogVariantTemplateSlice,
+} from "./types";
 import { staticSeedCatalogSchema, type StaticSeedProductRow } from "./raw-static";
 
 /** Deep-replace `null` with `undefined` so Zod optionals match typical JSON. */
@@ -19,13 +23,40 @@ function jsonNullsToUndefined(x: unknown): unknown {
 }
 
 function seedRowToProduct(row: StaticSeedProductRow): Product {
-  const { id: _storefrontId, supabase_product_id, ...bodyBase } = row;
+  const {
+    id: _storefrontId,
+    supabase_product_id,
+    variant_template: _vt,
+    ...bodyBase
+  } = row;
   void _storefrontId;
+  void _vt;
   const body = {
     ...bodyBase,
     ...(supabase_product_id ? { id: supabase_product_id } : {}),
   };
   return productSchema.parse(body);
+}
+
+function staticTemplateToCatalogSlice(
+  t: NonNullable<StaticSeedProductRow["variant_template"]>
+): CatalogVariantTemplateSlice {
+  return {
+    id: t.id,
+    name: t.name,
+    axes: t.axes.map((a) => ({
+      id: a.id,
+      axis_key: a.axis_key,
+      label: a.label ?? null,
+      sort_order: a.sort_order,
+      options: a.options.map((o) => ({
+        id: o.id,
+        option_key: o.option_key,
+        label: o.label ?? null,
+        sort_order: o.sort_order,
+      })),
+    })),
+  };
 }
 
 /** Variant eligible for cart/checkout list UX (`status` + on-hand inventory). */
@@ -101,6 +132,9 @@ export function parseStaticCatalogData(input: unknown) {
       displayGalleryUrls,
       variantPrimaryImageBySku,
       subscriptionPlans: [],
+      variantTemplate: raw.variant_template
+        ? staticTemplateToCatalogSlice(raw.variant_template)
+        : null,
     });
   }
 

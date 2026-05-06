@@ -1,6 +1,6 @@
 # Story 11.4: Template legacy coexistence and rollout
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story before dev-story if you want the extra quality gate. -->
 <!-- Ultimate context engine analysis completed - comprehensive developer guide created -->
@@ -8,8 +8,8 @@ Status: ready-for-dev
 ## Dependencies
 
 - [11-1](11-1-variant-template-schema-rls-domain.md) - template tables, `products.variant_template_id`, admin-only RLS, and shared `variantTemplateSchema`.
-- [11-2](11-2-admin-template-crud-assign-product.md) - template CRUD, product assignment, destructive-change guardrails, and `admin_save_variant_template`; currently `review` in sprint status.
-- [11-3](11-3-dynamic-variant-admin-storefront-selectors.md) - dynamic admin variant values and PDP selector behavior; currently `in-progress` in sprint status. Implement this story only after 11-3 lands, or as an explicitly coordinated stacked change.
+- [11-2](11-2-admin-template-crud-assign-product.md) - template CRUD, product assignment, destructive-change guardrails, and `admin_save_variant_template`; **done** (sprint status).
+- [11-3](11-3-dynamic-variant-admin-storefront-selectors.md) - dynamic admin variant values and PDP selector behavior; **done** (sprint status). 11-4 shipped as a stacked/coordinated change after these landed.
 - [2-4](2-4-variant-selector-size-color-price-stock.md), [2-6](2-6-admin-create-edit-product-variants.md), and [9-1](9-1-fixed-assortment-pack-catalog.md) - legacy selector rules, admin save boundary, and fixed-assortment pack semantics that must continue to work.
 - [Epic 11 - Story 11-4](../planning-artifacts/epics.md) - authoritative epic-level AC summary.
 
@@ -54,49 +54,49 @@ so that mixed catalog data cannot throw at runtime, leak unrelated template defi
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 - Catalog read-model audit and DTO decision (AC: 1, 2, 3, 8)**  
-  - [ ] Read current 11-3 branch state before editing: `src/domain/commerce/product.ts`, `src/catalog/types.ts`, `src/catalog/adapter.ts`, `src/catalog/supabase-map.ts`, `src/catalog/parse.ts`, `src/catalog/raw-static.ts`, and any new template/value helpers.  
-  - [ ] Define one public template selector DTO shared by Supabase and static code paths. Reuse `src/domain/commerce/variantTemplate.ts` where possible; do not create a second root product model.  
-  - [ ] Decide whether list reads carry template metadata or only detail reads do. If list reads stay light, ensure PLP/search/category rows for templated products still parse without embedded template relations.
+- [x] **Task 1 - Catalog read-model audit and DTO decision (AC: 1, 2, 3, 8)**  
+  - [x] Read current 11-3 branch state before editing: `src/domain/commerce/product.ts`, `src/catalog/types.ts`, `src/catalog/adapter.ts`, `src/catalog/supabase-map.ts`, `src/catalog/parse.ts`, `src/catalog/raw-static.ts`, and any new template/value helpers.  
+  - [x] Define one public template selector DTO shared by Supabase and static code paths. Reuse `src/domain/commerce/variantTemplate.ts` where possible; do not create a second root product model.  
+  - [x] Decide whether list reads carry template metadata or only detail reads do. If list reads stay light, ensure PLP/search/category rows for templated products still parse without embedded template relations.
 
-- [ ] **Task 2 - Supabase adapter coexistence (AC: 1, 3, 8)**  
-  - [ ] Update `PRODUCTS_CATALOG_SELECT` and mapper row types only as needed for public template metadata and per-variant option values.  
-  - [ ] Ensure `products.variant_template_id`, `variant_templates`, axes/options, and `product_variant_option_values` are read only through 11-3-approved RLS/projection rules.  
-  - [ ] In `supabaseBundleToCatalogDetail` / `supabaseRowsToProduct`, validate that every option value belongs to the product's assigned template and variant. Reject or safely omit malformed templated details without affecting legacy rows.  
-  - [ ] Add Supabase mapper fixtures for one legacy product, one templated product, and one malformed/cross-product template relation.
+- [x] **Task 2 - Supabase adapter coexistence (AC: 1, 3, 8)**  
+  - [x] Update `PRODUCTS_CATALOG_SELECT` and mapper row types only as needed for public template metadata and per-variant option values.  
+  - [x] Ensure `products.variant_template_id`, `variant_templates`, axes/options, and `product_variant_option_values` are read only through 11-3-approved RLS/projection rules.  
+  - [x] In `supabaseBundleToCatalogDetail` / `supabaseRowsToProduct`, validate that every option value belongs to the product's assigned template and variant. Reject or safely omit malformed templated details without affecting legacy rows.  
+  - [x] Add Supabase mapper fixtures for one legacy product, one templated product, and one malformed/cross-product template relation.
 
-- [ ] **Task 3 - Static catalog compatibility (AC: 1, 2, 3, 4, 8)**  
-  - [ ] Extend `staticSeedProductRowSchema` and `parseStaticCatalogData` only if static templated fixtures/data need template metadata. Keep current `data/products.json` valid without template fields.  
-  - [ ] Add at least one pure static templated fixture in tests so Vite `MODE === "test"` has coverage for the template DTO path without live Supabase.  
-  - [ ] Preserve duplicate-SKU validation across all static rows. Template option values must not affect SKU uniqueness.
+- [x] **Task 3 - Static catalog compatibility (AC: 1, 2, 3, 4, 8)**  
+  - [x] Extend `staticSeedProductRowSchema` and `parseStaticCatalogData` only if static templated fixtures/data need template metadata. Keep current `data/products.json` valid without template fields.  
+  - [x] Add at least one pure static templated fixture in tests so Vite `MODE === "test"` has coverage for the template DTO path without live Supabase.  
+  - [x] Preserve duplicate-SKU validation across all static rows. Template option values must not affect SKU uniqueness.
 
-- [ ] **Task 4 - Rollout notes / optional migration script (AC: 4, 5, 6)**  
-  - [ ] Add a rollout document, recommended path `docs/variant-template-rollout.md`, or an equivalent clearly linked handoff.  
-  - [ ] Include dry-run queries/checklists for: products with `variant_template_id`, variants missing option values, duplicate complete combinations, templates attached to active/coming-soon products, and Epic 9 pack products.  
-  - [ ] Document safe mappings from legacy `size` / `color` to template axes, ambiguous-case behavior, clear-template rollback, and production verification steps.
+- [x] **Task 4 - Rollout notes / optional migration script (AC: 4, 5, 6)**  
+  - [x] Add a rollout document, recommended path `docs/variant-template-rollout.md`, or an equivalent clearly linked handoff.  
+  - [x] Include dry-run queries/checklists for: products with `variant_template_id`, variants missing option values, duplicate complete combinations, templates attached to active/coming-soon products, and Epic 9 pack products.  
+  - [x] Document safe mappings from legacy `size` / `color` to template axes, ambiguous-case behavior, clear-template rollback, and production verification steps.
 
-- [ ] **Task 5 - Admin assignment/clear regression belt (AC: 6, 8, 9)**  
-  - [ ] Update or add tests around `AdminProductForm`, `variantTemplateValidation`, and `bundleToRpcPayload` for assign/clear behavior after 11-3 value rows.  
-  - [ ] Confirm clearing `variant_template_id` does not delete legacy `size` / `color`, SKUs, images, or subscription plans.  
-  - [ ] Confirm assigning a template to an active/browsable product blocks save unless complete option values exist or the rollout doc/script has populated them.
+- [x] **Task 5 - Admin assignment/clear regression belt (AC: 6, 8, 9)**  
+  - [x] Update or add tests around the **admin product save bundle** (`adminSaveBundleSchema`, `bundleToRpcPayload` in `src/admin/validation.ts`) for assign/clear behavior after 11-3 value rows — sufficient for AC6 because the form submits through this validated bundle; add a form-level test only if JSX wiring regresses independently.  
+  - [x] Confirm clearing `variant_template_id` does not delete legacy `size` / `color`, SKUs, images, or subscription plans.  
+  - [x] Confirm assigning a template to an active/browsable product blocks save unless complete option values exist or the rollout doc/script has populated them.
 
-- [ ] **Task 6 - Cart, checkout, and historical display invariants (AC: 7, 9)**  
-  - [ ] Add tests proving `StorefrontCartLine`, `normalizeLineSku`, `toCheckoutLines`, `quoteCartLines`, and order snapshot creation remain SKU/quantity based for templated and legacy products.  
-  - [ ] Ensure cart display may show template labels when present, but reconciliation and pricing still use catalog variant price by SKU.  
-  - [ ] Confirm `order_items.variant_options_snapshot` or the 11-3-equivalent snapshot remains display-only and historical order/status views do not depend on live template label changes.
+- [x] **Task 6 - Cart, checkout, and historical display invariants (AC: 7, 9)**  
+  - [x] Add tests proving `StorefrontCartLine`, `normalizeLineSku`, `toCheckoutLines`, `quoteCartLines`, and order snapshot creation remain SKU/quantity based for templated and legacy products.  
+  - [x] Ensure cart display may show template labels when present, but reconciliation and pricing still use catalog variant price by SKU.  
+  - [x] Confirm `order_items.variant_options_snapshot` or the 11-3-equivalent snapshot remains display-only and historical order/status views do not depend on live template label changes.
 
-- [ ] **Task 7 - Verification (AC: 9)**  
-  - [ ] Run `npm test`.  
-  - [ ] Run `npm run build`.  
-  - [ ] Run `npm run smoke`.  
-  - [ ] Record any intentionally deferred rollout/manual production steps in the Dev Agent Record.
+- [x] **Task 7 - Verification (AC: 9)**  
+  - [x] Run `npm test`.  
+  - [x] Run `npm run build`.  
+  - [x] Run `npm run smoke`.  
+  - [x] Record any intentionally deferred rollout/manual production steps in the Dev Agent Record.
 
 ## Dev Notes
 
 ### Start gate
 
-- Sprint status currently has `11-3-dynamic-variant-admin-storefront-selectors: in-progress`. Do not start 11-4 implementation until 11-3 is merged or the branch owner explicitly chooses a stacked flow.
-- The current worktree already contains in-progress 11-3 artifacts: `src/domain/commerce/product.ts` has `template_option_values`, and `supabase/migrations/20260506120000_product_variant_option_values_storefront_template_reads.sql` adds option values, storefront template reads, and `order_items.variant_options_snapshot`. Treat those as existing work; do not rewrite them during 11-4 unless you are deliberately finishing that stack.
+- **Historical:** 11-3 was required before 11-4 implementation; both are **`done`** in sprint status as of this story’s completion.
+- The repo already includes 11-3 artifacts (`template_option_values` on variants, `product_variant_option_values` reads, `order_items.variant_options_snapshot`, etc.). Treat them as the baseline for coexistence work; do not rewrite during 11-4 unless deliberately changing that stack.
 
 ### Scope boundary
 
@@ -216,16 +216,48 @@ No `project-context.md` matched in this workspace; rely on this story, [epics.md
 
 ## Dev Agent Record
 
+### Review Findings
+
+- [x] [Review][Defer] Malformed template sanitize is silent on the storefront — `sanitizeSupabaseProductBundle` degrades incoherent Supabase template data to legacy selectors with no surfaced error (operator UX / observability vs AC8 “clear error handling”). _deferred, pre-existing / product call — Mixed-catalog stability first; shopper-facing or ops-visible signals for sanitize drops deferred._
+
+- [x] [Review][Patch] Refresh stale dependency narrative — `_bmad-output/implementation-artifacts/11-4-template-legacy-coexistence-rollout.md` (Dependencies §, Start gate §) still states 11-2 in `review` and 11-3 `in-progress` while sprint status marks both `done`; misleads readers about stack state.
+
+- [x] [Review][Patch] AC6 / Task 5 wording vs tests — New coverage is `adminSaveBundleSchema` / `bundleToRpcPayload` (`src/admin/validation.templateCoexistence.test.ts`), not `AdminProductForm`; align task text or add a thin form-level/regression test if the form must be explicitly covered.
+
+- [x] [Review][Patch] Rollout duplicate-combination checklist — `docs/variant-template-rollout.md` calls duplicate complete combinations a heuristic / manual pivot; AC5 asked for dry-run-capable guidance—tighten with concrete SQL or an explicit operator script for tuple-uniqueness checks.
+
 ### Agent Model Used
 
-_(Record during implementation.)_
+Composer (Cursor agent), 2026-05-05.
 
 ### Debug Log References
 
+_(None.)_
+
 ### Completion Notes List
 
+- **`sanitizeSupabaseProductBundle`** (`src/catalog/supabase-map.ts`): Strips FK-mismatched or inactive template embeds, filters `product_variant_option_values` to axes/options under the embed, and degrades to legacy (no `variantTemplate`, no `template_option_values`) unless every variant has exactly one valid pair per axis. List reads remain lighter selects in `adapter.ts` (detail-only template graph).
+- **Static path**: `staticSeedProductRowSchema` accepts optional `variant_template` + `variant_template_id`; `parseStaticCatalogData` maps slice via `staticTemplateToCatalogSlice` so `label` types match `CatalogVariantTemplateSlice`. Canonical `data/products.json` still validates without template fields.
+- **Rollout**: `docs/variant-template-rollout.md` documents dry-run SQL, mapping guidance, rollback, and verification. Production bulk migration of every SKU remains an explicit operator/runbook exercise (deferred per story scope).
+- **Tests**: Supabase mixed/malformed cases (`supabase-map.test.ts`), static template + Epic 9 pack layout (`parse.templateCoexistence.test.ts`, `parse.test.ts`), admin bundle assign/clear (`validation.templateCoexistence.test.ts`), checkout `variant_display_snapshot` passthrough (`checkoutLines.test.ts`), explicit SKU-only quote line (`catalog.quote.test.ts`). `normalizeLineSku` and order snapshots remain covered by `lineKey.test.ts` and `orderSnapshots.test.ts`.
+- **Verification**: `npm test`, `npm run build`, `npm run smoke` all passed (2026-05-05).
+
 ### File List
+
+- `src/catalog/supabase-map.ts`
+- `src/catalog/parse.ts`
+- `src/catalog/raw-static.ts`
+- `src/catalog/supabase-map.test.ts`
+- `src/catalog/parse.test.ts`
+- `src/catalog/parse.templateCoexistence.test.ts`
+- `src/admin/validation.templateCoexistence.test.ts`
+- `handlers/_lib/catalog.quote.test.ts`
+- `docs/variant-template-rollout.md`
+- `_bmad-output/implementation-artifacts/11-4-template-legacy-coexistence-rollout.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
 
 ## Change Log
 
 - 2026-05-05 - Story created (bmad-create-story 11-4). Target: mixed legacy/template catalog adapter coexistence, Epic 9 pack-safe rollout guidance, and SKU-based cart/checkout invariants. Implementation gated on 11-3 landing or explicit stacked coordination.
+- 2026-05-05 - Story implemented: Supabase template sanitization and coherence guardrails; optional static template fixtures; rollout doc; admin bundle and cart/checkout regression tests; `npm test` / `build` / `smoke` green.
+- 2026-05-05 - Code review: deferred AC8 surfacing (silent sanitize); applied doc/task/story patches (dependencies, Task 5 wording, duplicate-tuple SQL in rollout doc).
