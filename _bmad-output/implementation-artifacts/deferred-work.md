@@ -1,5 +1,9 @@
 # Deferred work (from reviews and triage)
 
+## Deferred from: code review of 11-4-template-legacy-coexistence-rollout.md (2026-05-05)
+
+- **Silent template sanitization (review option 4)** — `sanitizeSupabaseProductBundle` falls back to legacy selectors without storefront or operator-visible errors when template/embed/option-value rows are incoherent. Deferred: prioritize non-throwing mixed catalog; revisit AC8 “clear error handling” with logging, admin alerts, or PDP-level messaging when observability/product asks for it. _(Reviewer note: no one-line reason supplied with “4.” — capture a sharper rationale if you revisit.)_
+
 ## Deferred from: code review of 11-2-admin-template-crud-assign-product.md (2026-05-05)
 
 - **Destructive template edit acknowledgement has no persisted audit/event** — UI checkbox blocks submit but does not write an immutable audit row/event; aligns with MVP but not the strictest reading of AC4 “auditable in code”.

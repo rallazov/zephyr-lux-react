@@ -12,6 +12,12 @@ describe("quoteCartLines", () => {
     expect(q.total_cents).toBe(2400 + 500 + 168);
   });
 
+  it("resolves unit and line cents from bundled catalog by SKU only (no display metadata on quote lines)", () => {
+    const q = quoteCartLines([{ sku: "ZLX-2PK-M", quantity: 1 }]);
+    expect(q.lines[0]!.sku).toBe("ZLX-2PK-M");
+    expect(q.lines[0]!.unit_cents).toBe(2400);
+  });
+
   it("rejects unknown SKU with QuoteError", () => {
     expect(() => quoteCartLines([{ sku: "unknown-sku-xyz", quantity: 1 }])).toThrow(QuoteError);
   });

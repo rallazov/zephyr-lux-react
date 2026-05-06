@@ -15,6 +15,7 @@ describe("parseStaticCatalogData", () => {
     expect(products).toHaveLength(5);
     expect(listItems.some((l) => l.storefrontProductId === 101)).toBe(true);
     expect(bySlug.get("boxer-briefs")?.product.title).toMatch(/Zephyr Lux Boxer Briefs/);
+    expect(bySlug.get("boxer-briefs")?.variantTemplate).toBeFalsy();
   });
 
   it("rejects duplicate SKUs", () => {

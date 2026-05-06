@@ -1,6 +1,6 @@
 # Story 11.3: Dynamic variant editing and storefront selectors
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story before dev-story if you want the extra quality gate. -->
 <!-- Ultimate context engine analysis completed - comprehensive developer guide created -->
