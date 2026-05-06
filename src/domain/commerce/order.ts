@@ -28,6 +28,7 @@ export const orderItemSchema = z.object({
   image_url: z.string().nullable().optional(),
   product_id: z.string().uuid().nullable().optional(),
   variant_id: z.string().uuid().nullable().optional(),
+  variant_options_snapshot: z.unknown().nullable().optional(),
 });
 
 export type OrderItem = z.infer<typeof orderItemSchema>;

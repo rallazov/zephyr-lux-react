@@ -45,7 +45,8 @@ class LocalStore implements Store {
     fs.writeFileSync(p, JSON.stringify([...set], null, 2));
     return true;
   }
-  async decrementInventory(_items: { sku: string; qty: number }[]) {
+  async decrementInventory(items: { sku: string; qty: number }[]) {
+    void items;
     return;
   }
 }
@@ -58,7 +59,8 @@ class BlobStore implements Store {
       token: ENV.VERCEL_BLOB_RW_TOKEN,
     });
   }
-  async getOrder(_orderId: string) {
+  async getOrder(orderId: string) {
+    void orderId;
     return null; // add a GET endpoint later
   }
   async markEventProcessed(eventId: string) {
@@ -68,7 +70,8 @@ class BlobStore implements Store {
     await put(prefix, "1", { access: "public", contentType: "text/plain", token: ENV.VERCEL_BLOB_RW_TOKEN });
     return true;
   }
-  async decrementInventory(_items: { sku: string; qty: number }[]) {
+  async decrementInventory(items: { sku: string; qty: number }[]) {
+    void items;
     return;
   }
 }

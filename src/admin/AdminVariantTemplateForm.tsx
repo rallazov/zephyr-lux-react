@@ -145,7 +145,7 @@ export default function AdminVariantTemplateForm() {
 
       setSaving(true);
       try {
-        let rpcPayload: Record<string, unknown> = {
+        const rpcPayload: Record<string, unknown> = {
           name: domainNext.name,
           status: domainNext.status,
           axes: [...domainNext.axes].map((ax) => ({

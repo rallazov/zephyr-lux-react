@@ -12,12 +12,19 @@ import {
 } from "../domain/commerce/subscription";
 import { productSchema } from "../domain/commerce/product";
 
+const templateOptionPairSchema = z.object({
+  axis_id: z.string().uuid(),
+  option_id: z.string().uuid(),
+});
+
 /** One variant row in the admin save bundle (id required for sync). */
 export const adminVariantRowSchema = z.object({
   id: z.string().uuid(),
   sku: z.string().min(1),
   size: z.string().optional(),
   color: z.string().optional(),
+  /** Required in practice when `product.variant_template_id` is set; enforced in `admin_save_product_bundle`. */
+  template_option_values: z.array(templateOptionPairSchema).optional(),
   price_cents: z.number().int().nonnegative(),
   currency: iso4217CurrencySchema,
   inventory_quantity: z.number().int().nonnegative(),
@@ -125,7 +132,22 @@ export const adminSaveBundleSchema = z
     images: z.array(adminImageRowSchema).default([]),
     subscription_plans: z.array(adminSubscriptionPlanRowSchema).default([]),
   })
-  .strict();
+  .strict()
+  .superRefine((data, ctx) => {
+    const tid = data.product.variant_template_id;
+    if (!tid) return;
+    for (let i = 0; i < data.variants.length; i++) {
+      const v = data.variants[i]!;
+      const tov = v.template_option_values;
+      if (tov == null || tov.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Templated products require template option selections on every variant row",
+          path: ["variants", i, "template_option_values"],
+        });
+      }
+    }
+  });
 
 export type AdminSaveBundle = z.infer<typeof adminSaveBundleSchema>;
 
@@ -148,6 +170,7 @@ export function bundleToRpcPayload(
     variants: b.variants.map((v) => ({
       ...v,
       currency: v.currency,
+      template_option_values: v.template_option_values ?? null,
     })),
     images: b.images.map((im) => ({
       ...im,

@@ -90,36 +90,89 @@ describe("adminVariantTemplateFormSchema", () => {
 describe("variantsSatisfyTemplate", () => {
   const tpl = baseTemplate();
 
-  it("allows matching size and color rows", () => {
+  it("allows distinct template option combinations", () => {
     const rows: VariantRowLite[] = [
-      { sku: "A", size: "M", color: "black" },
-      { sku: "B", size: "s", color: "Black" },
+      {
+        sku: "A",
+        template_option_values: [
+          { axis_id: AXIS_SIZE, option_id: OPT_M },
+          { axis_id: AXIS_CLR, option_id: OPT_BLK },
+        ],
+      },
+      {
+        sku: "B",
+        template_option_values: [
+          { axis_id: AXIS_SIZE, option_id: OPT_S },
+          { axis_id: AXIS_CLR, option_id: OPT_BLK },
+        ],
+      },
     ];
     expect(variantsSatisfyTemplate(rows, tpl).ok).toBe(true);
   });
 
-  it("rejects unsupported axis keys", () => {
-    const bad = baseTemplate({
+  it("rejects duplicate combination", () => {
+    const combo = [
+      { axis_id: AXIS_SIZE, option_id: OPT_M },
+      { axis_id: AXIS_CLR, option_id: OPT_BLK },
+    ];
+    const rows: VariantRowLite[] = [
+      { sku: "A", template_option_values: combo },
+      { sku: "B", template_option_values: [...combo] },
+    ];
+    const r = variantsSatisfyTemplate(rows, tpl);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.message).toMatch(/same template combination/i);
+  });
+
+  it("rejects invalid option for axis", () => {
+    const rows: VariantRowLite[] = [
+      {
+        sku: "A",
+        template_option_values: [
+          { axis_id: AXIS_SIZE, option_id: OPT_BLK },
+          { axis_id: AXIS_CLR, option_id: OPT_BLK },
+        ],
+      },
+    ];
+    expect(variantsSatisfyTemplate(rows, tpl).ok).toBe(false);
+  });
+
+  it("rejects missing axis selection", () => {
+    const rows: VariantRowLite[] = [
+      {
+        sku: "A",
+        template_option_values: [{ axis_id: AXIS_SIZE, option_id: OPT_M }],
+      },
+    ];
+    expect(variantsSatisfyTemplate(rows, tpl).ok).toBe(false);
+  });
+
+  it("supports a third axis when all rows specify option ids", () => {
+    const axisFit = "77777777-7777-4777-8777-777777777777";
+    const optSlim = "88888888-8888-4888-8888-888888888888";
+    const tpl3 = baseTemplate({
       axes: [
+        ...baseTemplate().axes,
         {
-          id: AXIS_SIZE,
+          id: axisFit,
           axis_key: "fit",
-          label: null,
-          sort_order: 0,
-          options: [{ id: OPT_S, option_key: "slim", label: null, sort_order: 0 }],
+          label: "Fit",
+          sort_order: 2,
+          options: [{ id: optSlim, option_key: "slim", label: "Slim", sort_order: 0 }],
         },
       ],
     });
-    const rows: VariantRowLite[] = [{ sku: "A", size: "M", color: "" }];
-    const r = variantsSatisfyTemplate(rows, bad);
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.message).toMatch(/not yet supported/i);
-  });
-
-  it("rejects size not in template options", () => {
-    const rows: VariantRowLite[] = [{ sku: "A", size: "xl", color: "black" }];
-    const r = variantsSatisfyTemplate(rows, tpl);
-    expect(r.ok).toBe(false);
+    const rows: VariantRowLite[] = [
+      {
+        sku: "A",
+        template_option_values: [
+          { axis_id: AXIS_SIZE, option_id: OPT_M },
+          { axis_id: AXIS_CLR, option_id: OPT_BLK },
+          { axis_id: axisFit, option_id: optSlim },
+        ],
+      },
+    ];
+    expect(variantsSatisfyTemplate(rows, tpl3).ok).toBe(true);
   });
 });
 

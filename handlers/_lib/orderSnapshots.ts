@@ -1,5 +1,6 @@
 import type { CartQuote } from "./catalog";
 import { findVariantBySku } from "./catalog";
+import type { PaymentIntentLineItem } from "./createPaymentIntentBody";
 
 /** Placeholder shipping JSON until checkout collects a full address (FR-CHK-002 follow-up). */
 export const PENDING_CHECKOUT_SHIPPING_JSON = {
@@ -27,21 +28,48 @@ export type OrderItemInsertRow = {
   image_url: string | null;
   product_id: string | null;
   variant_id: string | null;
+  variant_options_snapshot: unknown | null;
 };
 
 /**
  * Build persisted order line snapshots from a server quote (FR-ORD-005) — never from client money JSON.
  */
-export function orderItemRowsFromQuote(quote: CartQuote): OrderItemInsertRow[] {
+export function orderItemRowsFromQuote(
+  quote: CartQuote,
+  paymentLines: PaymentIntentLineItem[],
+): OrderItemInsertRow[] {
+  const snapBySku = new Map<
+    string,
+    NonNullable<PaymentIntentLineItem["variant_display_snapshot"]>
+  >();
+  for (const pl of paymentLines) {
+    if (
+      pl.variant_display_snapshot &&
+      pl.variant_display_snapshot.length > 0 &&
+      !snapBySku.has(pl.sku)
+    ) {
+      snapBySku.set(pl.sku, pl.variant_display_snapshot);
+    }
+  }
+
   return quote.lines.map((line) => {
     const hit = findVariantBySku(line.sku);
     if (!hit) {
       throw new Error(`Unknown SKU in quote: ${line.sku}`);
     }
+    const snap = snapBySku.get(line.sku);
+    const legacyTitle = variantTitleFromVariant(hit.variant.size, hit.variant.color);
+    const snapTitle =
+      snap && snap.length > 0
+        ? snap
+            .map((s) => s.option_label.trim())
+            .filter(Boolean)
+            .join(" / ") || null
+        : null;
     return {
       sku: line.sku,
       product_title: line.product_title,
-      variant_title: variantTitleFromVariant(hit.variant.size, hit.variant.color),
+      variant_title: snapTitle ?? legacyTitle,
       size: hit.variant.size ?? null,
       color: hit.variant.color ?? null,
       quantity: line.quantity,
@@ -50,6 +78,7 @@ export function orderItemRowsFromQuote(quote: CartQuote): OrderItemInsertRow[] {
       image_url: hit.variant.image_url ?? null,
       product_id: hit.product.id ?? null,
       variant_id: hit.variant.id ?? null,
+      variant_options_snapshot: snap ?? null,
     };
   });
 }

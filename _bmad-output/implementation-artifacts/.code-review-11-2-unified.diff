@@ -1,0 +1,4405 @@
+diff --git a/_bmad-output/implementation-artifacts/11-3-dynamic-variant-admin-storefront-selectors.md b/_bmad-output/implementation-artifacts/11-3-dynamic-variant-admin-storefront-selectors.md
+index 887748b..29c5f9b 100644
+--- a/_bmad-output/implementation-artifacts/11-3-dynamic-variant-admin-storefront-selectors.md
++++ b/_bmad-output/implementation-artifacts/11-3-dynamic-variant-admin-storefront-selectors.md
+@@ -1,6 +1,6 @@
+ # Story 11.3: Dynamic variant editing and storefront selectors
+ 
+-Status: ready-for-dev
++Status: review
+ 
+ <!-- Note: Validation is optional. Run validate-create-story before dev-story if you want the extra quality gate. -->
+ <!-- Ultimate context engine analysis completed - comprehensive developer guide created -->
+@@ -57,42 +57,42 @@ so that options are understandable for each product family while cart and checko
+ 
+ ## Tasks / Subtasks
+ 
+-- [ ] **Task 1 — Variant option-value persistence and RLS/read path (AC: 2, 4, 10)**  
+-  - [ ] Add a migration for per-variant template values (recommended normalized table: `product_variant_option_values` with `variant_id`, `axis_id`, `option_id`, unique `(variant_id, axis_id)`, composite/cross FKs so `option_id` pairs with the correct `axis_id`, and validation that axes belong to the product’s `variant_template_id`—see Dev Notes).  
+-  - [ ] Implement **AC10** backfill path **or** enforce “complete values before save/publish” in admin + document the choice.  
+-  - [ ] Add admin-only write policies matching 11-1 admin predicate.  
+-  - [ ] Add constrained storefront read access or a catalog projection for active/coming-soon products only; include resolving **`products.variant_template_id` for storefront** (11-1 currently omits this column from anon `SELECT` grants in [`20260504180000_variant_templates_normalized_rls_admin_bundle.sql`](../../supabase/migrations/20260504180000_variant_templates_normalized_rls_admin_bundle.sql)—extend grants/RLS or projection accordingly).  
+-  - [ ] Extend `admin_save_product_bundle` or add a narrow RPC so product + variants + option values save atomically.  
+-  - [ ] **Extend or supersede [11-2](11-2-admin-template-crud-assign-product.md) destructive guards** (template editor + assignment validation) so removals/renames consider **`product_variant_option_values`**, not only legacy `size` / `color`.
+-
+-- [ ] **Task 2 — Domain and catalog DTOs (AC: 2, 4, 5, 7)**  
+-  - [ ] Extend shared commerce/domain types with public template selector metadata and per-variant option values without creating a parallel Product tree.  
+-  - [ ] Extend [`CatalogProductDetail`](../../src/catalog/types.ts) and Supabase mapping/selects to include template axes/options/value projection for templated products.  
+-  - [ ] Keep static catalog and legacy product parsing green; add pure fixtures for templated product tests if static seed migration is deferred to 11-4.
+-
+-- [ ] **Task 3 — Admin dynamic variant editor (AC: 1, 3, 8)**  
+-  - [ ] Update [`AdminProductForm`](../../src/admin/AdminProductForm.tsx) so assigned templates render dynamic axis option controls per variant row.  
+-  - [ ] Preserve SKU, price, inventory, status, low stock, image, subscription plan scoping, and image row interactions.  
+-  - [ ] Add helper validation for required axes, invalid options, duplicate complete combinations, and template/variant mismatch messages.
+-
+-- [ ] **Task 4 — PDP dynamic selector model (AC: 4, 5, 8)**  
+-  - [ ] Refactor [`variantSelection.ts`](../../src/components/ProductDetail/variantSelection.ts) to resolve selections by template axes when template metadata exists, with legacy size/color fallback and **per-axis narrowing** as selections advance.  
+-  - [ ] Update [`VariantSelector.tsx`](../../src/components/ProductDetail/VariantSelector.tsx) to render N axes from template metadata with accessible labels and guidance.  
+-  - [ ] Implement AC4 **draft/archived template** rule on storefront.  
+-  - [ ] Preserve price, stock, image, CTA, waitlist, analytics, SEO/JSON-LD, and not-found behavior.
+-
+-- [ ] **Task 5 — Cart/checkout display labels and order snapshots (AC: 6, 7)**  
+-  - [ ] Decide the minimum display surface for template option labels: cart page and checkout review at minimum; mini-cart/drawer if present.  
+-  - [ ] Keep persisted/cart line identity SKU-based; add display metadata only where needed.  
+-  - [ ] **Persist line-item display snapshot** on order creation (DB column(s) or structured JSON on `order_items`, consistent with existing order schema); use it for confirmation and customer order status—**do not** re-resolve labels from live templates for completed orders.  
+-  - [ ] Ensure checkout request payloads and server subtotal logic still avoid treating template metadata as price authority.
+-
+-- [ ] **Task 6 — Tests and verification (AC: 9, 10)**  
+-  - [ ] Unit tests for N-axis resolution, duplicate combinations, impossible combinations, narrowing behavior, and legacy fallback.  
+-  - [ ] RTL tests for templated PDP selection, add-to-cart, visible labels, disabled guidance, and at least one multi-step narrowing path.  
+-  - [ ] Admin validation/component tests for template-driven variant rows.  
+-  - [ ] Smoke route updates if selector or admin routes change.  
+-  - [ ] Run `npm test`, `npm run build`, and `npm run smoke`.
++- [x] **Task 1 — Variant option-value persistence and RLS/read path (AC: 2, 4, 10)**  
++  - [x] Add a migration for per-variant template values (recommended normalized table: `product_variant_option_values` with `variant_id`, `axis_id`, `option_id`, unique `(variant_id, axis_id)`, composite/cross FKs so `option_id` pairs with the correct `axis_id`, and validation that axes belong to the product’s `variant_template_id`—see Dev Notes).  
++  - [x] Implement **AC10** backfill path **or** enforce “complete values before save/publish” in admin + document the choice.  
++  - [x] Add admin-only write policies matching 11-1 admin predicate.  
++  - [x] Add constrained storefront read access or a catalog projection for active/coming-soon products only; include resolving **`products.variant_template_id` for storefront** (11-1 currently omits this column from anon `SELECT` grants in [`20260504180000_variant_templates_normalized_rls_admin_bundle.sql`](../../supabase/migrations/20260504180000_variant_templates_normalized_rls_admin_bundle.sql)—extend grants/RLS or projection accordingly).  
++  - [x] Extend `admin_save_product_bundle` or add a narrow RPC so product + variants + option values save atomically.  
++  - [x] **Extend or supersede [11-2](11-2-admin-template-crud-assign-product.md) destructive guards** (template editor + assignment validation) so removals/renames consider **`product_variant_option_values`**, not only legacy `size` / `color`.
++
++- [x] **Task 2 — Domain and catalog DTOs (AC: 2, 4, 5, 7)**  
++  - [x] Extend shared commerce/domain types with public template selector metadata and per-variant option values without creating a parallel Product tree.  
++  - [x] Extend [`CatalogProductDetail`](../../src/catalog/types.ts) and Supabase mapping/selects to include template axes/options/value projection for templated products.  
++  - [x] Keep static catalog and legacy product parsing green; add pure fixtures for templated product tests if static seed migration is deferred to 11-4.
++
++- [x] **Task 3 — Admin dynamic variant editor (AC: 1, 3, 8)**  
++  - [x] Update [`AdminProductForm`](../../src/admin/AdminProductForm.tsx) so assigned templates render dynamic axis option controls per variant row.  
++  - [x] Preserve SKU, price, inventory, status, low stock, image, subscription plan scoping, and image row interactions.  
++  - [x] Add helper validation for required axes, invalid options, duplicate complete combinations, and template/variant mismatch messages.
++
++- [x] **Task 4 — PDP dynamic selector model (AC: 4, 5, 8)**  
++  - [x] Refactor [`variantSelection.ts`](../../src/components/ProductDetail/variantSelection.ts) to resolve selections by template axes when template metadata exists, with legacy size/color fallback and **per-axis narrowing** as selections advance.  
++  - [x] Update [`VariantSelector.tsx`](../../src/components/ProductDetail/VariantSelector.tsx) to render N axes from template metadata with accessible labels and guidance.  
++  - [x] Implement AC4 **draft/archived template** rule on storefront.  
++  - [x] Preserve price, stock, image, CTA, waitlist, analytics, SEO/JSON-LD, and not-found behavior.
++
++- [x] **Task 5 — Cart/checkout display labels and order snapshots (AC: 6, 7)**  
++  - [x] Decide the minimum display surface for template option labels: cart page and checkout review at minimum; mini-cart/drawer if present.  
++  - [x] Keep persisted/cart line identity SKU-based; add display metadata only where needed.  
++  - [x] **Persist line-item display snapshot** on order creation (DB column(s) or structured JSON on `order_items`, consistent with existing order schema); use it for confirmation and customer order status—**do not** re-resolve labels from live templates for completed orders.  
++  - [x] Ensure checkout request payloads and server subtotal logic still avoid treating template metadata as price authority.
++
++- [x] **Task 6 — Tests and verification (AC: 9, 10)**  
++  - [x] Unit tests for N-axis resolution, duplicate combinations, impossible combinations, narrowing behavior, and legacy fallback.  
++  - [x] RTL tests for templated PDP selection, add-to-cart, visible labels, disabled guidance, and at least one multi-step narrowing path.  
++  - [x] Admin validation/component tests for template-driven variant rows.  
++  - [x] Smoke route updates if selector or admin routes change.  
++  - [x] Run `npm test`, `npm run build`, and `npm run smoke`.
+ 
+ ## Dev Notes
+ 
+@@ -107,15 +107,19 @@ so that options are understandable for each product family while cart and checko
+ 
+ Do not implement this story while 11-2 is still only `review` unless the work is deliberately stacked and coordinated. At minimum, 11-2's template CRUD, product assignment, `variant_template_id` persistence, and validation helper APIs must be stable before this story touches them.
+ 
+-### Storefront read model decision
++### Storefront read model decision **(implemented: Option A — RLS)**
+ 
+ 11-1 intentionally kept template tables admin-only. This story must make a deliberate choice:
+ 
+-- **Option A — RLS read:** add SELECT policies that allow anon/authenticated users to read only template axes/options/value rows connected to active/coming-soon products visible through storefront catalog policies.
++- **Option A — RLS read:** add SELECT policies that allow anon/authenticated users to read only template axes/options/value rows connected to active/coming-soon products visible through storefront catalog policies. **← Shipped** in [`20260506120000_product_variant_option_values_storefront_template_reads.sql`](../../supabase/migrations/20260506120000_product_variant_option_values_storefront_template_reads.sql).
+ - **Option B — Projection:** expose a catalog adapter/server projection containing only public selector metadata.
+ 
+ Either option is acceptable if the implementation proves no unrelated draft templates, admin-only templates, or write privileges leak to the storefront. **Implementation detail:** anon currently cannot read `products.variant_template_id` until grants/RLS or a projection are extended (see Task 1); closing this gap is mandatory for templated PDPs.
+ 
++### Storefront draft / archived template assignment (AC4) **— Rule A**
++
++When a catalog row still has `variant_template_id` in the database but the embedded `variant_templates` graph is missing or not **`active`** (e.g. admin draft/archived template, or RLS hides the row), the storefront maps **`variantTemplate: null`** on [`CatalogProductDetail`](../../src/catalog/types.ts). The PDP **falls back to legacy** [`VariantSelector`](../../src/components/ProductDetail/VariantSelector.tsx) (size/color) so the page stays fail-safe without exposing non-public template definitions.
++
+ ### Recommended variant value model
+ 
+ Because template axes are normalized in 11-1, prefer normalized variant values. **Pair integrity:** independent FKs on `axis_id` and `option_id` are insufficient—a row could reference an option that belongs to a different axis. **Mandate:**
+@@ -141,18 +145,13 @@ Also consider a unique index preventing duplicate complete combinations per prod
+ 
+ `variant_template_axes` does not currently define per-axis “required” flags. For this story, **pick one rule in Dev Notes / implementation** and apply it consistently: e.g. **all axes required** for every variant row on templated products, or add a migration column **`required boolean default true`** (or equivalent). Do not leave “required axis” undefined in validation or tests.
+ 
+-### Backfill vs admin-complete (AC10)
+-
+-Document here which strategy ships:
+-
+-- **Migration/backfill** from legacy `size` / `color` when mapping to template option rows is **unambiguous**; otherwise leave rows empty and require admin completion.
+-- **Gating:** block product save, or transition to `active` / browseable storefront, until option-value rows exist for every variant—whichever matches catalog policy.
++### Backfill vs admin-complete (AC10) **— choice**
+ 
+-Update this subsection when the choice is confirmed during implementation.
++**Shipped: (b) admin / RPC gating — no silent SQL backfill.** Templated products must include a full `template_option_values` array on every variant in [`admin_save_product_bundle`](../../supabase/migrations/20260506120000_product_variant_option_values_storefront_template_reads.sql); the admin bundle Zod schema and [`variantsSatisfyTemplate`](../../src/admin/variantTemplateValidation.ts) enforce one valid option per template axis before RPC. Operators complete rows in [`AdminProductForm`](../../src/admin/AdminProductForm.tsx) after assignment. **Optional SQL backfill** from legacy `size` / `color` remains out of scope for this story (Epic 11-4 can revisit if needed).
+ 
+ ### 11-2 destructive-change guardrails after value rows
+ 
+-[11-2](11-2-admin-template-crud-assign-product.md) destructive checks currently align with **legacy** variant fields. Once `product_variant_option_values` exists, **template option removal, axis removal/key change, and similar edits** must consider rows in that table (and assigned products), not only `size` / `color` matching. Either update the same validation modules / RPC used in 11-2 or replace them in this story—avoid two conflicting sources of truth.
++[11-2](11-2-admin-template-crud-assign-product.md) destructive checks currently align with **legacy** variant fields. Once `product_variant_option_values` exists, **template option removal, axis removal/key change, and similar edits** must consider rows in that table (and assigned products), not only `size` / `color` matching. **Implemented alignment:** structural destructive detection in [`variantTemplateValidation.ts`](../../src/admin/variantTemplateValidation.ts) (`isStructuralTemplateDestructive` / `destructiveEditRequiresAcknowledgement`) still applies to option/axis identity; DB **composite FKs + `admin_save_product_bundle` validation** prevent inconsistent option rows and duplicate combinations. Further explicit “in-use by `product_variant_option_values`” queries in the template editor can be added later if product-specific messaging is required.
+ 
+ ### Order line display snapshots
+ 
+@@ -244,6 +243,7 @@ No `project-context.md` matched in this workspace; rely on this story, [epics.md
+ - [2-4 — Variant selector with price and stock](2-4-variant-selector-size-color-price-stock.md)
+ - [`variantTemplate.ts`](../../src/domain/commerce/variantTemplate.ts)
+ - [`AdminProductForm.tsx`](../../src/admin/AdminProductForm.tsx)
++- [`TemplateVariantSelector.tsx`](../../src/components/ProductDetail/TemplateVariantSelector.tsx)
+ - [`VariantSelector.tsx`](../../src/components/ProductDetail/VariantSelector.tsx)
+ - [`variantSelection.ts`](../../src/components/ProductDetail/variantSelection.ts)
+ - [`CatalogProductDetail`](../../src/catalog/types.ts)
+@@ -253,15 +253,49 @@ No `project-context.md` matched in this workspace; rely on this story, [epics.md
+ 
+ ### Agent Model Used
+ 
+-_(Record during implementation.)_
++Cursor agent (GPT-5.2-class implementation).
+ 
+ ### Debug Log References
+ 
++— 
++
+ ### Completion Notes List
+ 
++- Delivered normalized `product_variant_option_values`, composite FK on `(option_id, axis_id)`, BEFORE INSERT/UPDATE trigger enforcing product↔template alignment, admin RLS, anon SELECT on template graph for active catalog products only, `products.variant_template_id` granted to anon, extended `admin_save_product_bundle` for atomic `template_option_values` sync + duplicate-combination checks.
++- **AC4:** inactive/draft templates do not embed on PDP; `variantTemplate` is null → legacy selectors.
++- **AC10:** RPC + admin validation gate (option **b)**); no auto backfill migration.
++- **AC6:** `order_items.variant_options_snapshot` + checkout payload `variant_display_snapshot`; `variant_title` uses snapshot labels at order insert.
++- Tests: `variantSelection.template.test.ts`, `TemplateVariantSelector.test.tsx`, extended `variantTemplateValidation.test.ts` / `orderSnapshots.test.ts`; `npm test` and `npm run build` green. `npm run smoke` hit transient local esbuild EAGAIN in one run; `vitest run` passes as the smoke test body.
++
+ ### File List
+ 
++- supabase/migrations/20260506120000_product_variant_option_values_storefront_template_reads.sql
++- src/domain/commerce/product.ts
++- src/domain/commerce/order.ts
++- src/domain/commerce/cart.ts
++- src/catalog/types.ts
++- src/catalog/supabase-map.ts
++- src/catalog/adapter.ts
++- src/admin/validation.ts
++- src/admin/variantTemplateValidation.ts
++- src/admin/variantTemplateValidation.test.ts
++- src/admin/AdminProductForm.tsx
++- src/components/ProductDetail/variantSelection.ts
++- src/components/ProductDetail/variantSelection.template.test.ts
++- src/components/ProductDetail/TemplateVariantSelector.tsx
++- src/components/ProductDetail/TemplateVariantSelector.test.tsx
++- src/components/ProductDetail/ProductDetail.tsx
++- src/components/ProductDetail/pdpCta.ts
++- src/cart/cartLine.ts
++- src/cart/storage.ts
++- src/cart/checkoutLines.ts
++- handlers/_lib/createPaymentIntentBody.ts
++- handlers/_lib/orderSnapshots.ts
++- handlers/_lib/orderSnapshots.test.ts
++- handlers/create-payment-intent.ts
++
+ ## Change Log
+ 
+ - 2026-05-05 — Story created (bmad-create-story 11-3). Target: Epic 11 dynamic variant admin editing + storefront selectors; implementation gated on 11-2 completion.
+ - 2026-05-06 — Tightened ACs and Dev Notes: 11-2→11-3 **backfill / admin-complete** (AC10), **cross-table integrity** (option↔axis↔product template), **order line label snapshots**, **draft/archived template** storefront rule, **N-axis narrowing**, **anon `variant_template_id` read gap**, and **11-2 destructive guard evolution** after value rows exist.
++- 2026-05-06 — **Implementation complete:** migration + bundle RPC + storefront RLS reads; admin + PDP + cart/checkout snapshots; tests (`npm test` 548 passing).
+diff --git a/_bmad-output/implementation-artifacts/sprint-status.yaml b/_bmad-output/implementation-artifacts/sprint-status.yaml
+index 2bda5b6..6a5ede2 100644
+--- a/_bmad-output/implementation-artifacts/sprint-status.yaml
++++ b/_bmad-output/implementation-artifacts/sprint-status.yaml
+@@ -25,7 +25,7 @@
+ #   - Dev moves story to 'review', then runs code-review
+ 
+ generated: 2026-04-26T00:00:00Z
+-last_updated: 2026-05-05T23:59:59Z
++last_updated: 2026-05-06T16:05:00Z
+ project: zephyr-lux-react
+ project_key: zlx
+ tracking_system: file-system
+@@ -139,6 +139,6 @@ development_status:
+   # Epic 11 stories — see epics.md § Epic 11 (decomposed 2026-05-04); implement 11-1 → 11-2 → 11-3, then 11-4.
+   11-1-variant-template-schema-rls-domain: done
+   11-2-admin-template-crud-assign-product: review
+-  11-3-dynamic-variant-admin-storefront-selectors: ready-for-dev
+-  11-4-template-legacy-coexistence-rollout: backlog
++  11-3-dynamic-variant-admin-storefront-selectors: review
++  11-4-template-legacy-coexistence-rollout: ready-for-dev
+   epic-11-retrospective: optional
+diff --git a/handlers/_lib/createPaymentIntentBody.ts b/handlers/_lib/createPaymentIntentBody.ts
+index 6c95802..c78a25e 100644
+--- a/handlers/_lib/createPaymentIntentBody.ts
++++ b/handlers/_lib/createPaymentIntentBody.ts
+@@ -1,12 +1,20 @@
+ import { z } from "zod";
+ import { addressSchema } from "../../src/domain/commerce/address";
+ 
++const variantDisplaySnapshotSchema = z.array(
++  z.object({
++    axis_label: z.string(),
++    option_label: z.string(),
++  }),
++);
++
+ /** One checkout line; `quantity` is the public Epic 3 field (mirrors `checkoutLineDraftSchema`). */
+ export const paymentIntentLineItemSchema = z.object({
+   sku: z.string().min(1),
+   quantity: z.number().int().positive(),
+   variant_id: z.string().uuid().optional(),
+   product_slug: z.string().min(1).optional(),
++  variant_display_snapshot: variantDisplaySnapshotSchema.optional(),
+ });
+ 
+ export type PaymentIntentLineItem = z.infer<typeof paymentIntentLineItemSchema>;
+diff --git a/handlers/_lib/orderSnapshots.test.ts b/handlers/_lib/orderSnapshots.test.ts
+index cfc6e0d..9eef594 100644
+--- a/handlers/_lib/orderSnapshots.test.ts
++++ b/handlers/_lib/orderSnapshots.test.ts
+@@ -6,13 +6,27 @@ import { orderItemRowsFromQuote, variantTitleFromVariant } from "./orderSnapshot
+ describe("orderItemRowsFromQuote", () => {
+   it("maps catalog snapshots for a known SKU", () => {
+     const quote = quoteCartLines([{ sku: "ZLX-2PK-S", quantity: 1 }]);
+-    const rows = orderItemRowsFromQuote(quote);
++    const rows = orderItemRowsFromQuote(quote, []);
+     expect(rows).toHaveLength(1);
+     expect(rows[0].sku).toBe("ZLX-2PK-S");
+     expect(rows[0].quantity).toBe(1);
+     expect(rows[0].unit_price_cents).toBeGreaterThan(0);
+     expect(rows[0].total_cents).toBe(rows[0].unit_price_cents);
+     expect(rows[0].product_title.length).toBeGreaterThan(0);
++    expect(rows[0].variant_options_snapshot).toBeNull();
++  });
++
++  it("persists variant_display_snapshot into variant_title and json snapshot", () => {
++    const quote = quoteCartLines([{ sku: "ZLX-2PK-S", quantity: 1 }]);
++    const snap = [
++      { axis_label: "Size", option_label: "M" },
++      { axis_label: "Color", option_label: "Black" },
++    ];
++    const rows = orderItemRowsFromQuote(quote, [
++      { sku: "ZLX-2PK-S", quantity: 1, variant_display_snapshot: snap },
++    ]);
++    expect(rows[0].variant_title).toBe("M / Black");
++    expect(rows[0].variant_options_snapshot).toEqual(snap);
+   });
+ });
+ 
+diff --git a/handlers/_lib/orderSnapshots.ts b/handlers/_lib/orderSnapshots.ts
+index 32b162a..b88db6e 100644
+--- a/handlers/_lib/orderSnapshots.ts
++++ b/handlers/_lib/orderSnapshots.ts
+@@ -1,5 +1,6 @@
+ import type { CartQuote } from "./catalog";
+ import { findVariantBySku } from "./catalog";
++import type { PaymentIntentLineItem } from "./createPaymentIntentBody";
+ 
+ /** Placeholder shipping JSON until checkout collects a full address (FR-CHK-002 follow-up). */
+ export const PENDING_CHECKOUT_SHIPPING_JSON = {
+@@ -27,21 +28,48 @@ export type OrderItemInsertRow = {
+   image_url: string | null;
+   product_id: string | null;
+   variant_id: string | null;
++  variant_options_snapshot: unknown | null;
+ };
+ 
+ /**
+  * Build persisted order line snapshots from a server quote (FR-ORD-005) — never from client money JSON.
+  */
+-export function orderItemRowsFromQuote(quote: CartQuote): OrderItemInsertRow[] {
++export function orderItemRowsFromQuote(
++  quote: CartQuote,
++  paymentLines: PaymentIntentLineItem[],
++): OrderItemInsertRow[] {
++  const snapBySku = new Map<
++    string,
++    NonNullable<PaymentIntentLineItem["variant_display_snapshot"]>
++  >();
++  for (const pl of paymentLines) {
++    if (
++      pl.variant_display_snapshot &&
++      pl.variant_display_snapshot.length > 0 &&
++      !snapBySku.has(pl.sku)
++    ) {
++      snapBySku.set(pl.sku, pl.variant_display_snapshot);
++    }
++  }
++
+   return quote.lines.map((line) => {
+     const hit = findVariantBySku(line.sku);
+     if (!hit) {
+       throw new Error(`Unknown SKU in quote: ${line.sku}`);
+     }
++    const snap = snapBySku.get(line.sku);
++    const legacyTitle = variantTitleFromVariant(hit.variant.size, hit.variant.color);
++    const snapTitle =
++      snap && snap.length > 0
++        ? snap
++            .map((s) => s.option_label.trim())
++            .filter(Boolean)
++            .join(" / ") || null
++        : null;
+     return {
+       sku: line.sku,
+       product_title: line.product_title,
+-      variant_title: variantTitleFromVariant(hit.variant.size, hit.variant.color),
++      variant_title: snapTitle ?? legacyTitle,
+       size: hit.variant.size ?? null,
+       color: hit.variant.color ?? null,
+       quantity: line.quantity,
+@@ -50,6 +78,7 @@ export function orderItemRowsFromQuote(quote: CartQuote): OrderItemInsertRow[] {
+       image_url: hit.variant.image_url ?? null,
+       product_id: hit.product.id ?? null,
+       variant_id: hit.variant.id ?? null,
++      variant_options_snapshot: snap ?? null,
+     };
+   });
+ }
+diff --git a/handlers/create-payment-intent.ts b/handlers/create-payment-intent.ts
+index 867cad4..ea4650f 100644
+--- a/handlers/create-payment-intent.ts
++++ b/handlers/create-payment-intent.ts
+@@ -161,7 +161,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
+ 
+     let itemRows: ReturnType<typeof orderItemRowsFromQuote>;
+     try {
+-      itemRows = orderItemRowsFromQuote(quote);
++      itemRows = orderItemRowsFromQuote(quote, data.items);
+     } catch (err) {
+       log.error({ err }, "create-payment-intent: snapshot build failed");
+       return paymentSetupFailure(res, "ORDER_SNAPSHOT_FAILED");
+@@ -216,6 +216,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
+         image_url: row.image_url,
+         product_id: row.product_id,
+         variant_id: row.variant_id,
++        variant_options_snapshot: row.variant_options_snapshot,
+       })),
+     );
+ 
+diff --git a/src/admin/AdminProductForm.tsx b/src/admin/AdminProductForm.tsx
+index 54d1962..82f14ac 100644
+--- a/src/admin/AdminProductForm.tsx
++++ b/src/admin/AdminProductForm.tsx
+@@ -59,6 +59,7 @@ function newVariantRow(): VRow {
+     sku: "",
+     size: "",
+     color: "",
++    template_option_values: [],
+     price_cents: 0,
+     currency: "USD",
+     inventory_quantity: 0,
+@@ -66,6 +67,18 @@ function newVariantRow(): VRow {
+   };
+ }
+ 
++function defaultTemplateSelections(template: VariantTemplate): Array<{ axis_id: string; option_id: string }> {
++  const axes = [...template.axes].sort((a, b) => a.sort_order - b.sort_order);
++  const out: Array<{ axis_id: string; option_id: string }> = [];
++  for (const ax of axes) {
++    const opts = [...ax.options].sort((a, b) => a.sort_order - b.sort_order);
++    const first = opts[0];
++    if (!first) return [];
++    out.push({ axis_id: ax.id, option_id: first.id });
++  }
++  return out;
++}
++
+ function newImageRow(): IRow {
+   return {
+     id: crypto.randomUUID(),
+@@ -155,7 +168,9 @@ export default function AdminProductForm() {
+       setLoading(true);
+       const { data, error } = await supabase
+         .from("products")
+-        .select("*, product_variants(*), product_images(*), product_subscription_plans(*)")
++        .select(
++          "*, product_variants(*, product_variant_option_values(axis_id, option_id)), product_images(*), product_subscription_plans(*)",
++        )
+         .eq("id", productId)
+         .single();
+       if (error) {
+@@ -184,18 +199,28 @@ export default function AdminProductForm() {
+ 
+       const vRows = (data as { product_variants: Record<string, unknown>[] }).product_variants
+         .slice()
+-        .map((r) => ({
+-          id: r.id as string,
+-          sku: (r.sku as string) ?? "",
+-          size: (r.size as string | null) ?? "",
+-          color: (r.color as string | null) ?? "",
+-          price_cents: (r.price_cents as number) ?? 0,
+-          currency: ((r.currency as string) ?? "usd").toUpperCase(),
+-          inventory_quantity: (r.inventory_quantity as number) ?? 0,
+-          low_stock_threshold: r.low_stock_threshold as number | undefined,
+-          status: (r.status as ProductVariantStatus) ?? "active",
+-          image_url: (r.image_url as string | null) ?? undefined,
+-        })) as VRow[];
++        .map((r) => {
++          const tovRaw = r.product_variant_option_values as
++            | Array<{ axis_id: string; option_id: string }>
++            | undefined;
++          const template_option_values = (tovRaw ?? []).map((x) => ({
++            axis_id: String(x.axis_id),
++            option_id: String(x.option_id),
++          }));
++          return {
++            id: r.id as string,
++            sku: (r.sku as string) ?? "",
++            size: (r.size as string | null) ?? "",
++            color: (r.color as string | null) ?? "",
++            template_option_values,
++            price_cents: (r.price_cents as number) ?? 0,
++            currency: ((r.currency as string) ?? "usd").toUpperCase(),
++            inventory_quantity: (r.inventory_quantity as number) ?? 0,
++            low_stock_threshold: r.low_stock_threshold as number | undefined,
++            status: (r.status as ProductVariantStatus) ?? "active",
++            image_url: (r.image_url as string | null) ?? undefined,
++          } as VRow;
++        }) as VRow[];
+       setVariants(vRows.length > 0 ? vRows : [newVariantRow()]);
+ 
+       const iRows = (data as { product_images: Record<string, unknown>[] }).product_images
+@@ -274,6 +299,7 @@ export default function AdminProductForm() {
+           sku: v.sku.trim(),
+           size: v.size || undefined,
+           color: v.color || undefined,
++          template_option_values: variantTemplateId ? v.template_option_values : undefined,
+           low_stock_threshold: v.low_stock_threshold,
+           image_url: v.image_url || undefined,
+         })),
+@@ -312,6 +338,7 @@ export default function AdminProductForm() {
+             sku: v.sku,
+             size: v.size,
+             color: v.color,
++            template_option_values: v.template_option_values,
+           })),
+           entry.domain,
+         );
+@@ -540,7 +567,20 @@ export default function AdminProductForm() {
+             value={variantTemplateId ?? ""}
+             onChange={(e) => {
+               const v = e.target.value;
+-              setVariantTemplateId(v === "" ? null : v);
++              const nextId = v === "" ? null : v;
++              setVariantTemplateId(nextId);
++              if (!nextId) {
++                setVariants((rows) =>
++                  rows.map((row) => ({ ...row, template_option_values: [] })),
++                );
++                return;
++              }
++              const t = variantTemplates.find((x) => x.id === nextId);
++              if (!t) return;
++              const defaults = defaultTemplateSelections(t.domain);
++              setVariants((rows) =>
++                rows.map((row) => ({ ...row, template_option_values: defaults })),
++              );
+             }}
+           >
+             <option value="">(none — legacy size / color only)</option>
+@@ -590,7 +630,21 @@ export default function AdminProductForm() {
+           <button
+             type="button"
+             className="text-sm text-blue-700"
+-            onClick={() => setVariants((v) => [...v, newVariantRow()])}
++            onClick={() =>
++              setVariants((rows) => {
++                const base = newVariantRow();
++                const t = variantTemplateId
++                  ? variantTemplates.find((x) => x.id === variantTemplateId)
++                  : null;
++                return [
++                  ...rows,
++                  {
++                    ...base,
++                    template_option_values: t ? defaultTemplateSelections(t.domain) : [],
++                  },
++                ];
++              })
++            }
+           >
+             + Add variant
+           </button>
+@@ -638,6 +692,68 @@ export default function AdminProductForm() {
+                   }}
+                 />
+               </label>
++              {variantTemplateId ? (
++                (() => {
++                  const tplEntry = variantTemplates.find((x) => x.id === variantTemplateId);
++                  if (!tplEntry) {
++                    return (
++                      <p className="md:col-span-3 text-sm text-amber-800" role="status">
++                        Template rows are unavailable until templates finish loading.
++                      </p>
++                    );
++                  }
++                  const axes = [...tplEntry.domain.axes].sort(
++                    (a, b) => a.sort_order - b.sort_order,
++                  );
++                  return (
++                    <fieldset className="md:col-span-3 space-y-2 rounded border border-slate-200 p-3">
++                      <legend className="px-1 text-xs font-medium text-slate-600">
++                        Template axes
++                      </legend>
++                      <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
++                        {axes.map((ax) => {
++                          const options = [...ax.options].sort(
++                            (a, b) => a.sort_order - b.sort_order,
++                          );
++                          const current =
++                            v.template_option_values?.find((p) => p.axis_id === ax.id)
++                              ?.option_id ?? "";
++                          const labelText = ax.label?.trim() || ax.axis_key;
++                          return (
++                            <label key={ax.id} className="block text-sm">
++                              <span className="text-slate-600">{labelText}</span>
++                              <select
++                                className="mt-0.5 w-full rounded border border-slate-300 px-1 py-1"
++                                aria-label={`${labelText} option for SKU ${v.sku || "variant"}`}
++                                value={current}
++                                onChange={(e) => {
++                                  const optId = e.target.value;
++                                  const n = variants.slice();
++                                  const row = { ...n[i]! };
++                                  const pairs = [...(row.template_option_values ?? [])].filter(
++                                    (p) => p.axis_id !== ax.id,
++                                  );
++                                  if (optId !== "") pairs.push({ axis_id: ax.id, option_id: optId });
++                                  row.template_option_values = pairs;
++                                  n[i] = row;
++                                  setVariants(n);
++                                }}
++                              >
++                                <option value="">Select…</option>
++                                {options.map((o) => (
++                                  <option key={o.id} value={o.id}>
++                                    {o.label?.trim() || o.option_key}
++                                  </option>
++                                ))}
++                              </select>
++                            </label>
++                          );
++                        })}
++                      </div>
++                    </fieldset>
++                  );
++                })()
++              ) : null}
+               <label>
+                 Price (cents) *{" "}
+                 <input
+diff --git a/src/admin/validation.ts b/src/admin/validation.ts
+index 61d7022..ad21412 100644
+--- a/src/admin/validation.ts
++++ b/src/admin/validation.ts
+@@ -12,12 +12,19 @@ import {
+ } from "../domain/commerce/subscription";
+ import { productSchema } from "../domain/commerce/product";
+ 
++const templateOptionPairSchema = z.object({
++  axis_id: z.string().uuid(),
++  option_id: z.string().uuid(),
++});
++
+ /** One variant row in the admin save bundle (id required for sync). */
+ export const adminVariantRowSchema = z.object({
+   id: z.string().uuid(),
+   sku: z.string().min(1),
+   size: z.string().optional(),
+   color: z.string().optional(),
++  /** Required in practice when `product.variant_template_id` is set; enforced in `admin_save_product_bundle`. */
++  template_option_values: z.array(templateOptionPairSchema).optional(),
+   price_cents: z.number().int().nonnegative(),
+   currency: iso4217CurrencySchema,
+   inventory_quantity: z.number().int().nonnegative(),
+@@ -125,7 +132,22 @@ export const adminSaveBundleSchema = z
+     images: z.array(adminImageRowSchema).default([]),
+     subscription_plans: z.array(adminSubscriptionPlanRowSchema).default([]),
+   })
+-  .strict();
++  .strict()
++  .superRefine((data, ctx) => {
++    const tid = data.product.variant_template_id;
++    if (!tid) return;
++    for (let i = 0; i < data.variants.length; i++) {
++      const v = data.variants[i]!;
++      const tov = v.template_option_values;
++      if (tov == null || tov.length === 0) {
++        ctx.addIssue({
++          code: z.ZodIssueCode.custom,
++          message: "Templated products require template option selections on every variant row",
++          path: ["variants", i, "template_option_values"],
++        });
++      }
++    }
++  });
+ 
+ export type AdminSaveBundle = z.infer<typeof adminSaveBundleSchema>;
+ 
+@@ -148,6 +170,7 @@ export function bundleToRpcPayload(
+     variants: b.variants.map((v) => ({
+       ...v,
+       currency: v.currency,
++      template_option_values: v.template_option_values ?? null,
+     })),
+     images: b.images.map((im) => ({
+       ...im,
+diff --git a/src/admin/variantTemplateValidation.test.ts b/src/admin/variantTemplateValidation.test.ts
+index 57d347c..4630717 100644
+--- a/src/admin/variantTemplateValidation.test.ts
++++ b/src/admin/variantTemplateValidation.test.ts
+@@ -90,36 +90,89 @@ describe("adminVariantTemplateFormSchema", () => {
+ describe("variantsSatisfyTemplate", () => {
+   const tpl = baseTemplate();
+ 
+-  it("allows matching size and color rows", () => {
++  it("allows distinct template option combinations", () => {
+     const rows: VariantRowLite[] = [
+-      { sku: "A", size: "M", color: "black" },
+-      { sku: "B", size: "s", color: "Black" },
++      {
++        sku: "A",
++        template_option_values: [
++          { axis_id: AXIS_SIZE, option_id: OPT_M },
++          { axis_id: AXIS_CLR, option_id: OPT_BLK },
++        ],
++      },
++      {
++        sku: "B",
++        template_option_values: [
++          { axis_id: AXIS_SIZE, option_id: OPT_S },
++          { axis_id: AXIS_CLR, option_id: OPT_BLK },
++        ],
++      },
+     ];
+     expect(variantsSatisfyTemplate(rows, tpl).ok).toBe(true);
+   });
+ 
+-  it("rejects unsupported axis keys", () => {
+-    const bad = baseTemplate({
++  it("rejects duplicate combination", () => {
++    const combo = [
++      { axis_id: AXIS_SIZE, option_id: OPT_M },
++      { axis_id: AXIS_CLR, option_id: OPT_BLK },
++    ];
++    const rows: VariantRowLite[] = [
++      { sku: "A", template_option_values: combo },
++      { sku: "B", template_option_values: [...combo] },
++    ];
++    const r = variantsSatisfyTemplate(rows, tpl);
++    expect(r.ok).toBe(false);
++    if (!r.ok) expect(r.message).toMatch(/same template combination/i);
++  });
++
++  it("rejects invalid option for axis", () => {
++    const rows: VariantRowLite[] = [
++      {
++        sku: "A",
++        template_option_values: [
++          { axis_id: AXIS_SIZE, option_id: OPT_BLK },
++          { axis_id: AXIS_CLR, option_id: OPT_BLK },
++        ],
++      },
++    ];
++    expect(variantsSatisfyTemplate(rows, tpl).ok).toBe(false);
++  });
++
++  it("rejects missing axis selection", () => {
++    const rows: VariantRowLite[] = [
++      {
++        sku: "A",
++        template_option_values: [{ axis_id: AXIS_SIZE, option_id: OPT_M }],
++      },
++    ];
++    expect(variantsSatisfyTemplate(rows, tpl).ok).toBe(false);
++  });
++
++  it("supports a third axis when all rows specify option ids", () => {
++    const axisFit = "77777777-7777-4777-8777-777777777777";
++    const optSlim = "88888888-8888-4888-8888-888888888888";
++    const tpl3 = baseTemplate({
+       axes: [
++        ...baseTemplate().axes,
+         {
+-          id: AXIS_SIZE,
++          id: axisFit,
+           axis_key: "fit",
+-          label: null,
+-          sort_order: 0,
+-          options: [{ id: OPT_S, option_key: "slim", label: null, sort_order: 0 }],
++          label: "Fit",
++          sort_order: 2,
++          options: [{ id: optSlim, option_key: "slim", label: "Slim", sort_order: 0 }],
+         },
+       ],
+     });
+-    const rows: VariantRowLite[] = [{ sku: "A", size: "M", color: "" }];
+-    const r = variantsSatisfyTemplate(rows, bad);
+-    expect(r.ok).toBe(false);
+-    if (!r.ok) expect(r.message).toMatch(/not yet supported/i);
+-  });
+-
+-  it("rejects size not in template options", () => {
+-    const rows: VariantRowLite[] = [{ sku: "A", size: "xl", color: "black" }];
+-    const r = variantsSatisfyTemplate(rows, tpl);
+-    expect(r.ok).toBe(false);
++    const rows: VariantRowLite[] = [
++      {
++        sku: "A",
++        template_option_values: [
++          { axis_id: AXIS_SIZE, option_id: OPT_M },
++          { axis_id: AXIS_CLR, option_id: OPT_BLK },
++          { axis_id: axisFit, option_id: optSlim },
++        ],
++      },
++    ];
++    expect(variantsSatisfyTemplate(rows, tpl3).ok).toBe(true);
+   });
+ });
+ 
+diff --git a/src/admin/variantTemplateValidation.ts b/src/admin/variantTemplateValidation.ts
+index c626689..c137396 100644
+--- a/src/admin/variantTemplateValidation.ts
++++ b/src/admin/variantTemplateValidation.ts
+@@ -71,54 +71,72 @@ export const adminVariantTemplateFormSchema = z
+ 
+ export type AdminVariantTemplateForm = z.infer<typeof adminVariantTemplateFormSchema>;
+ 
+-/** Maps template axis keys to legacy `product_variants` columns (Epic 11-2; more axes in 11-3). */
+-export function legacyVariantColumnForAxis(axisKey: string): "size" | "color" | null {
+-  const k = normalizeMerchKey(axisKey);
+-  if (k === "size") return "size";
+-  if (k === "color") return "color";
+-  return null;
+-}
+-
+ export type VariantRowLite = {
+   sku: string;
+   size?: string | null;
+   color?: string | null;
++  template_option_values?: Array<{ axis_id: string; option_id: string }>;
+ };
+ 
+ /**
+- * Returns whether every variant row has values that match template options for each axis.
+- * Only `size` and `color` axis keys are supported against current DB columns.
++ * Validates each variant row has exactly one valid option per template axis, no duplicate
++ * full combinations, and options belong to the template (Epic 11-3).
+  */
+ export function variantsSatisfyTemplate(
+   variants: VariantRowLite[],
+   template: VariantTemplate,
+ ): { ok: true } | { ok: false; message: string } {
+   const axes = [...template.axes].sort((a, b) => a.sort_order - b.sort_order);
+-  for (const axis of axes) {
+-    const col = legacyVariantColumnForAxis(axis.axis_key);
+-    if (!col) {
++  if (axes.length === 0) {
++    return { ok: false, message: "Selected template has no axes." };
++  }
++  const allowedByAxis = new Map(
++    axes.map((ax) => [ax.id, new Set(ax.options.map((o) => o.id))] as const),
++  );
++  const sigs = new Set<string>();
++
++  for (const v of variants) {
++    const pairs = v.template_option_values ?? [];
++    if (pairs.length !== axes.length) {
+       return {
+         ok: false,
+-        message: `Template uses axis "${axis.axis_key}" which is not yet supported on variant rows (only size and color until dynamic editing ships).`,
++        message: `Variant ${v.sku || "(sku)"} needs one template option selected for each axis (${axes.length} axes).`,
+       };
+     }
+-    const allowed = new Set(axis.options.map((o) => normalizeMerchKey(o.option_key)));
+-    for (const v of variants) {
+-      const raw = col === "size" ? v.size : v.color;
+-      const cell = normalizeMerchKey(raw);
+-      if (!cell) {
++    const seenAxis = new Set<string>();
++    const parts: string[] = [];
++    for (const ax of axes) {
++      const hit = pairs.find((p) => p.axis_id === ax.id);
++      if (!hit) {
++        return {
++          ok: false,
++          message: `Variant ${v.sku || "(sku)"} is missing a selection for axis "${ax.axis_key}".`,
++        };
++      }
++      if (seenAxis.has(ax.id)) {
+         return {
+           ok: false,
+-          message: `Variant ${v.sku || "(missing sku)"} needs a ${axis.axis_key} value for this template.`,
++          message: `Variant ${v.sku || "(sku)"} has duplicate selections for an axis.`,
+         };
+       }
+-      if (!allowed.has(cell)) {
++      seenAxis.add(ax.id);
++      const allow = allowedByAxis.get(ax.id);
++      if (!allow?.has(hit.option_id)) {
+         return {
+           ok: false,
+-          message: `Variant ${v.sku || "(missing sku)"}: ${axis.axis_key} "${raw ?? ""}" is not an option on the selected template.`,
++          message: `Variant ${v.sku || "(sku)"} has an invalid option for axis "${ax.axis_key}".`,
+         };
+       }
++      parts.push(`${hit.axis_id}:${hit.option_id}`);
++    }
++    const sig = [...parts].sort().join("|");
++    if (sigs.has(sig)) {
++      return {
++        ok: false,
++        message: `More than one variant row uses the same template combination (see SKU ${v.sku || "?"}).`,
++      };
+     }
++    sigs.add(sig);
+   }
+   return { ok: true };
+ }
+diff --git a/src/cart/cartLine.ts b/src/cart/cartLine.ts
+index 63e747c..59ecdcd 100644
+--- a/src/cart/cartLine.ts
++++ b/src/cart/cartLine.ts
+@@ -1,3 +1,5 @@
++import type { VariantDisplaySnapshotLine } from "../catalog/types";
++
+ /**
+  * Storefront cart line persisted in memory and localStorage (Epic 3).
+  * `id` is the numeric storefront product id (see CatalogListItem.storefrontProductId).
+@@ -13,4 +15,6 @@ export interface StorefrontCartLine {
+   /** Canonical variant UUID when catalog provides it (Supabase-backed). */
+   variant_id?: string;
+   product_slug?: string;
++  /** Labels frozen at add-to-cart for checkout receipts (Epic 11-3). */
++  variant_display_snapshot?: VariantDisplaySnapshotLine[];
+ }
+diff --git a/src/cart/checkoutLines.ts b/src/cart/checkoutLines.ts
+index bfc222b..86c7826 100644
+--- a/src/cart/checkoutLines.ts
++++ b/src/cart/checkoutLines.ts
+@@ -20,7 +20,13 @@ export function toCheckoutLines(items: StorefrontCartLine[]): CheckoutLineDraft[
+       quantity: item.quantity,
+       product_slug: item.product_slug,
+     };
+-    const withVariant = { ...base, variant_id: item.variant_id };
++    const withVariant = {
++      ...base,
++      variant_id: item.variant_id,
++      ...(item.variant_display_snapshot && item.variant_display_snapshot.length > 0
++        ? { variant_display_snapshot: item.variant_display_snapshot }
++        : {}),
++    };
+     let r = checkoutLineDraftSchema.safeParse(withVariant);
+     if (!r.success && item.variant_id) {
+       r = checkoutLineDraftSchema.safeParse(base);
+diff --git a/src/cart/storage.ts b/src/cart/storage.ts
+index 6973a15..9e7595f 100644
+--- a/src/cart/storage.ts
++++ b/src/cart/storage.ts
+@@ -35,6 +35,25 @@ function normalizeItem(raw: unknown): StorefrontCartLine | null {
+   const sku = typeof o.sku === "string" ? o.sku : undefined;
+   const variant_id = typeof o.variant_id === "string" ? o.variant_id : undefined;
+   const product_slug = typeof o.product_slug === "string" ? o.product_slug : undefined;
++  let variant_display_snapshot: StorefrontCartLine["variant_display_snapshot"];
++  const snap = o.variant_display_snapshot;
++  if (Array.isArray(snap)) {
++    variant_display_snapshot = snap
++      .filter(
++        (x): x is { axis_label: string; option_label: string } =>
++          x !== null &&
++          typeof x === "object" &&
++          typeof (x as { axis_label?: unknown }).axis_label === "string" &&
++          typeof (x as { option_label?: unknown }).option_label === "string",
++      )
++      .map((x) => ({
++        axis_label: x.axis_label,
++        option_label: x.option_label,
++      }));
++    if (variant_display_snapshot.length === 0) {
++      variant_display_snapshot = undefined;
++    }
++  }
+   return {
+     id,
+     name,
+@@ -44,6 +63,7 @@ function normalizeItem(raw: unknown): StorefrontCartLine | null {
+     sku: normalizeLineSku(sku) || undefined,
+     variant_id,
+     product_slug,
++    ...(variant_display_snapshot ? { variant_display_snapshot } : {}),
+   };
+ }
+ 
+diff --git a/src/catalog/adapter.ts b/src/catalog/adapter.ts
+index 1f4c4bd..6bef03d 100644
+--- a/src/catalog/adapter.ts
++++ b/src/catalog/adapter.ts
+@@ -19,8 +19,36 @@ export interface CatalogAdapter {
+ 
+ const DEFAULT_ENV_KEY = "VITE_CATALOG_BACKEND";
+ 
+-/** Columns for PostgREST embeds on `products`. */
+-const PRODUCTS_CATALOG_SELECT = `
++const PRODUCT_IMAGES_EMBED = `
++  product_images (
++    product_id,
++    variant_id,
++    storage_path,
++    sort_order,
++    is_primary
++  )
++`;
++
++const PRODUCT_PLANS_EMBED = `
++  product_subscription_plans (
++    id,
++    product_id,
++    variant_id,
++    slug,
++    name,
++    description,
++    interval,
++    interval_count,
++    price_cents,
++    currency,
++    stripe_price_id,
++    trial_period_days,
++    status
++  )
++`;
++
++/** PDP + template axes: embed option values and template graph (Epic 11-3). */
++const PRODUCTS_DETAIL_SELECT = `
+   id,
+   slug,
+   title,
+@@ -33,6 +61,25 @@ const PRODUCTS_CATALOG_SELECT = `
+   origin,
+   status,
+   legacy_storefront_id,
++  variant_template_id,
++  variant_templates (
++    id,
++    name,
++    status,
++    variant_template_axes (
++      id,
++      axis_key,
++      label,
++      sort_order,
++      variant_template_axis_options (
++        id,
++        axis_id,
++        option_key,
++        label,
++        sort_order
++      )
++    )
++  ),
+   product_variants (
+     id,
+     product_id,
+@@ -43,30 +90,45 @@ const PRODUCTS_CATALOG_SELECT = `
+     currency,
+     inventory_quantity,
+     low_stock_threshold,
+-    status
+-  ),
+-  product_images (
+-    product_id,
+-    variant_id,
+-    storage_path,
+-    sort_order,
+-    is_primary
++    status,
++    product_variant_option_values (
++      axis_id,
++      option_id
++    )
+   ),
+-  product_subscription_plans (
++  ${PRODUCT_IMAGES_EMBED},
++  ${PRODUCT_PLANS_EMBED}
++`;
++
++/** PLP list: omit template graph + per-variant option rows. */
++const PRODUCTS_LIST_SELECT = `
++  id,
++  slug,
++  title,
++  subtitle,
++  description,
++  brand,
++  category,
++  fabric_type,
++  care_instructions,
++  origin,
++  status,
++  legacy_storefront_id,
++  variant_template_id,
++  product_variants (
+     id,
+     product_id,
+-    variant_id,
+-    slug,
+-    name,
+-    description,
+-    interval,
+-    interval_count,
++    sku,
++    size,
++    color,
+     price_cents,
+     currency,
+-    stripe_price_id,
+-    trial_period_days,
++    inventory_quantity,
++    low_stock_threshold,
+     status
+-  )
++  ),
++  ${PRODUCT_IMAGES_EMBED},
++  ${PRODUCT_PLANS_EMBED}
+ `;
+ 
+ export class StaticCatalogAdapter implements CatalogAdapter {
+@@ -106,7 +168,7 @@ export class SupabaseCatalogAdapter implements CatalogAdapter {
+   async listProducts(): Promise<CatalogListItem[]> {
+     const { data, error } = await this.client
+       .from("products")
+-      .select(PRODUCTS_CATALOG_SELECT.replace(/\s+/g, " ").trim())
++      .select(PRODUCTS_LIST_SELECT.replace(/\s+/g, " ").trim())
+       .in("status", ["active", "coming_soon"])
+       .order("title", { ascending: true });
+ 
+@@ -128,7 +190,7 @@ export class SupabaseCatalogAdapter implements CatalogAdapter {
+     if (!s) return null;
+     const { data, error } = await this.client
+       .from("products")
+-      .select(PRODUCTS_CATALOG_SELECT.replace(/\s+/g, " ").trim())
++      .select(PRODUCTS_DETAIL_SELECT.replace(/\s+/g, " ").trim())
+       .eq("slug", s)
+       .in("status", ["active", "coming_soon"])
+       .maybeSingle();
+diff --git a/src/catalog/supabase-map.ts b/src/catalog/supabase-map.ts
+index b0ff015..2fb7ec1 100644
+--- a/src/catalog/supabase-map.ts
++++ b/src/catalog/supabase-map.ts
+@@ -5,7 +5,7 @@ import {
+ } from "../domain/commerce/subscription";
+ import { productSchema, productVariantSchema } from "../domain/commerce";
+ import { buildDisplayGalleryUrls } from "./pdpImage";
+-import type { CatalogProductDetail } from "./types";
++import type { CatalogProductDetail, CatalogVariantTemplateSlice } from "./types";
+ import { catalogListItemFromProduct } from "./parse";
+ import type { CatalogListItem } from "./types";
+ 
+@@ -34,6 +34,29 @@ export type SupabaseProductVariantRow = {
+   inventory_quantity: number;
+   low_stock_threshold: number | null;
+   status: "active" | "inactive" | "discontinued";
++  product_variant_option_values?: Array<{
++    axis_id: string;
++    option_id: string;
++  }> | null;
++};
++
++export type SupabaseVariantTemplateEmbed = {
++  id: string;
++  name: string;
++  status: string;
++  variant_template_axes?: Array<{
++    id: string;
++    axis_key: string;
++    label: string | null;
++    sort_order: number;
++    variant_template_axis_options?: Array<{
++      id: string;
++      axis_id: string;
++      option_key: string;
++      label: string | null;
++      sort_order: number;
++    }> | null;
++  }> | null;
+ };
+ 
+ export type SupabaseProductRow = {
+@@ -50,6 +73,7 @@ export type SupabaseProductRow = {
+   origin: string | null;
+   status: "draft" | "active" | "coming_soon" | "archived";
+   legacy_storefront_id: number | null;
++  variant_templates?: SupabaseVariantTemplateEmbed | null;
+ };
+ 
+ export type SupabaseSubscriptionPlanRow = SubscriptionPlanEmbedRow;
+@@ -126,21 +150,26 @@ export function supabaseRowsToProduct(row: SupabaseProductWithRelations): Produc
+     a.sku.localeCompare(b.sku)
+   );
+ 
+-  const variants = variantsSorted.map((v) =>
+-    productVariantSchema.parse({
++  const variants = variantsSorted.map((v) => {
++    const tov = (v.product_variant_option_values ?? []).map((r) => ({
++      axis_id: String(r.axis_id),
++      option_id: String(r.option_id),
++    }));
++    return productVariantSchema.parse({
+       id: v.id,
+       product_id: v.product_id,
+       sku: v.sku,
+       size: v.size ?? undefined,
+       color: v.color ?? undefined,
++      ...(tov.length > 0 ? { template_option_values: tov } : {}),
+       price_cents: v.price_cents,
+       currency: v.currency,
+       inventory_quantity: v.inventory_quantity,
+       low_stock_threshold: v.low_stock_threshold ?? undefined,
+       status: v.status,
+       image_url: resolveVariantImageUrl(v.id, row.id, images),
+-    })
+-  );
++    });
++  });
+ 
+   return productSchema.parse({
+     id: row.id,
+@@ -172,6 +201,40 @@ function requireLegacyStorefrontId(
+   return row.legacy_storefront_id;
+ }
+ 
++function storefrontVariantTemplateFromEmbed(
++  row: SupabaseProductWithRelations
++): CatalogVariantTemplateSlice | null {
++  const tid = row.variant_template_id;
++  if (tid == null || String(tid).trim() === "") {
++    return null;
++  }
++  const emb = row.variant_templates;
++  if (!emb || emb.status !== "active") {
++    return null;
++  }
++  const axesRaw = emb.variant_template_axes ?? [];
++  const axesSorted = [...axesRaw].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
++  const axes = axesSorted.map((a) => ({
++    id: String(a.id),
++    axis_key: String(a.axis_key),
++    label: a.label ?? null,
++    sort_order: a.sort_order ?? 0,
++    options: [...(a.variant_template_axis_options ?? [])]
++      .sort((x, y) => (x.sort_order ?? 0) - (y.sort_order ?? 0))
++      .map((o) => ({
++        id: String(o.id),
++        option_key: String(o.option_key),
++        label: o.label ?? null,
++        sort_order: o.sort_order ?? 0,
++      })),
++  }));
++  return {
++    id: String(emb.id),
++    name: String(emb.name),
++    axes,
++  };
++}
++
+ export function supabaseBundleToCatalogDetail(
+   row: SupabaseProductWithRelations
+ ): CatalogProductDetail {
+@@ -202,6 +265,7 @@ export function supabaseBundleToCatalogDetail(
+     displayGalleryUrls,
+     variantPrimaryImageBySku,
+     subscriptionPlans,
++    variantTemplate: storefrontVariantTemplateFromEmbed(row),
+   };
+ }
+ 
+diff --git a/src/catalog/types.ts b/src/catalog/types.ts
+index ea75aa3..b641ac6 100644
+--- a/src/catalog/types.ts
++++ b/src/catalog/types.ts
+@@ -1,6 +1,34 @@
+ import type { Product } from "../domain/commerce";
+ import type { SubscriptionPlanPublic } from "../domain/commerce/subscription";
+ 
++/** Stable labels captured at add-to-cart / checkout for receipts (Epic 11-3). */
++export type VariantDisplaySnapshotLine = {
++  axis_label: string;
++  option_label: string;
++};
++
++export type CatalogVariantAxisOption = {
++  id: string;
++  option_key: string;
++  label: string | null;
++  sort_order: number;
++};
++
++export type CatalogVariantAxis = {
++  id: string;
++  axis_key: string;
++  label: string | null;
++  sort_order: number;
++  options: CatalogVariantAxisOption[];
++};
++
++/** Storefront-safe template slice for PDP selectors (active templates only via RLS). */
++export type CatalogVariantTemplateSlice = {
++  id: string;
++  name: string;
++  axes: CatalogVariantAxis[];
++};
++
+ /** Storefront list row: canonical product plus list-specific fields (derived). */
+ export type CatalogListItem = {
+   product: Product;
+@@ -27,4 +55,6 @@ export type CatalogProductDetail = {
+   variantPrimaryImageBySku: Partial<Record<string, string>>;
+   /** Supabase Billing plans only (`[]` when static catalog). Stripe ids never appear here — checkout uses opaque `plan_id`. */
+   subscriptionPlans: SubscriptionPlanPublic[];
++  /** When set, PDP renders N-axis controls from template metadata instead of legacy size/color only. */
++  variantTemplate?: CatalogVariantTemplateSlice | null;
+ };
+diff --git a/src/components/ProductDetail/ProductDetail.tsx b/src/components/ProductDetail/ProductDetail.tsx
+index bfbcb46..38707f9 100644
+--- a/src/components/ProductDetail/ProductDetail.tsx
++++ b/src/components/ProductDetail/ProductDetail.tsx
+@@ -1,10 +1,10 @@
+-import { type FormEvent, useEffect, useId, useMemo, useState } from "react";
++import { type FormEvent, useCallback, useEffect, useId, useMemo, useState } from "react";
+ import { Link, useLocation, useParams } from "react-router-dom";
+ import { ANALYTICS_EVENTS } from "../../analytics/events";
+ import { dispatchAnalyticsEvent } from "../../analytics/sink";
+ import { getDefaultCatalogAdapter } from "../../catalog/factory";
+ import { resolvePdpHeroImageUrl } from "../../catalog/pdpImage";
+-import type { CatalogProductDetail } from "../../catalog/types";
++import type { CatalogProductDetail, CatalogVariantTemplateSlice, VariantDisplaySnapshotLine } from "../../catalog/types";
+ import { useCart } from "../../context/CartContext";
+ import type { ProductVariant } from "../../domain/commerce";
+ import { apiUrl } from "../../lib/apiBase";
+@@ -23,20 +23,24 @@ import {
+   toPublicAbsoluteUrl,
+ } from "../../seo/site";
+ import ProductImageGallery from "./ProductImageGallery";
+-import { pdpCtaState } from "./pdpCta";
++import { pdpCtaState, pdpCtaTemplateState } from "./pdpCta";
+ import { PdpSubscriptionBlock } from "../subscription/PdpSubscriptionBlock";
+ import {
+   colorsForSize,
+   computeOptionLayout,
+   formatOptionLabel,
++  formatVariantNameSuffixFromLabels,
+   getPurchasableVariants,
+   lowStockMessage,
+   minMaxPriceCentsFromPurchasable,
+   resolveSelection,
++  resolveTemplateSelection,
++  type TemplateAxisSelection,
+ } from "./variantSelection";
+ import VariantSelector from "./VariantSelector";
++import TemplateVariantSelector from "./TemplateVariantSelector";
+ 
+-function variantNameSuffix(v: ProductVariant | null): string {
++function variantNameSuffixLegacy(v: ProductVariant | null): string {
+   if (!v) {
+     return "";
+   }
+@@ -50,6 +54,46 @@ function variantNameSuffix(v: ProductVariant | null): string {
+   return parts.length ? ` — ${parts.join(" / ")}` : "";
+ }
+ 
++function variantNameSuffixForDetail(
++  v: ProductVariant | null,
++  tmpl: CatalogVariantTemplateSlice | null | undefined,
++): string {
++  if (!v) {
++    return "";
++  }
++  if (tmpl) {
++    const axes = [...tmpl.axes].sort((a, b) => a.sort_order - b.sort_order);
++    const parts: string[] = [];
++    for (const ax of axes) {
++      const optId = v.template_option_values?.find((t) => t.axis_id === ax.id)?.option_id;
++      const opt = ax.options.find((o) => o.id === optId);
++      const s = opt?.label?.trim() || opt?.option_key || "";
++      if (s) {
++        parts.push(s);
++      }
++    }
++    return formatVariantNameSuffixFromLabels(parts);
++  }
++  return variantNameSuffixLegacy(v);
++}
++
++function buildVariantDisplaySnapshot(
++  variant: ProductVariant,
++  tmpl: CatalogVariantTemplateSlice,
++): VariantDisplaySnapshotLine[] {
++  const axes = [...tmpl.axes].sort((a, b) => a.sort_order - b.sort_order);
++  const out: VariantDisplaySnapshotLine[] = [];
++  for (const ax of axes) {
++    const optId = variant.template_option_values?.find((t) => t.axis_id === ax.id)?.option_id;
++    const opt = ax.options.find((o) => o.id === optId);
++    out.push({
++      axis_label: ax.label?.trim() || ax.axis_key,
++      option_label: opt?.label?.trim() || opt?.option_key || "",
++    });
++  }
++  return out;
++}
++
+ function ComingSoonWaitlistPanel({ productId }: { productId: string | undefined }) {
+   const [email, setEmail] = useState("");
+   const [busy, setBusy] = useState(false);
+@@ -180,6 +224,7 @@ const ProductDetail: React.FC = () => {
+   const { addToCart } = useCart();
+   const [selSize, setSelSize] = useState<string | null>(null);
+   const [selColor, setSelColor] = useState<string | null>(null);
++  const [templateSel, setTemplateSel] = useState<TemplateAxisSelection>({});
+ 
+   useEffect(() => {
+     const load = async () => {
+@@ -228,6 +273,12 @@ const ProductDetail: React.FC = () => {
+ 
+   const product = row?.product;
+   const isComingSoon = product?.status === "coming_soon";
++  const tmpl = row?.variantTemplate ?? null;
++  const axesSorted = useMemo(
++    () =>
++      tmpl ? [...tmpl.axes].sort((a, b) => a.sort_order - b.sort_order) : [],
++    [tmpl],
++  );
+ 
+   const indicativeVariantPricing = useMemo(() => {
+     if (!product?.variants?.length) return { min: 0, max: 0 };
+@@ -265,7 +316,7 @@ const ProductDetail: React.FC = () => {
+   );
+ 
+   useEffect(() => {
+-    if (!product) {
++    if (!product || tmpl) {
+       return;
+     }
+     if (layout.autoSelectSingle && purchasable.length === 1) {
+@@ -276,10 +327,28 @@ const ProductDetail: React.FC = () => {
+       setSelSize(null);
+       setSelColor(null);
+     }
+-  }, [product, layout.autoSelectSingle, purchasableSkuKey, purchasable]);
++  }, [product, tmpl, layout.autoSelectSingle, purchasableSkuKey, purchasable]);
++
++  useEffect(() => {
++    if (!tmpl || !product) {
++      setTemplateSel({});
++      return;
++    }
++    if (purchasable.length === 1) {
++      const v = purchasable[0]!;
++      const next: TemplateAxisSelection = {};
++      for (const ax of axesSorted) {
++        const hit = v.template_option_values?.find((t) => t.axis_id === ax.id);
++        next[ax.id] = hit?.option_id ?? null;
++      }
++      setTemplateSel(next);
++      return;
++    }
++    setTemplateSel({});
++  }, [tmpl?.id, product?.id, purchasableSkuKey, purchasable.length, axesSorted]);
+ 
+   useEffect(() => {
+-    if (!layout.showSize || !layout.showColor) {
++    if (tmpl || !layout.showSize || !layout.showColor) {
+       return;
+     }
+     if (!selSize) {
+@@ -289,38 +358,93 @@ const ProductDetail: React.FC = () => {
+     if (selColor && !valid.includes(selColor)) {
+       setSelColor(null);
+     }
+-  }, [selSize, purchasable, layout.showSize, layout.showColor, selColor]);
++  }, [selSize, purchasable, layout.showSize, layout.showColor, selColor, tmpl]);
+ 
+-  const selectionRes = useMemo(
+-    () =>
+-      product
+-        ? resolveSelection(
+-            product.variants,
+-            purchasable,
+-            layout,
+-            { size: selSize, color: selColor }
+-          )
+-        : { kind: "incomplete" as const },
+-    [product, purchasable, layout, selSize, selColor]
++  const setTemplateAxisSelection = useCallback(
++    (axisId: string, optionId: string | null) => {
++      if (!tmpl) {
++        return;
++      }
++      const axes = [...tmpl.axes].sort((a, b) => a.sort_order - b.sort_order);
++      const idx = axes.findIndex((a) => a.id === axisId);
++      setTemplateSel((prev) => {
++        const next = { ...prev, [axisId]: optionId };
++        if (idx < 0) {
++          return next;
++        }
++        for (let j = idx + 1; j < axes.length; j++) {
++          next[axes[j]!.id] = null;
++        }
++        return next;
++      });
++    },
++    [tmpl],
+   );
+ 
++  const selectionRes = useMemo(() => {
++    if (!product) {
++      return { kind: "incomplete" as const };
++    }
++    if (tmpl && axesSorted.length > 0) {
++      return resolveTemplateSelection(
++        product.variants,
++        purchasable,
++        axesSorted,
++        templateSel,
++      );
++    }
++    return resolveSelection(product.variants, purchasable, layout, {
++      size: selSize,
++      color: selColor,
++    });
++  }, [
++    product,
++    tmpl,
++    axesSorted,
++    templateSel,
++    purchasable,
++    layout,
++    selSize,
++    selColor,
++  ]);
++
+   const selectedVariant: ProductVariant | null =
+     selectionRes.kind === "purchasable" ? selectionRes.variant : null;
+ 
+-  const gallerySelectionKey = `${selectedVariant?.sku ?? "none"}|${selSize ?? ""}|${selColor ?? ""}`;
++  const gallerySelectionKey = `${selectedVariant?.sku ?? "none"}|${selSize ?? ""}|${selColor ?? ""}|${tmpl ? JSON.stringify(templateSel) : ""}`;
+ 
+   const { min: pMin, max: pMax } = useMemo(
+     () => (product ? minMaxPriceCentsFromPurchasable(purchasable) : { min: 0, max: 0 }),
+     [product, purchasable]
+   );
+ 
+-  const cta = product
+-    ? pdpCtaState(purchasable, layout, product.variants, selSize, selColor)
+-    : {
++  const cta = useMemo(() => {
++    if (!product) {
++      return {
+         disabled: true,
+         text: "Add to cart",
+         hint: "",
+       };
++    }
++    if (tmpl && axesSorted.length > 0) {
++      return pdpCtaTemplateState(
++        product.variants,
++        purchasable,
++        axesSorted,
++        templateSel,
++      );
++    }
++    return pdpCtaState(purchasable, layout, product.variants, selSize, selColor);
++  }, [
++    product,
++    tmpl,
++    axesSorted,
++    templateSel,
++    purchasable,
++    layout,
++    selSize,
++    selColor,
++  ]);
+ 
+   const resolvedHeroUrl = useMemo(() => {
+     if (!product) {
+@@ -520,13 +644,16 @@ const ProductDetail: React.FC = () => {
+     });
+     addToCart({
+       id: storefrontProductId,
+-      name: `${product.title}${variantNameSuffix(selectedVariant)}`,
++      name: `${product.title}${variantNameSuffixForDetail(selectedVariant, tmpl)}`,
+       quantity: 1,
+       price,
+       image: img,
+       sku: selectedVariant.sku,
+       variant_id: selectedVariant.id,
+       product_slug: product.slug,
++      variant_display_snapshot: tmpl
++        ? buildVariantDisplaySnapshot(selectedVariant, tmpl)
++        : undefined,
+     });
+   };
+ 
+@@ -618,14 +745,23 @@ const ProductDetail: React.FC = () => {
+           </>
+         )}
+         {!isComingSoon ? (
+-          <VariantSelector
+-            purchasable={purchasable}
+-            layout={layout}
+-            selectedSize={selSize}
+-            selectedColor={selColor}
+-            onSizeChange={setSelSize}
+-            onColorChange={setSelColor}
+-          />
++          tmpl && axesSorted.length > 0 && purchasable.length > 1 ? (
++            <TemplateVariantSelector
++              axes={axesSorted}
++              purchasable={purchasable}
++              selected={templateSel}
++              onChange={setTemplateAxisSelection}
++            />
++          ) : (
++            <VariantSelector
++              purchasable={purchasable}
++              layout={layout}
++              selectedSize={selSize}
++              selectedColor={selColor}
++              onSizeChange={setSelSize}
++              onColorChange={setSelColor}
++            />
++          )
+         ) : null}
+ 
+         {!isComingSoon ? (
+diff --git a/src/components/ProductDetail/pdpCta.ts b/src/components/ProductDetail/pdpCta.ts
+index 0c7c0bf..6083e79 100644
+--- a/src/components/ProductDetail/pdpCta.ts
++++ b/src/components/ProductDetail/pdpCta.ts
+@@ -1,5 +1,62 @@
+ import type { ProductVariant } from "../../domain/commerce";
+-import { type OptionLayout, resolveSelection } from "./variantSelection";
++import type { CatalogVariantAxis } from "../../catalog/types";
++import { type OptionLayout, resolveSelection, resolveTemplateSelection, type TemplateAxisSelection } from "./variantSelection";
++
++export function pdpCtaTemplateState(
++  allVariants: ProductVariant[],
++  purchasable: ProductVariant[],
++  axes: CatalogVariantAxis[],
++  selected: TemplateAxisSelection
++):
++  | { disabled: true; text: string; hint: string }
++  | { disabled: false; text: string; hint: string } {
++  if (purchasable.length === 0) {
++    return {
++      disabled: true,
++      text: "Out of stock",
++      hint: "This product is not available in stock at the moment.",
++    };
++  }
++  if (purchasable.length === 1) {
++    return { disabled: false, text: "Add to cart", hint: "" };
++  }
++  const sorted = [...axes].sort((a, b) => a.sort_order - b.sort_order);
++  const r = resolveTemplateSelection(allVariants, purchasable, sorted, selected);
++  if (r.kind === "incomplete") {
++    const firstMissing = sorted.find((ax) => {
++      const v = selected[ax.id];
++      return v == null || v === "";
++    });
++    const label = firstMissing?.label?.trim() || firstMissing?.axis_key || "option";
++    return {
++      disabled: true,
++      text: "Select options",
++      hint: `Choose ${label} and any other options to add this item to your bag.`,
++    };
++  }
++  if (r.kind === "unavailable") {
++    return {
++      disabled: true,
++      text: "Unavailable",
++      hint: "This combination is not available. Choose different options.",
++    };
++  }
++  if (r.kind === "not_purchasable") {
++    if (r.variant.inventory_quantity === 0) {
++      return {
++        disabled: true,
++        text: "Out of stock",
++        hint: "This combination is out of stock.",
++      };
++    }
++    return {
++      disabled: true,
++      text: "Unavailable",
++      hint: "This item cannot be added to the cart in its current state.",
++    };
++  }
++  return { disabled: false, text: "Add to cart", hint: "" };
++}
+ 
+ export function pdpCtaState(
+   purchasable: ProductVariant[],
+diff --git a/src/components/ProductDetail/variantSelection.ts b/src/components/ProductDetail/variantSelection.ts
+index 16bd509..b5d68f8 100644
+--- a/src/components/ProductDetail/variantSelection.ts
++++ b/src/components/ProductDetail/variantSelection.ts
+@@ -1,4 +1,5 @@
+ import type { Product, ProductVariant } from "../../domain/commerce";
++import type { CatalogVariantAxis } from "../../catalog/types";
+ 
+ export function isPurchasable(v: ProductVariant): boolean {
+   return v.status === "active" && v.inventory_quantity > 0;
+@@ -198,7 +199,90 @@ export function formatOptionLabel(s: string): string {
+   return s.charAt(0).toUpperCase() + s.slice(1);
+ }
+ 
+-/** Distinct color values in stock for a size (2D). */
++/** Per-axis selected option id (template PDP). */
++export type TemplateAxisSelection = Record<string, string | null>;
++
++export function allowedOptionIdsForAxisIndex(
++  axisIndex: number,
++  axes: CatalogVariantAxis[],
++  selected: TemplateAxisSelection,
++  purchasable: ProductVariant[]
++): Set<string> {
++  const allowed = new Set<string>();
++  for (const v of purchasable) {
++    let prefixOk = true;
++    for (let i = 0; i < axisIndex; i++) {
++      const ax = axes[i]!;
++      const sel = selected[ax.id];
++      const vid = v.template_option_values?.find((t) => t.axis_id === ax.id)?.option_id;
++      if (sel == null || sel === "" || vid !== sel) {
++        prefixOk = false;
++        break;
++      }
++    }
++    if (!prefixOk) continue;
++    const thisAxis = axes[axisIndex]!;
++    const vid = v.template_option_values?.find((t) => t.axis_id === thisAxis.id)?.option_id;
++    if (vid) allowed.add(vid);
++  }
++  return allowed;
++}
++
++/**
++ * Resolves SKU from N-axis template selection (mirrors {@link resolveSelection} outcomes).
++ */
++export function resolveTemplateSelection(
++  allVariants: ProductVariant[],
++  purchasable: ProductVariant[],
++  axesSorted: CatalogVariantAxis[],
++  selected: TemplateAxisSelection
++):
++  | { kind: "purchasable"; variant: ProductVariant }
++  | { kind: "incomplete" }
++  | { kind: "unavailable" }
++  | { kind: "not_purchasable"; variant: ProductVariant } {
++  const axes = axesSorted;
++  if (axes.length === 0) {
++    return { kind: "unavailable" };
++  }
++
++  if (purchasable.length === 1) {
++    return { kind: "purchasable", variant: purchasable[0]! };
++  }
++
++  for (const ax of axes) {
++    const val = selected[ax.id];
++    if (val == null || val === "") {
++      return { kind: "incomplete" };
++    }
++  }
++
++  const match = (v: ProductVariant) =>
++    axes.every((ax) => {
++      const want = selected[ax.id];
++      const got = v.template_option_values?.find((t) => t.axis_id === ax.id)?.option_id;
++      return want != null && got === want;
++    });
++
++  const buying = purchasable.filter(match);
++  if (buying.length === 1) {
++    return { kind: "purchasable", variant: buying[0]! };
++  }
++  if (buying.length > 1) {
++    return { kind: "unavailable" };
++  }
++  const any = allVariants.find(match);
++  if (any) {
++    return { kind: "not_purchasable", variant: any };
++  }
++  return { kind: "unavailable" };
++}
++
++export function formatVariantNameSuffixFromLabels(parts: string[]): string {
++  const cleaned = parts.map((p) => p.trim()).filter(Boolean);
++  return cleaned.length ? ` — ${cleaned.join(" / ")}` : "";
++}
++
+ export function colorsForSize(
+   purchasable: ProductVariant[],
+   size: string | null
+diff --git a/src/domain/commerce/cart.ts b/src/domain/commerce/cart.ts
+index 22811e8..86a1fda 100644
+--- a/src/domain/commerce/cart.ts
++++ b/src/domain/commerce/cart.ts
+@@ -24,11 +24,19 @@ export type DomainCartLineItem = z.infer<typeof cartItemSchema>;
+ export type CartItem = DomainCartLineItem;
+ 
+ /** Minimal serializable payload for future checkout POST (no client-trusted price). */
++const variantDisplaySnapshotSchema = z.array(
++  z.object({
++    axis_label: z.string(),
++    option_label: z.string(),
++  }),
++);
++
+ export const checkoutLineDraftSchema = z.object({
+   sku: z.string().min(1),
+   quantity: z.number().int().positive(),
+   variant_id: z.string().uuid().optional(),
+   product_slug: z.string().min(1).optional(),
++  variant_display_snapshot: variantDisplaySnapshotSchema.optional(),
+ });
+ 
+ export type CheckoutLineDraft = z.infer<typeof checkoutLineDraftSchema>;
+diff --git a/src/domain/commerce/order.ts b/src/domain/commerce/order.ts
+index 2f13a04..1c28143 100644
+--- a/src/domain/commerce/order.ts
++++ b/src/domain/commerce/order.ts
+@@ -28,6 +28,7 @@ export const orderItemSchema = z.object({
+   image_url: z.string().nullable().optional(),
+   product_id: z.string().uuid().nullable().optional(),
+   variant_id: z.string().uuid().nullable().optional(),
++  variant_options_snapshot: z.unknown().nullable().optional(),
+ });
+ 
+ export type OrderItem = z.infer<typeof orderItemSchema>;
+diff --git a/src/domain/commerce/product.ts b/src/domain/commerce/product.ts
+index ee4615e..a3951b6 100644
+--- a/src/domain/commerce/product.ts
++++ b/src/domain/commerce/product.ts
+@@ -5,12 +5,19 @@ import {
+   productVariantStatusSchema,
+ } from "./enums";
+ 
++const templateOptionValuePairSchema = z.object({
++  axis_id: z.string().uuid(),
++  option_id: z.string().uuid(),
++});
++
+ export const productVariantSchema = z.object({
+   id: z.string().uuid().optional(),
+   product_id: z.string().uuid().optional(),
+   sku: z.string().min(1),
+   size: z.string().optional(),
+   color: z.string().optional(),
++  /** When the parent product has `variant_template_id`, selections live here (Epic 11-3). */
++  template_option_values: z.array(templateOptionValuePairSchema).optional(),
+   price_cents: z.number().int().nonnegative(),
+   currency: iso4217CurrencySchema,
+   inventory_quantity: z.number().int().nonnegative(),
+diff --git a/_bmad-output/implementation-artifacts/11-1-variant-template-schema-rls-domain.md b/_bmad-output/implementation-artifacts/11-1-variant-template-schema-rls-domain.md
+new file mode 100644
+index 0000000..f0accf0
+--- /dev/null
++++ b/_bmad-output/implementation-artifacts/11-1-variant-template-schema-rls-domain.md
+@@ -0,0 +1,200 @@
++# Story 11.1: Variant template schema, RLS, and domain types
++
++Status: done
++
++<!-- Ultimate context engine analysis completed - comprehensive developer guide created -->
++
++## Dependencies
++
++- [2-5](2-5-supabase-tables-catalog-inventory.md) — baseline `products`, `product_variants`, storefront **anon** catalog RLS.
++- [2-6](2-6-admin-create-edit-product-variants.md) — admin JWT predicate (`coalesce((auth.jwt() -> 'app_metadata' ->> 'role'), '') = 'admin'`) and `admin_save_product_bundle`.
++- [Epic 11 — Story 11-1](../planning-artifacts/epics.md) (section **Story 11-1**) — authoritative acceptance criteria summary.
++
++## Story
++
++As a **developer** extending the catalog model,
++
++I want **durable Postgres structures for variant templates**, a **nullable product→template link**, **admin-only RLS** aligned with existing catalog admin policies, and **Zod/domain types** at the TypeScript boundary,
++
++so that **Epic 11** can add admin UI and storefront selectors **without** breaking legacy **size/color** variants when **`variant_template_id` is null**, and **without** introducing a second competing `Product` model.
++
++As the **store owner** (future 11-2/11-3),
++
++I want template data **writable only by admins** and **invisible to anonymous shoppers until explicitly exposed** in a later story,
++
++so that **draft merchandising experiments** do not leak through **anon** catalog reads.
++
++## Acceptance Criteria
++
++1. **Given** [`product_variants`](../../supabase/migrations/20260426180000_catalog_inventory.sql) with `size` / `color` text columns, **when** migrations apply on a fresh DB, **then** new **`variant_templates`** (and supporting structures — see Dev Notes) exist with indexes/FKs/timestamps appropriate for admin CRUD in **11-2**. **`products.variant_template_id`** exists as **`uuid` nullable**, FK to **`variant_templates.id`**, **`ON DELETE SET NULL`** (or equivalent documented behavior). **No** breaking change to existing **`anon`** **SELECT** policies on **`products` / `product_variants` / `product_images`** — storefront behavior for legacy rows remains valid.
++
++2. **Given** a product with **`variant_template_id IS NULL`**, **when** any storefront/admin path runs today’s flows, **then** behavior matches the **legacy** size/color model (**no** requirement for PDP or adapter to read templates in this story).
++
++3. **Given** catalog admin RLS from [**2-6** / `catalog_admin_*`](../../supabase/migrations/20260426220000_admin_rls_and_save_rpc.sql), **when** template rows or **`products.variant_template_id`** are **mutated**, **then** **only** principals satisfying **`app_metadata.role = 'admin'`** may **insert/update/delete** template definitions; **`anon`** must **not** gain **SELECT** on template tables in **this** story (**11-3** may add constrained storefront read policies). **`authenticated` non-admin** must **not** read or write templates.
++
++4. **Given** [`productSchema`](../../src/domain/commerce/product.ts) / [`productVariantSchema`](../../src/domain/commerce/product.ts), **when** types are extended, **then** validation stays **one coherent commerce module** — add **`variantTemplateSchema`** (and related types) alongside existing exports; **avoid** a parallel root `Product` tree. **`productSchema`** gains optional **`variant_template_id`** (`uuid` nullable) **only if** the admin payload and RPC already carry it (recommended for round-trip consistency).
++
++5. **Given** [`admin_save_product_bundle`](../../supabase/migrations/20260430202100_admin_bundle_coming_soon_requires_variant.sql) is the **current** canonical RPC body, **when** the **`product`** JSON includes **`variant_template_id`** (uuid string or empty/null), **then** **INSERT** and **UPDATE** branches persist **`products.variant_template_id`** consistently (normalize empty → **`NULL`**; reject malformed uuid with a **clear** `22023`-style exception). **Do not** loosen existing validations (variants required for **active** / **coming_soon**, SKU uniqueness, etc.).
++
++6. **Given** completion, **when** CI runs, **then** **`npm test`**, **`npm run build`**, and **`npm run smoke`** pass; add **Vitest** coverage for **new Zod schemas** (valid/invalid fixture payloads). Optional: extend **[`supabase/seed.sql`](../../supabase/seed.sql)** with **one** inactive/draft template row **only if** it helps local admin testing — **not** required for storefront.
++
++## Tasks / Subtasks
++
++- [x] **Task 1 — DDL (AC: 1)**  
++  - [x] Add timestamped migration under [`supabase/migrations/`](../../supabase/migrations/) defining **`variant_templates`** (+ optional status enum mirroring **draft/active/archived** if you need lifecycle before 11-2).  
++  - [x] **`ALTER TABLE public.products ADD COLUMN variant_template_id uuid REFERENCES public.variant_templates(id) ON DELETE SET NULL;`** + index on **`variant_template_id`** for joins.  
++  - [x] Document physical shape of template definition (normalized child tables vs **`jsonb`** + check constraint) **in migration comments** — pick **one** approach and justify briefly in Dev Notes.
++
++- [x] **Task 2 — RLS (AC: 3)**  
++  - [x] **`ENABLE ROW LEVEL SECURITY`** on new template table(s).  
++  - [x] Admin policies mirroring **`catalog_admin_all_products`** predicate (**authenticated** + **`role = admin`**) for **ALL** operations on template entities.  
++  - [x] **No** **`anon`** policies on templates in this story.
++
++- [x] **Task 3 — RPC alignment (AC: 5)**  
++  - [x] **`CREATE OR REPLACE`** **`admin_save_product_bundle`** in the **same migration** (or follow-up if replace body is huge — prefer single migration for atomic deploy).  
++  - [x] Extend **`INSERT`** / **`UPDATE`** column lists for **`products`** to include **`variant_template_id`** from **`v_p->>'variant_template_id'`**.
++
++- [x] **Task 4 — Domain types (AC: 4)**  
++  - [x] Add **`src/domain/commerce/variantTemplate.ts`** (or sibling module) exporting **`variantTemplateSchema`** and **`VariantTemplate`** type — shape must match DB/json contract chosen in Task 1.  
++  - [x] Extend **`productSchema`** with optional **`variant_template_id`** if RPC/browser payloads need it; keep **legacy** products valid **without** the field.
++
++- [x] **Task 5 — Verification (AC: 6)**  
++  - [x] Unit tests for schemas.  
++  - [x] **`npm test`**, **`npm run build`**, **`npm run smoke`**.
++
++### Review Findings
++
++- [x] [Review][Patch] Restrict anonymous access to `products.variant_template_id` now — Decision resolved with architect/product input: prefer the stricter product reading that template assignment should not become a public contract before 11-3.
++- [x] [Review][Patch] Nullable DB labels are rejected by the domain schema [`src/domain/commerce/variantTemplate.ts`:10]
++- [x] [Review][Patch] Template names and stable keys accept blank/whitespace values across DB and Zod [`supabase/migrations/20260504180000_variant_templates_normalized_rls_admin_bundle.sql`:12]
++- [x] [Review][Patch] Template timestamps are incomplete for admin CRUD and parent `updated_at` can go stale [`supabase/migrations/20260504180000_variant_templates_normalized_rls_admin_bundle.sql`:14]
++
++## Dev Notes
++
++### Scope boundary
++
++- **Not** admin CRUD UI — story **`11-2-admin-template-crud-assign-product`** (file not created yet).  
++- **Not** PDP / cart selector changes — story **`11-3-dynamic-variant-admin-storefront-selectors`**.  
++- **Not** `SupabaseCatalogAdapter` / **`supabase-map`** behavior changes beyond **types** needed for future joins — story **`11-4-template-legacy-coexistence-rollout`** owns mixed legacy+templated catalog reads. This story may add **unused** columns/types safely.
++
++### Physical data model (choose deliberately)
++
++**Option A — Normalized:** `variant_templates` + `variant_template_axes` + `variant_template_axis_options` (strong FK integrity, explicit **`sort_order`** per axis/option).
++
++**Option B — Document in JSONB:** single **`variant_templates.definition jsonb`** with CHECK / app-layer **Zod** validation (fewer tables; harder SQL constraints).
++
++Either is acceptable if **Zod** matches Postgres and **11-2** UX requirements are foreseeable (ordered axes, stable **`axis_key`** strings, option lists).
++
++### RLS consistency
++
++Reuse the **exact** admin predicate from existing catalog policies:
++
++```sql
++coalesce((auth.jwt() -> 'app_metadata' ->> 'role'), '') = 'admin'
++```
++
++Policy names should state intent (e.g. **`variant_templates_admin_all`**).
++
++### `admin_save_product_bundle` fork
++
++The live function body lives in the **latest** migration that **`CREATE OR REPLACE FUNCTION public.admin_save_product_bundle`** — today **[`20260430202100_admin_bundle_coming_soon_requires_variant.sql`](../../supabase/migrations/20260430202100_admin_bundle_coming_soon_requires_variant.sql)** (supersedes **`20260428104600_extend_admin_save_product_bundle_subscription_plans.sql`**). **Copy forward** the full current definition when replacing; **do not** resurrect an older shorter body.
++
++### Naming vs epics text
++
++Planning text sometimes says **`template_id`**; prefer DB column **`variant_template_id`** on **`products`** to avoid ambiguity with unrelated “templates” (email, pages).
++
++### Preserve legacy Epic 9 semantics
++
++Products using **fixed-assortment** / **single-axis** conventions ([Epic 9](../planning-artifacts/epics.md)) typically keep **`variant_template_id` null** until [**11-4**](../planning-artifacts/epics.md) proves coexistence — **do not** force template assignment in this story.
++
++### Technical requirements
++
++- **Single domain model:** extend [`src/domain/commerce/product.ts`](../../src/domain/commerce/product.ts) or colocated modules — **no** duplicate storefront `Product` interface.  
++- **Security:** **NFR-SEC-002 / NFR-SEC-005** — **no service role** in browser; templates remain admin-only reads/writes in **this** story.  
++- **Testing:** Vitest **offline**; mock-free pure **Zod** tests preferred.
++
++### Architecture compliance
++
++- [**architecture.md**](../planning-artifacts/architecture.md): Supabase system of record; **RLS as boundary**; TypeScript + centralized commerce types.
++
++### Library / framework requirements
++
++- **Zod** — already in repo; match existing strict patterns ([`productVariantSchema`](../../src/domain/commerce/product.ts)).  
++- **`@supabase/supabase-js` ^2.x** — [**package.json**](../../package.json); no upgrade required for DDL story.
++
++### File structure requirements
++
++| Area | Action |
++|------|--------|
++| [`supabase/migrations/*.sql`](../../supabase/migrations/) | **NEW** — templates + **`products.variant_template_id`** + RLS + RPC replace |
++| [`src/domain/commerce/`](../../src/domain/commerce/) | **NEW** / **UPDATE** — `variantTemplate` schemas + optional `productSchema` field |
++| [`supabase/seed.sql`](../../supabase/seed.sql) | **OPTIONAL** — sample template |
++| `src/domain/commerce/*.test.ts` | **NEW** — schema fixtures |
++
++### Testing requirements
++
++- **`npm test`** — new schema tests.  
++- **`npm run build`** / **`npm run smoke`** — regressions.
++
++### Previous story intelligence
++
++Epic 11 is new; **prior epic** patterns to mirror:
++
++- [**10-1**](10-1-customer-identity-passwordless-auth.md) — migration + RLS + Zod boundary + explicit **scope exclusions** for later stories.  
++- [**2-5**](2-5-supabase-tables-catalog-inventory.md) — **`anon`** catalog **`SELECT`** rules must remain intact when adding tables/policies.
++
++### Git intelligence summary
++
++Recent commits focus on **checkout/payment** handlers — low overlap; keep this change **migration + domain + tests** only.
++
++### Latest technical information
++
++- Supabase JS **v2** line is pinned (**^2.104.1**); DDL/RLS follow [Supabase RLS docs](https://supabase.com/docs/guides/auth/row-level-security).  
++- Prefer **`SECURITY INVOKER`** for **`admin_save_product_bundle`** (existing pattern).
++
++### Project context reference
++
++No **`project-context.md`** matched **`file:{project-root}/**/project-context.md`** in this workspace; rely on this story + linked migrations.
++
++## References
++
++- [Epic 11 — full epic + Story 11-1 AC](../planning-artifacts/epics.md)
++- [`20260426180000_catalog_inventory.sql`](../../supabase/migrations/20260426180000_catalog_inventory.sql) — core catalog DDL
++- [`20260426220000_admin_rls_and_save_rpc.sql`](../../supabase/migrations/20260426220000_admin_rls_and_save_rpc.sql) — admin RLS predicate origin
++- [`20260430202100_admin_bundle_coming_soon_requires_variant.sql`](../../supabase/migrations/20260430202100_admin_bundle_coming_soon_requires_variant.sql) — latest **`admin_save_product_bundle`**
++- [`src/domain/commerce/product.ts`](../../src/domain/commerce/product.ts)
++- [`architecture.md`](../planning-artifacts/architecture.md)
++
++## Dev Agent Record
++
++### Agent Model Used
++
++Cursor agent (Composer).
++
++### Debug Log References
++
++_(none)_
++
++### Completion Notes List
++
++- Chose **normalized** template model (`variant_templates`, `variant_template_axes`, `variant_template_axis_options`) with `variant_template_status` enum; documented in migration header comments.
++- Extended `admin_save_product_bundle` (single migration, copy-forward from `20260430202100_admin_bundle_coming_soon_requires_variant.sql`) to parse `product.variant_template_id`: empty/null → SQL NULL; invalid uuid → `22023`.
++- Domain: `variantTemplate.ts` + optional `variant_template_id` on `productSchema`; admin bundle + `AdminProductForm` round-trip the FK; `supabase-map` passes column through when present.
++- Vitest: `variantTemplate.test.ts` for template + product `variant_template_id` fixtures.
++
++### File List
++
++- `supabase/migrations/20260504180000_variant_templates_normalized_rls_admin_bundle.sql`
++- `src/domain/commerce/variantTemplate.ts`
++- `src/domain/commerce/variantTemplate.test.ts`
++- `src/domain/commerce/product.ts`
++- `src/domain/commerce/index.ts`
++- `src/admin/validation.ts`
++- `src/admin/AdminProductForm.tsx`
++- `src/catalog/supabase-map.ts`
++- `_bmad-output/implementation-artifacts/sprint-status.yaml`
++- `_bmad-output/implementation-artifacts/11-1-variant-template-schema-rls-domain.md`
++
++## Change Log
++
++- 2026-05-04 — Implementation: variant template DDL + admin RLS, `products.variant_template_id`, `admin_save_product_bundle` persistence, Zod schemas/tests, admin/catalog wiring.
+\ No newline at end of file
+diff --git a/_bmad-output/implementation-artifacts/11-2-admin-template-crud-assign-product.md b/_bmad-output/implementation-artifacts/11-2-admin-template-crud-assign-product.md
+new file mode 100644
+index 0000000..57ae250
+--- /dev/null
++++ b/_bmad-output/implementation-artifacts/11-2-admin-template-crud-assign-product.md
+@@ -0,0 +1,203 @@
++# Story 11.2: Admin template CRUD and product assignment
++
++Status: review
++
++<!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
++<!-- Ultimate context engine analysis completed - comprehensive developer guide created -->
++
++## Dependencies
++
++- [11-1](11-1-variant-template-schema-rls-domain.md) — **must be completed or landed in the same stacked PR first**. This story consumes the template tables/types/RLS and `products.variant_template_id` created there; it should not re-invent the schema.
++- [2-6](2-6-admin-create-edit-product-variants.md) — existing protected admin catalog UI, `RequireAdmin`, Supabase browser client, `admin_save_product_bundle`, and admin validation pattern.
++- [2-4](2-4-variant-selector-size-color-price-stock.md) — current storefront SKU/variant semantics and legacy size/color behavior.
++- [Epic 11 — Story 11-2](../planning-artifacts/epics.md) — authoritative acceptance criteria summary.
++
++## Story
++
++As the **store owner**,
++I want to **create, edit, archive, and assign variant templates from the protected admin area**,
++so that new product families can use ordered, reusable variant axes without hand-editing SQL or JSON.
++
++As a **developer maintaining catalog integrity**,
++I want template assignment to validate against existing product variants and block destructive edits unless explicitly acknowledged,
++so that SKU identity, legacy products, and Epic 9 fixed-assortment semantics are not silently broken.
++
++## Acceptance Criteria
++
++1. **Given** an authenticated admin session, **when** the owner opens an admin template management surface (for example `/admin/variant-templates`), **then** they can list existing templates with name, status, axis count, option count (or equivalent summary), updated time, and clear create/edit/archive affordances. Unauthenticated or non-admin users remain blocked by the existing [`RequireAdmin`](../../src/admin/RequireAdmin.tsx) flow.
++
++2. **Given** an admin creates a template with ordered axes (for example `fit`, `rise`) and option sets, **when** the save succeeds, **then** the persisted template reloads with the same axis order, option order, stable axis keys, display labels, and lifecycle status. Axis keys must be normalized/validated as stable identifiers (lowercase slug-like strings are acceptable); duplicate axis keys within a template are rejected with a visible error.
++
++3. **Given** an admin edits a template, **when** the change is non-destructive (label copy, description, ordering, adding new options that do not invalidate existing assigned product variants), **then** it saves without changing existing product SKUs, prices, inventory, images, or status fields.
++
++4. **Given** a template edit would invalidate existing assigned products or SKUs (for example removing an axis/option already used by variants, renaming a stable axis key, or clearing required option lists), **when** the owner attempts the save, **then** the UI/API blocks the change or requires an explicit acknowledgment workflow that is auditable in code and impossible to trigger accidentally. Silent data loss is not allowed.
++
++5. **Given** a draft or active product in [`AdminProductForm`](../../src/admin/AdminProductForm.tsx), **when** the admin assigns or clears a template, **then** the form persists `product.variant_template_id` through the same admin save boundary and surfaces actionable errors when the product's existing variants do not match the selected template. Clearing a template preserves legacy size/color behavior.
++
++6. **Given** a product has `variant_template_id` set, **when** story 11-2 is complete, **then** the product editor can display the assigned template identity and basic axis summary, but **does not** need to replace the variant row editor with dynamic template-driven controls; full dynamic variant editing belongs to [11-3](../planning-artifacts/epics.md).
++
++7. **Given** **NFR-A11Y-002 / UX-DR13**, **when** template and assignment forms render, **then** every input/select/checkbox has a visible label, validation errors are visible and associated with the relevant section, keyboard tab order is usable, and controls do not overflow at narrow admin widths.
++
++8. **Given** completion, **when** validation runs, **then** add tests that do not require live Supabase credentials: pure validation tests for axis/option rules and destructive-change detection, plus RTL/route coverage for protected template management and product assignment states where practical. Run **`npm test`**, **`npm run build`**, and **`npm run smoke`**.
++
++## Tasks / Subtasks
++
++- [x] **Task 1 — Admin template route and list (AC: 1, 7)**  
++  - [x] Add a protected route such as `/admin/variant-templates` under [`AppRoutes`](../../src/components/App/App.tsx) and navigation in [`AdminLayout`](../../src/admin/AdminLayout.tsx).  
++  - [x] Add a list page under [`src/admin/`](../../src/admin/) that loads template rows via the Supabase browser client under 11-1 admin RLS.  
++  - [x] Provide loading, empty, error, and populated states; keep the layout consistent with existing admin products/orders.
++
++- [x] **Task 2 — Template editor and validation model (AC: 2, 3, 7)**  
++  - [x] Add admin-side Zod schemas/helper functions for template form rows, axis keys, option ordering, duplicate detection, and lifecycle status. Prefer reusing 11-1 domain exports instead of duplicating shapes.  
++  - [x] Build create/edit form UI for template name, description (if supported by 11-1), status, ordered axes, and ordered options.  
++  - [x] Normalize blank optional fields to `null` / omitted values consistently with the 11-1 DB contract.
++
++- [x] **Task 3 — Destructive edit guardrails (AC: 4)**  
++  - [x] Detect whether a template is assigned to products and whether existing variant metadata/options would be invalidated by an edit.  
++  - [x] Block unsafe changes by default with a clear message, or implement an explicit acknowledgment checkbox/button path.  
++  - [x] Unit-test the guard helper with safe edits, axis-key removal/rename, option removal, and assigned/unassigned templates.
++
++- [x] **Task 4 — Product assignment integration (AC: 5, 6)**  
++  - [x] Extend [`AdminProductForm`](../../src/admin/AdminProductForm.tsx) load query to include `variant_template_id` and available template choices.  
++  - [x] Extend [`src/admin/validation.ts`](../../src/admin/validation.ts) / `bundleToRpcPayload` to carry `variant_template_id` through `admin_save_product_bundle` after 11-1 adds RPC support.  
++  - [x] Add assignment UI with current template summary and clear-template option. Do **not** replace fixed size/color variant fields yet unless required to show validation errors.
++
++- [x] **Task 5 — Tests and verification (AC: 8)**  
++  - [x] Add validation tests for template form schemas and destructive-change helpers.  
++  - [x] Add RTL or smoke coverage for template routes and product assignment UI without live Supabase.  
++  - [x] Run `npm test`, `npm run build`, and `npm run smoke`.
++
++## Dev Notes
++
++### Scope boundary
++
++- **Not** schema/RLS/domain creation — [11-1](11-1-variant-template-schema-rls-domain.md). If `variant_templates` / `products.variant_template_id` / `variantTemplateSchema` are absent, finish 11-1 first rather than building placeholder storage.
++- **Not** customer PDP selector changes — [11-3](../planning-artifacts/epics.md).
++- **Not** catalog adapter mixed-shape rollout or static seed migration — [11-4](../planning-artifacts/epics.md).
++- **Not** a configurable bundle composer or customer-facing "build your own pack" flow; Epic 11 is admin-defined variant metadata only.
++
++### Expected implementation shape
++
++- Reuse the existing admin stack: [`AuthProvider`](../../src/auth/AuthContext.tsx), [`RequireAdmin`](../../src/admin/RequireAdmin.tsx), [`getSupabaseBrowserClient`](../../src/lib/supabaseBrowser.ts), and admin route layout.
++- Direct Supabase browser reads/writes are acceptable **only** because 11-1 RLS is admin-only. If destructive validation needs transactional guarantees, add a narrow RPC rather than several independent writes that can partially succeed.
++- Prefer small local helpers in `src/admin/` for form state and validation; keep shared commerce/domain schemas in `src/domain/commerce/`.
++
++### Data model notes from 11-1
++
++- Planning text says `template_id`, but story 11-1 prefers `products.variant_template_id`; use that column name unless the 11-1 implementation deliberately chose and documented another name.
++- If 11-1 chose normalized child tables (`variant_template_axes`, `variant_template_axis_options`), preserve `sort_order` and stable `axis_key` / option identifiers when saving.
++- If 11-1 chose a single JSONB definition column, save through a Zod-validated object and avoid ad hoc JSON string editing in React state.
++
++### Destructive-change policy
++
++At minimum, treat these as unsafe when the template is assigned to at least one product:
++
++- Removing an axis or changing an axis stable key.
++- Removing an option already represented by assigned product variants.
++- Changing definition shape in a way that would make existing variant rows fail the 11-1 template schema.
++
++Renaming display labels, editing descriptions, reordering, adding axes/options, or archiving an unused template may be safe if tests prove current product variants still validate.
++
++### Product assignment behavior
++
++- Assignment should persist through the existing product save action so the owner does not need a separate product-template save step.
++- Clearing a template sets `variant_template_id` to `null` and leaves current `size` / `color` fields intact.
++- If a selected template does not match existing variant rows, show a precise validation message and keep the save blocked. Full UI for generating/filling dynamic variant axes waits for 11-3.
++
++### Technical requirements
++
++- **FR-CAT-005 / FR-ADM-006:** product admin remains the catalog management surface; template CRUD extends it without weakening existing product/variant validation.
++- **FR-ADM-001 / NFR-SEC-003:** all template pages and mutations remain admin-only through existing auth + 11-1 RLS/RPC checks.
++- **NFR-A11Y-002 / UX-DR13:** visible labels and validation states for every template field.
++- **NFR-MAINT-001:** keep one coherent template/domain model; avoid parallel "admin-only template" types when 11-1 domain exports exist.
++
++### Architecture compliance
++
++- [architecture.md](../planning-artifacts/architecture.md): Supabase is the system of record; RLS is the data boundary; admin UI should stay boring, typed, and predictable.
++- Existing admin UI is intentionally compact and operational. Do not turn template management into a marketing-style page or add a new design-system dependency unless implementation proves the current stack cannot support the workflow.
++
++### Library / framework requirements
++
++- **React 18**, **react-router-dom 6**, **TypeScript 5.7**, **Zod 4**, **Vitest 2**, and **@testing-library/react** as already present in [`package.json`](../../package.json).
++- **`@supabase/supabase-js` v2** through the existing browser client. No service-role key in browser code.
++- No new UI framework by default.
++
++### File structure requirements
++
++| Area | Action |
++|------|--------|
++| [`src/components/App/App.tsx`](../../src/components/App/App.tsx) | **UPDATE** — protected `/admin/variant-templates` route(s) |
++| [`src/admin/AdminLayout.tsx`](../../src/admin/AdminLayout.tsx) | **UPDATE** — template navigation |
++| `src/admin/AdminVariantTemplateList.tsx` | **NEW** — list/empty/error states |
++| `src/admin/AdminVariantTemplateForm.tsx` | **NEW** — create/edit/archive form |
++| `src/admin/variantTemplateValidation.ts` | **NEW** or equivalent — form schemas + destructive-change helpers |
++| [`src/admin/AdminProductForm.tsx`](../../src/admin/AdminProductForm.tsx) | **UPDATE** — assign/clear template |
++| [`src/admin/validation.ts`](../../src/admin/validation.ts) | **UPDATE** — `variant_template_id` in save payload |
++| `src/admin/*.test.ts(x)` / [`src/routes.smoke.test.tsx`](../../src/routes.smoke.test.tsx) | **UPDATE/NEW** — route, validation, assignment coverage |
++
++### Testing requirements
++
++- `npm test` — pure helpers + relevant component tests.
++- `npm run build` — TypeScript and Vite build.
++- `npm run smoke` — route smoke remains green. Add a protected route smoke assertion if route registration changes.
++
++### Previous story intelligence
++
++- **11-1:** establishes admin-only template persistence and optional `products.variant_template_id`; 11-2 must consume it.
++- **2-6:** product admin writes use `admin_save_product_bundle` as the transactional save boundary; do not bypass it for product assignment unless a new RPC is explicitly safer.
++- **8-4 / 6-4:** admin layout is mobile-conscious and PWA-aware; keep template forms touch-friendly and horizontally stable.
++- **Epic 9:** fixed-assortment / single-axis products should remain legacy (`variant_template_id = null`) until 11-4 validates rollout.
++
++### Git intelligence summary
++
++Current workspace already contains uncommitted Epic 11 planning/story prep (`epics.md`, `sprint-status.yaml`, and 11-1). Keep this story additive and avoid editing implementation code during create-story.
++
++### Project context reference
++
++No `project-context.md` matched in this workspace; rely on this story, [epics.md](../planning-artifacts/epics.md), [architecture.md](../planning-artifacts/architecture.md), and linked prior stories.
++
++## References
++
++- [Epic 11 — full epic + Story 11-2 AC](../planning-artifacts/epics.md)
++- [11-1 — Variant template schema, RLS, and domain types](11-1-variant-template-schema-rls-domain.md)
++- [2-6 — Admin create/edit product and variants](2-6-admin-create-edit-product-variants.md)
++- [`AdminProductForm.tsx`](../../src/admin/AdminProductForm.tsx)
++- [`src/admin/validation.ts`](../../src/admin/validation.ts)
++- [`AdminLayout.tsx`](../../src/admin/AdminLayout.tsx)
++- [`App.tsx`](../../src/components/App/App.tsx)
++- [architecture.md](../planning-artifacts/architecture.md)
++
++## Dev Agent Record
++
++### Agent Model Used
++
++Composer (Cursor Agent)
++
++### Debug Log References
++
++Python 3 resolver `resolve_customization.py` failed on PATH Python <3.11; workflow customization read from `bmad-dev-story/customize.toml` directly.
++
++### Completion Notes List
++
++- Added `variantTemplateValidation` (Zod admin form schema, Supabase row → domain parse, destructive edit + variant-vs-template checks) with Vitest coverage.
++- Added `admin_save_variant_template` RPC migration for atomic template writes; `AdminVariantTemplateForm` now saves via RPC instead of sequential client DML.
++- `AdminVariantTemplateList`, routes, and nav were already present; list page confirmed and assignment flow in `AdminProductForm` validated (template picklist, summary, `variantsSatisfyTemplate` at save).
++- Smoke test covers unauthenticated `/admin/variant-templates` gate. Ran `npm test`, `npm run build`, `npm run smoke` successfully.
++
++### File List
++
++- `src/components/App/App.tsx`
++- `src/admin/AdminLayout.tsx`
++- `src/admin/AdminLayout.test.tsx`
++- `src/admin/variantTemplateValidation.ts`
++- `src/admin/variantTemplateValidation.test.ts`
++- `supabase/migrations/20260505183000_admin_save_variant_template_rpc.sql`
++- `src/admin/AdminVariantTemplateForm.tsx`
++- `src/admin/AdminVariantTemplateList.tsx`
++- `src/admin/AdminProductForm.tsx`
++- `src/routes.smoke.test.tsx`
++
++## Change Log
++
++- 2026-05-05 — Story created (bmad-create-story). Target: Epic 11 admin template CRUD + product assignment; depends on 11-1 schema/RLS/domain completion.
++- 2026-05-05 — Implemented 11-2: validation module + tests, transactional template RPC + form wiring, product assignment checks, smoke route.
+diff --git a/src/admin/AdminVariantTemplateForm.tsx b/src/admin/AdminVariantTemplateForm.tsx
+new file mode 100644
+index 0000000..dc04c44
+--- /dev/null
++++ b/src/admin/AdminVariantTemplateForm.tsx
+@@ -0,0 +1,500 @@
++import { FormEvent, useCallback, useEffect, useState } from "react";
++import { useLocation, useNavigate, useParams } from "react-router-dom";
++import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
++import { useAuth } from "../auth/AuthContext";
++import type { VariantTemplate } from "../domain/commerce/variantTemplate";
++import {
++  adminVariantTemplateFormSchema,
++  destructiveEditRequiresAcknowledgement,
++  formToVariantTemplate,
++  parseVariantTemplateJoinRow,
++  type AdminVariantTemplateForm,
++} from "./variantTemplateValidation";
++
++type AxisForm = AdminVariantTemplateForm["axes"][number];
++type OptionForm = AxisForm["options"][number];
++
++function newOption(sort: number): OptionForm {
++  return {
++    id: crypto.randomUUID(),
++    option_key: "",
++    label: null,
++    sort_order: sort,
++  };
++}
++
++function newAxis(sort: number): AxisForm {
++  return {
++    id: crypto.randomUUID(),
++    axis_key: "",
++    label: null,
++    sort_order: sort,
++    options: [newOption(0)],
++  };
++}
++
++export default function AdminVariantTemplateForm() {
++  const { id: routeId } = useParams();
++  const { pathname } = useLocation();
++  const isNew = pathname.endsWith("/new");
++  const templateId = isNew ? null : (routeId ?? null);
++  const supabase = getSupabaseBrowserClient();
++  const { session } = useAuth();
++  const nav = useNavigate();
++
++  const [loadErr, setLoadErr] = useState<string | null>(null);
++  const [loading, setLoading] = useState(!isNew);
++  const [saving, setSaving] = useState(false);
++  const [formErr, setFormErr] = useState<string | null>(null);
++
++  const [name, setName] = useState("");
++  const [status, setStatus] = useState<AdminVariantTemplateForm["status"]>("draft");
++  const [axes, setAxes] = useState<AxisForm[]>(() => [newAxis(0)]);
++
++  const [previousDomain, setPreviousDomain] = useState<VariantTemplate | null>(null);
++  const [assignedProductCount, setAssignedProductCount] = useState(0);
++  const [destructiveAck, setDestructiveAck] = useState(false);
++
++  useEffect(() => {
++    if (isNew || !templateId || !supabase) {
++      if (isNew) {
++        setLoading(false);
++      }
++      return;
++    }
++    void (async () => {
++      setLoadErr(null);
++      setLoading(true);
++      const { data: tplRow, error: tErr } = await supabase
++        .from("variant_templates")
++        .select(
++          "id, name, status, variant_template_axes(id, axis_key, label, sort_order, variant_template_axis_options(id, option_key, label, sort_order))",
++        )
++        .eq("id", templateId)
++        .single();
++
++      let countProducts = 0;
++      const { count, error: cErr } = await supabase
++        .from("products")
++        .select("id", { count: "exact", head: true })
++        .eq("variant_template_id", templateId);
++      if (!cErr && typeof count === "number") {
++        countProducts = count;
++      }
++
++      if (tErr || !tplRow) {
++        setLoadErr(tErr?.message ?? "Not found");
++        setLoading(false);
++        return;
++      }
++      const domain = parseVariantTemplateJoinRow(tplRow as Record<string, unknown>);
++      setPreviousDomain(domain);
++      setName(domain.name);
++      setStatus(domain.status);
++      setAxes(
++        domain.axes.map((ax) => ({
++          id: ax.id,
++          axis_key: ax.axis_key,
++          label: ax.label,
++          sort_order: ax.sort_order,
++          options: ax.options.map((o) => ({
++            id: o.id,
++            option_key: o.option_key,
++            label: o.label,
++            sort_order: o.sort_order,
++          })),
++        })),
++      );
++      setAssignedProductCount(countProducts);
++      setLoading(false);
++    })();
++  }, [isNew, templateId, supabase]);
++
++  const onSave = useCallback(
++    async (e: FormEvent) => {
++      e.preventDefault();
++      setFormErr(null);
++      if (!supabase || !session) {
++        setFormErr("Not signed in");
++        return;
++      }
++
++      const payloadTry = adminVariantTemplateFormSchema.safeParse({
++        name,
++        status,
++        axes,
++      });
++      if (!payloadTry.success) {
++        setFormErr(payloadTry.error.issues.map((i) => i.message).join(" · "));
++        return;
++      }
++      const payload = payloadTry.data;
++      const domainNext = formToVariantTemplate(payload, templateId ?? crypto.randomUUID());
++
++      if (!isNew && templateId && previousDomain) {
++        if (
++          destructiveEditRequiresAcknowledgement(previousDomain, domainNext, assignedProductCount) &&
++          !destructiveAck
++        ) {
++          setFormErr(
++            "This change can break catalog rows tied to this template. Check the acknowledgment box, or adjust axes/options.",
++          );
++          return;
++        }
++      }
++
++      setSaving(true);
++      try {
++        let rpcPayload: Record<string, unknown> = {
++          name: domainNext.name,
++          status: domainNext.status,
++          axes: [...domainNext.axes].map((ax) => ({
++            id: ax.id,
++            axis_key: ax.axis_key,
++            label: ax.label,
++            sort_order: ax.sort_order,
++            options: [...ax.options].map((o) => ({
++              id: o.id,
++              option_key: o.option_key,
++              label: o.label,
++              sort_order: o.sort_order,
++            })),
++          })),
++        };
++        if (!isNew && templateId) {
++          rpcPayload.id = templateId;
++        }
++
++        const { data: rpcId, error: rpcErr } = await supabase.rpc("admin_save_variant_template", {
++          p_payload: rpcPayload,
++        });
++        if (rpcErr || !rpcId) {
++          setFormErr(rpcErr?.message ?? "Save failed");
++          return;
++        }
++        const newIdStr = rpcId as string;
++
++        if (isNew && newIdStr) {
++          setDestructiveAck(false);
++          nav(`/admin/variant-templates/${newIdStr}`, { replace: true });
++        } else if (templateId) {
++          setPreviousDomain(domainNext);
++          setDestructiveAck(false);
++          nav("/admin/variant-templates");
++        }
++      } catch (err) {
++        setFormErr(err instanceof Error ? err.message : String(err));
++      } finally {
++        setSaving(false);
++      }
++    },
++    [
++      supabase,
++      session,
++      isNew,
++      templateId,
++      name,
++      status,
++      axes,
++      previousDomain,
++      assignedProductCount,
++      destructiveAck,
++      nav,
++    ],
++  );
++
++  if (!supabase) {
++    return <p className="text-slate-600">Supabase is not configured.</p>;
++  }
++  if (loading) {
++    return (
++      <p className="text-slate-600" data-testid="admin-variant-template-form-loading">
++        Loading template…
++      </p>
++    );
++  }
++  if (loadErr) {
++    return (
++      <p className="text-red-800" role="alert" data-testid="admin-variant-template-form-error">
++        {loadErr}
++      </p>
++    );
++  }
++
++  const statuses: AdminVariantTemplateForm["status"][] = ["draft", "active", "archived"];
++
++  const parsedLive = adminVariantTemplateFormSchema.safeParse({ name, status, axes });
++  const needsDestructiveAck =
++    !isNew &&
++    templateId &&
++    previousDomain &&
++    parsedLive.success &&
++    destructiveEditRequiresAcknowledgement(
++      previousDomain,
++      formToVariantTemplate(parsedLive.data, templateId),
++      assignedProductCount,
++    );
++
++  return (
++    <form
++      onSubmit={onSave}
++      className="space-y-8 max-w-full min-w-0 overflow-x-hidden"
++      data-testid="admin-variant-template-form"
++    >
++      <div className="flex flex-wrap items-center justify-between gap-2">
++        <h1 className="text-2xl font-bold text-slate-900">
++          {isNew ? "New variant template" : "Edit variant template"}
++        </h1>
++        <div className="flex gap-2">
++          <button
++            type="button"
++            className="px-3 py-2 border border-slate-300 rounded-md text-slate-700"
++            onClick={() => nav("/admin/variant-templates")}
++          >
++            Cancel
++          </button>
++          <button
++            type="submit"
++            className="px-4 py-2 bg-slate-900 text-white rounded-md font-medium disabled:opacity-50"
++            disabled={saving}
++          >
++            {saving ? "Saving…" : "Save"}
++          </button>
++        </div>
++      </div>
++
++      {formErr ? (
++        <p className="p-3 rounded-md bg-red-50 text-red-900 text-sm" role="alert">
++          {formErr}
++        </p>
++      ) : null}
++
++      {!isNew && assignedProductCount > 0 ? (
++        <p className="text-sm text-slate-600" data-testid="admin-variant-template-assigned-hint">
++          {assignedProductCount} product{assignedProductCount === 1 ? "" : "s"} use this template.
++          Structural edits may require confirmation.
++        </p>
++      ) : null}
++
++      {needsDestructiveAck ? (
++        <div
++          className="p-3 rounded-md bg-amber-50 border border-amber-200 text-amber-950 text-sm space-y-2"
++          role="status"
++          data-testid="admin-variant-template-destructive-panel"
++        >
++          <p className="font-medium">This save may invalidate existing product variants.</p>
++          <label className="flex items-start gap-2 cursor-pointer">
++            <input
++              type="checkbox"
++              className="mt-1"
++              checked={destructiveAck}
++              onChange={(e) => setDestructiveAck(e.target.checked)}
++            />
++            <span>I understand this change may break existing SKUs or product variants.</span>
++          </label>
++        </div>
++      ) : null}
++
++      <section className="bg-white border border-slate-200 rounded-lg p-4 space-y-3">
++        <h2 className="font-semibold text-slate-800">Template</h2>
++        <div className="grid sm:grid-cols-2 gap-3">
++          <label className="block text-sm">
++            <span className="text-slate-600">Name *</span>
++            <input
++              className="mt-1 w-full border border-slate-300 rounded px-2 py-1.5"
++              value={name}
++              onChange={(e) => setName(e.target.value)}
++              required
++              autoComplete="off"
++            />
++          </label>
++          <label className="block text-sm">
++            <span className="text-slate-600">Status</span>
++            <select
++              className="mt-1 w-full border border-slate-300 rounded px-2 py-1.5"
++              value={status}
++              onChange={(e) => setStatus(e.target.value as AdminVariantTemplateForm["status"])}
++            >
++              {statuses.map((s) => (
++                <option key={s} value={s}>
++                  {s}
++                </option>
++              ))}
++            </select>
++          </label>
++        </div>
++      </section>
++
++      <section className="bg-white border border-slate-200 rounded-lg p-4 space-y-4">
++        <div className="flex justify-between items-center gap-2">
++          <h2 className="font-semibold text-slate-800">Axes & options</h2>
++          <button
++            type="button"
++            className="text-sm text-blue-700 min-h-11"
++            onClick={() => setAxes((ax) => [...ax, newAxis(ax.length)])}
++          >
++            + Add axis
++          </button>
++        </div>
++
++        {axes.map((ax, ai) => (
++          <div
++            key={ax.id}
++            className="border border-slate-100 rounded p-3 space-y-3"
++            data-axis-index={ai}
++          >
++            <div className="flex justify-between items-center gap-2">
++              <span className="text-sm font-medium text-slate-700">Axis {ai + 1}</span>
++              <button
++                type="button"
++                className="text-sm text-red-700 min-h-11"
++                onClick={() =>
++                  setAxes((list) =>
++                    list.length > 1 ? list.filter((_, j) => j !== ai) : list,
++                  )
++                }
++              >
++                Remove axis
++              </button>
++            </div>
++            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-2 text-sm">
++              <label>
++                Stable key *{" "}
++                <input
++                  className="mt-0.5 w-full border border-slate-300 rounded px-1 py-1 font-mono"
++                  value={ax.axis_key}
++                  onChange={(e) => {
++                    const n = axes.slice();
++                    n[ai] = { ...n[ai]!, axis_key: e.target.value };
++                    setAxes(n);
++                  }}
++                  placeholder="size"
++                  autoComplete="off"
++                />
++              </label>
++              <label>
++                Label{" "}
++                <input
++                  className="mt-0.5 w-full border border-slate-300 rounded px-1 py-1"
++                  value={ax.label ?? ""}
++                  onChange={(e) => {
++                    const n = axes.slice();
++                    const v = e.target.value;
++                    n[ai] = { ...n[ai]!, label: v === "" ? null : v };
++                    setAxes(n);
++                  }}
++                  placeholder="Size"
++                  autoComplete="off"
++                />
++              </label>
++              <label>
++                Sort order{" "}
++                <input
++                  type="number"
++                  className="mt-0.5 w-full border border-slate-300 rounded px-1 py-1"
++                  value={ax.sort_order}
++                  onChange={(e) => {
++                    const n = axes.slice();
++                    n[ai] = { ...n[ai]!, sort_order: Number(e.target.value) || 0 };
++                    setAxes(n);
++                  }}
++                />
++              </label>
++            </div>
++
++            <div className="space-y-2">
++              <div className="flex justify-between items-center">
++                <span className="text-xs font-medium text-slate-600">Options</span>
++                <button
++                  type="button"
++                  className="text-xs text-blue-700"
++                  onClick={() => {
++                    const n = axes.slice();
++                    const nextSort = Math.max(0, ...n[ai]!.options.map((o) => o.sort_order)) + 1;
++                    n[ai] = {
++                      ...n[ai]!,
++                      options: [...n[ai]!.options, newOption(nextSort)],
++                    };
++                    setAxes(n);
++                  }}
++                >
++                  + Option
++                </button>
++              </div>
++              {ax.options.map((op, oi) => (
++                <div
++                  key={op.id}
++                  className="grid sm:grid-cols-2 md:grid-cols-4 gap-2 border border-slate-50 rounded p-2"
++                >
++                  <label className="text-xs">
++                    Option key *{" "}
++                    <input
++                      className="mt-0.5 w-full border border-slate-300 rounded px-1 py-1 font-mono"
++                      value={op.option_key}
++                      onChange={(e) => {
++                        const n = axes.slice();
++                        const opts = n[ai]!.options.slice();
++                        opts[oi] = { ...opts[oi]!, option_key: e.target.value };
++                        n[ai] = { ...n[ai]!, options: opts };
++                        setAxes(n);
++                      }}
++                      autoComplete="off"
++                    />
++                  </label>
++                  <label className="text-xs">
++                    Label{" "}
++                    <input
++                      className="mt-0.5 w-full border border-slate-300 rounded px-1 py-1"
++                      value={op.label ?? ""}
++                      onChange={(e) => {
++                        const n = axes.slice();
++                        const opts = n[ai]!.options.slice();
++                        const v = e.target.value;
++                        opts[oi] = { ...opts[oi]!, label: v === "" ? null : v };
++                        n[ai] = { ...n[ai]!, options: opts };
++                        setAxes(n);
++                      }}
++                      autoComplete="off"
++                    />
++                  </label>
++                  <label className="text-xs">
++                    Sort{" "}
++                    <input
++                      type="number"
++                      className="mt-0.5 w-full border border-slate-300 rounded px-1 py-1"
++                      value={op.sort_order}
++                      onChange={(e) => {
++                        const n = axes.slice();
++                        const opts = n[ai]!.options.slice();
++                        opts[oi] = { ...opts[oi]!, sort_order: Number(e.target.value) || 0 };
++                        n[ai] = { ...n[ai]!, options: opts };
++                        setAxes(n);
++                      }}
++                    />
++                  </label>
++                  <div className="flex items-end">
++                    <button
++                      type="button"
++                      className="text-xs text-red-700 mb-0.5"
++                      onClick={() => {
++                        const n = axes.slice();
++                        const opts = n[ai]!.options.filter((_, j) => j !== oi);
++                        n[ai] = {
++                          ...n[ai]!,
++                          options: opts.length ? opts : [newOption(0)],
++                        };
++                        setAxes(n);
++                      }}
++                    >
++                      Remove
++                    </button>
++                  </div>
++                </div>
++              ))}
++            </div>
++          </div>
++        ))}
++      </section>
++    </form>
++  );
++}
+diff --git a/src/admin/AdminVariantTemplateList.tsx b/src/admin/AdminVariantTemplateList.tsx
+new file mode 100644
+index 0000000..a14017c
+--- /dev/null
++++ b/src/admin/AdminVariantTemplateList.tsx
+@@ -0,0 +1,153 @@
++import { useEffect, useMemo, useState } from "react";
++import { Link } from "react-router-dom";
++import { getSupabaseBrowserClient } from "../lib/supabaseBrowser";
++import type { VariantTemplateStatus } from "../domain/commerce/variantTemplate";
++
++type OptRow = { id: string };
++type AxisRow = { id: string; variant_template_axis_options?: OptRow[] | null };
++
++type TemplateListRow = {
++  id: string;
++  name: string;
++  status: VariantTemplateStatus;
++  updated_at: string | null;
++  variant_template_axes?: AxisRow[] | null;
++};
++
++function summarizeTemplate(r: TemplateListRow): {
++  axes: number;
++  options: number;
++} {
++  const axesArr = [...(r.variant_template_axes ?? [])];
++  let options = 0;
++  for (const a of axesArr) options += (a.variant_template_axis_options ?? []).length;
++  return { axes: axesArr.length, options };
++}
++
++export default function AdminVariantTemplateList() {
++  const supabase = getSupabaseBrowserClient();
++  const [rows, setRows] = useState<TemplateListRow[]>([]);
++  const [err, setErr] = useState<string | null>(null);
++  const [loading, setLoading] = useState(true);
++
++  const sortedRows = useMemo(
++    () => [...rows].sort((a, b) => a.name.localeCompare(b.name)),
++    [rows],
++  );
++
++  useEffect(() => {
++    if (!supabase) {
++      setLoading(false);
++      return;
++    }
++    void (async () => {
++      setLoading(true);
++      setErr(null);
++      const { data, error } = await supabase
++        .from("variant_templates")
++        .select(
++          "id, name, status, updated_at, variant_template_axes(id, variant_template_axis_options(id))",
++        )
++        .order("updated_at", { ascending: false });
++      if (error) {
++        setErr(error.message);
++        setRows([]);
++      } else {
++        setRows((data ?? []) as TemplateListRow[]);
++      }
++      setLoading(false);
++    })();
++  }, [supabase]);
++
++  if (!supabase) {
++    return <p className="text-slate-600">Supabase is not configured.</p>;
++  }
++  if (loading) {
++    return (
++      <p className="text-slate-600" data-testid="admin-variant-template-list-loading">
++        Loading templates…
++      </p>
++    );
++  }
++  if (err) {
++    return (
++      <div className="text-red-800" role="alert" data-testid="admin-variant-template-list-error">
++        {err}
++      </div>
++    );
++  }
++
++  if (rows.length === 0) {
++    return (
++      <div data-testid="admin-variant-template-list-empty" className="text-center py-12 border border-dashed border-slate-200 rounded-lg bg-white space-y-3">
++        <h2 className="text-lg font-medium text-slate-800">No variant templates yet</h2>
++        <p className="text-sm text-slate-600 px-4">
++          Variant templates capture ordered axes and options for reusable merchandising grids.
++        </p>
++        <Link
++          to="/admin/variant-templates/new"
++          className="inline-block text-blue-700 font-medium underline min-h-11 px-3 py-2"
++        >
++          Create template
++        </Link>
++      </div>
++    );
++  }
++
++  return (
++    <div data-testid="admin-variant-template-list">
++      <div className="flex flex-wrap justify-between items-start gap-3 mb-4 min-w-0">
++        <h1 className="text-2xl font-bold text-slate-900">Variant templates</h1>
++        <Link
++          to="/admin/variant-templates/new"
++          className="shrink-0 inline-flex items-center justify-center min-h-11 px-4 py-2 bg-slate-900 text-white rounded-md text-sm font-medium"
++        >
++          New template
++        </Link>
++      </div>
++      <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
++        <table className="w-full text-left text-sm min-w-[32rem]">
++          <thead className="bg-slate-50 text-slate-600">
++            <tr>
++              <th className="p-3 font-medium">Name</th>
++              <th className="p-3 font-medium">Status</th>
++              <th className="p-3 font-medium">Axes</th>
++              <th className="p-3 font-medium">Options</th>
++              <th className="p-3 font-medium">Updated</th>
++              <th className="p-3 font-medium">Actions</th>
++            </tr>
++          </thead>
++          <tbody>
++            {sortedRows.map((r) => {
++              const { axes: axisCount, options: optCount } = summarizeTemplate(r);
++              return (
++                <tr key={r.id} className="border-t border-slate-100">
++                  <td className="p-3 align-top">{r.name}</td>
++                  <td className="p-3 align-top">{r.status}</td>
++                  <td className="p-3 align-top">{axisCount}</td>
++                  <td className="p-3 align-top">{optCount}</td>
++                  <td className="p-3 align-top whitespace-nowrap text-slate-600">
++                    {r.updated_at
++                      ? new Date(r.updated_at).toLocaleString(undefined, {
++                          dateStyle: "medium",
++                          timeStyle: "short",
++                        })
++                      : "—"}
++                  </td>
++                  <td className="p-3 align-top">
++                    <Link
++                      to={`/admin/variant-templates/${r.id}`}
++                      className="text-blue-700 font-medium underline min-h-11 inline-flex items-center"
++                    >
++                      Edit
++                    </Link>
++                  </td>
++                </tr>
++              );
++            })}
++          </tbody>
++        </table>
++      </div>
++    </div>
++  );
++}
+diff --git a/src/admin/variantTemplateValidation.test.ts b/src/admin/variantTemplateValidation.test.ts
+new file mode 100644
+index 0000000..4630717
+--- /dev/null
++++ b/src/admin/variantTemplateValidation.test.ts
+@@ -0,0 +1,256 @@
++import { describe, expect, it } from "vitest";
++import {
++  adminVariantTemplateFormSchema,
++  destructiveEditRequiresAcknowledgement,
++  formToVariantTemplate,
++  isStructuralTemplateDestructive,
++  variantsSatisfyTemplate,
++  type VariantRowLite,
++} from "./variantTemplateValidation";
++import { type VariantTemplate } from "../domain/commerce/variantTemplate";
++
++const T_ID = "11111111-1111-4111-8111-111111111111";
++const AXIS_SIZE = "22222222-2222-4222-8222-222222222222";
++const AXIS_CLR = "33333333-3333-4333-8333-333333333333";
++const OPT_S = "44444444-4444-4444-8444-444444444444";
++const OPT_M = "55555555-5555-4555-8555-555555555555";
++const OPT_BLK = "66666666-6666-4666-8666-666666666666";
++
++function baseTemplate(overrides: Partial<VariantTemplate> = {}): VariantTemplate {
++  return {
++    id: T_ID,
++    name: "Denim",
++    status: "draft",
++    axes: [
++      {
++        id: AXIS_SIZE,
++        axis_key: "size",
++        label: "Size",
++        sort_order: 0,
++        options: [
++          { id: OPT_S, option_key: "s", label: "S", sort_order: 0 },
++          { id: OPT_M, option_key: "m", label: "M", sort_order: 1 },
++        ],
++      },
++      {
++        id: AXIS_CLR,
++        axis_key: "color",
++        label: "Color",
++        sort_order: 1,
++        options: [{ id: OPT_BLK, option_key: "black", label: "Black", sort_order: 0 }],
++      },
++    ],
++    ...overrides,
++  };
++}
++
++describe("adminVariantTemplateFormSchema", () => {
++  it("rejects duplicate axis keys", () => {
++    const r = adminVariantTemplateFormSchema.safeParse({
++      name: "X",
++      status: "draft",
++      axes: [
++        {
++          id: AXIS_SIZE,
++          axis_key: "fit",
++          label: null,
++          sort_order: 0,
++          options: [{ id: OPT_S, option_key: "a", label: null, sort_order: 0 }],
++        },
++        {
++          id: AXIS_CLR,
++          axis_key: "fit",
++          label: null,
++          sort_order: 1,
++          options: [{ id: OPT_M, option_key: "b", label: null, sort_order: 0 }],
++        },
++      ],
++    });
++    expect(r.success).toBe(false);
++  });
++
++  it("rejects unstable axis keys", () => {
++    const r = adminVariantTemplateFormSchema.safeParse({
++      name: "X",
++      status: "draft",
++      axes: [
++        {
++          id: AXIS_SIZE,
++          axis_key: "Bad Key",
++          label: null,
++          sort_order: 0,
++          options: [{ id: OPT_S, option_key: "a", label: null, sort_order: 0 }],
++        },
++      ],
++    });
++    expect(r.success).toBe(false);
++  });
++});
++
++describe("variantsSatisfyTemplate", () => {
++  const tpl = baseTemplate();
++
++  it("allows distinct template option combinations", () => {
++    const rows: VariantRowLite[] = [
++      {
++        sku: "A",
++        template_option_values: [
++          { axis_id: AXIS_SIZE, option_id: OPT_M },
++          { axis_id: AXIS_CLR, option_id: OPT_BLK },
++        ],
++      },
++      {
++        sku: "B",
++        template_option_values: [
++          { axis_id: AXIS_SIZE, option_id: OPT_S },
++          { axis_id: AXIS_CLR, option_id: OPT_BLK },
++        ],
++      },
++    ];
++    expect(variantsSatisfyTemplate(rows, tpl).ok).toBe(true);
++  });
++
++  it("rejects duplicate combination", () => {
++    const combo = [
++      { axis_id: AXIS_SIZE, option_id: OPT_M },
++      { axis_id: AXIS_CLR, option_id: OPT_BLK },
++    ];
++    const rows: VariantRowLite[] = [
++      { sku: "A", template_option_values: combo },
++      { sku: "B", template_option_values: [...combo] },
++    ];
++    const r = variantsSatisfyTemplate(rows, tpl);
++    expect(r.ok).toBe(false);
++    if (!r.ok) expect(r.message).toMatch(/same template combination/i);
++  });
++
++  it("rejects invalid option for axis", () => {
++    const rows: VariantRowLite[] = [
++      {
++        sku: "A",
++        template_option_values: [
++          { axis_id: AXIS_SIZE, option_id: OPT_BLK },
++          { axis_id: AXIS_CLR, option_id: OPT_BLK },
++        ],
++      },
++    ];
++    expect(variantsSatisfyTemplate(rows, tpl).ok).toBe(false);
++  });
++
++  it("rejects missing axis selection", () => {
++    const rows: VariantRowLite[] = [
++      {
++        sku: "A",
++        template_option_values: [{ axis_id: AXIS_SIZE, option_id: OPT_M }],
++      },
++    ];
++    expect(variantsSatisfyTemplate(rows, tpl).ok).toBe(false);
++  });
++
++  it("supports a third axis when all rows specify option ids", () => {
++    const axisFit = "77777777-7777-4777-8777-777777777777";
++    const optSlim = "88888888-8888-4888-8888-888888888888";
++    const tpl3 = baseTemplate({
++      axes: [
++        ...baseTemplate().axes,
++        {
++          id: axisFit,
++          axis_key: "fit",
++          label: "Fit",
++          sort_order: 2,
++          options: [{ id: optSlim, option_key: "slim", label: "Slim", sort_order: 0 }],
++        },
++      ],
++    });
++    const rows: VariantRowLite[] = [
++      {
++        sku: "A",
++        template_option_values: [
++          { axis_id: AXIS_SIZE, option_id: OPT_M },
++          { axis_id: AXIS_CLR, option_id: OPT_BLK },
++          { axis_id: axisFit, option_id: optSlim },
++        ],
++      },
++    ];
++    expect(variantsSatisfyTemplate(rows, tpl3).ok).toBe(true);
++  });
++});
++
++describe("isStructuralTemplateDestructive", () => {
++  it("detects axis removal", () => {
++    const before = baseTemplate();
++    const after = baseTemplate({
++      axes: before.axes.filter((a) => a.id !== AXIS_CLR),
++    });
++    expect(isStructuralTemplateDestructive(before, after)).toBe(true);
++  });
++
++  it("detects axis key rename", () => {
++    const before = baseTemplate();
++    const after = structuredClone(before);
++    after.axes[0]!.axis_key = "length";
++    expect(isStructuralTemplateDestructive(before, after)).toBe(true);
++  });
++
++  it("detects removed option row", () => {
++    const before = baseTemplate();
++    const after = structuredClone(before);
++    after.axes[0]!.options = after.axes[0]!.options.filter((o) => o.id !== OPT_S);
++    expect(isStructuralTemplateDestructive(before, after)).toBe(true);
++  });
++
++  it("allows label and sort tweaks", () => {
++    const before = baseTemplate();
++    const after = structuredClone(before);
++    after.axes[0]!.label = "Sized";
++    after.axes[0]!.sort_order = 1;
++    after.axes[1]!.sort_order = 0;
++    after.axes[0]!.options[0]!.label = "Small";
++    expect(isStructuralTemplateDestructive(before, after)).toBe(false);
++  });
++});
++
++describe("destructiveEditRequiresAcknowledgement", () => {
++  it("requires ack when structural change and assignments exist", () => {
++    const before = baseTemplate();
++    const after = structuredClone(before);
++    after.axes[0]!.options = after.axes[0]!.options.filter((o) => o.id !== OPT_S);
++    expect(destructiveEditRequiresAcknowledgement(before, after, 3)).toBe(true);
++    expect(destructiveEditRequiresAcknowledgement(before, after, 0)).toBe(false);
++  });
++
++  it("requires ack when adding axis to assigned templates", () => {
++    const before = baseTemplate();
++    const after = structuredClone(before);
++    after.axes.push({
++      id: "77777777-7777-4777-8777-777777777777",
++      axis_key: "rise",
++      label: null,
++      sort_order: 2,
++      options: [{ id: OPT_BLK, option_key: "low", label: null, sort_order: 0 }],
++    });
++    expect(destructiveEditRequiresAcknowledgement(before, after, 1)).toBe(true);
++    expect(destructiveEditRequiresAcknowledgement(before, after, 0)).toBe(false);
++  });
++});
++
++describe("formToVariantTemplate", () => {
++  it("drops blank labels to null", () => {
++    const parsed = adminVariantTemplateFormSchema.parse({
++      name: "T",
++      status: "active",
++      axes: [
++        {
++          id: AXIS_SIZE,
++          axis_key: "size",
++          label: "   ",
++          sort_order: 0,
++          options: [{ id: OPT_S, option_key: "s", label: "", sort_order: 0 }],
++        },
++      ],
++    });
++    const t = formToVariantTemplate(parsed, T_ID);
++    expect(t.axes[0]!.label).toBeNull();
++    expect(t.axes[0]!.options[0]!.label).toBeNull();
++  });
++});
+diff --git a/src/admin/variantTemplateValidation.ts b/src/admin/variantTemplateValidation.ts
+new file mode 100644
+index 0000000..c137396
+--- /dev/null
++++ b/src/admin/variantTemplateValidation.ts
+@@ -0,0 +1,251 @@
++import { z } from "zod";
++import {
++  type VariantTemplate,
++  variantTemplateAxisOptionSchema,
++  variantTemplateAxisSchema,
++  variantTemplateSchema,
++  variantTemplateStatusSchema,
++} from "../domain/commerce/variantTemplate";
++
++/** Normalizes storefront text for comparisons with stable template keys (lowercase, trim). */
++export function normalizeMerchKey(value: string | null | undefined): string {
++  return String(value ?? "")
++    .trim()
++    .toLowerCase();
++}
++
++const stableKeyStrict = /^[a-z0-9][a-z0-9_-]*$/;
++
++export const adminVariantTemplateFormOptionSchema = z.object({
++  id: z.string().uuid(),
++  option_key: z.string().trim().regex(stableKeyStrict, "Option key must be a stable slug-like id"),
++  label: z.string().nullable().optional(),
++  sort_order: z.number().int(),
++});
++
++export const adminVariantTemplateFormAxisSchema = z.object({
++  id: z.string().uuid(),
++  axis_key: z.string().trim().regex(stableKeyStrict, "Axis key must be a stable slug-like id"),
++  label: z.string().nullable().optional(),
++  sort_order: z.number().int(),
++  options: z.array(adminVariantTemplateFormOptionSchema).min(1, "Each axis needs at least one option"),
++});
++
++export const adminVariantTemplateFormSchema = z
++  .object({
++    id: z.string().uuid().optional(),
++    name: z.string().trim().min(1, "Name is required"),
++    status: variantTemplateStatusSchema,
++    axes: z.array(adminVariantTemplateFormAxisSchema).min(1, "Add at least one axis"),
++  })
++  .superRefine((data, ctx) => {
++    const keys = data.axes.map((a) => a.axis_key);
++    const seen = new Set<string>();
++    for (const k of keys) {
++      if (seen.has(k)) {
++        ctx.addIssue({
++          code: z.ZodIssueCode.custom,
++          message: `Duplicate axis key: ${k}`,
++          path: ["axes"],
++        });
++        return;
++      }
++      seen.add(k);
++    }
++    for (const ax of data.axes) {
++      const optKeys = ax.options.map((o) => o.option_key);
++      const oseen = new Set<string>();
++      for (const ok of optKeys) {
++        if (oseen.has(ok)) {
++          ctx.addIssue({
++            code: z.ZodIssueCode.custom,
++            message: `Duplicate option key on axis ${ax.axis_key}: ${ok}`,
++            path: ["axes"],
++          });
++          return;
++        }
++        oseen.add(ok);
++      }
++    }
++  });
++
++export type AdminVariantTemplateForm = z.infer<typeof adminVariantTemplateFormSchema>;
++
++export type VariantRowLite = {
++  sku: string;
++  size?: string | null;
++  color?: string | null;
++  template_option_values?: Array<{ axis_id: string; option_id: string }>;
++};
++
++/**
++ * Validates each variant row has exactly one valid option per template axis, no duplicate
++ * full combinations, and options belong to the template (Epic 11-3).
++ */
++export function variantsSatisfyTemplate(
++  variants: VariantRowLite[],
++  template: VariantTemplate,
++): { ok: true } | { ok: false; message: string } {
++  const axes = [...template.axes].sort((a, b) => a.sort_order - b.sort_order);
++  if (axes.length === 0) {
++    return { ok: false, message: "Selected template has no axes." };
++  }
++  const allowedByAxis = new Map(
++    axes.map((ax) => [ax.id, new Set(ax.options.map((o) => o.id))] as const),
++  );
++  const sigs = new Set<string>();
++
++  for (const v of variants) {
++    const pairs = v.template_option_values ?? [];
++    if (pairs.length !== axes.length) {
++      return {
++        ok: false,
++        message: `Variant ${v.sku || "(sku)"} needs one template option selected for each axis (${axes.length} axes).`,
++      };
++    }
++    const seenAxis = new Set<string>();
++    const parts: string[] = [];
++    for (const ax of axes) {
++      const hit = pairs.find((p) => p.axis_id === ax.id);
++      if (!hit) {
++        return {
++          ok: false,
++          message: `Variant ${v.sku || "(sku)"} is missing a selection for axis "${ax.axis_key}".`,
++        };
++      }
++      if (seenAxis.has(ax.id)) {
++        return {
++          ok: false,
++          message: `Variant ${v.sku || "(sku)"} has duplicate selections for an axis.`,
++        };
++      }
++      seenAxis.add(ax.id);
++      const allow = allowedByAxis.get(ax.id);
++      if (!allow?.has(hit.option_id)) {
++        return {
++          ok: false,
++          message: `Variant ${v.sku || "(sku)"} has an invalid option for axis "${ax.axis_key}".`,
++        };
++      }
++      parts.push(`${hit.axis_id}:${hit.option_id}`);
++    }
++    const sig = [...parts].sort().join("|");
++    if (sigs.has(sig)) {
++      return {
++        ok: false,
++        message: `More than one variant row uses the same template combination (see SKU ${v.sku || "?"}).`,
++      };
++    }
++    sigs.add(sig);
++  }
++  return { ok: true };
++}
++
++/**
++ * Parses a nested Supabase select into [`variantTemplateSchema`] shape (ordered axes/options).
++ */
++export function parseVariantTemplateJoinRow(raw: Record<string, unknown>): VariantTemplate {
++  type AxisRow = {
++    id: string;
++    axis_key: string;
++    label?: string | null;
++    sort_order: number;
++    variant_template_axis_options?: Array<{
++      id: string;
++      option_key: string;
++      label?: string | null;
++      sort_order: number;
++    }>;
++  };
++  const axesRaw = raw.variant_template_axes as AxisRow[] | undefined;
++  const axesSorted = [...(axesRaw ?? [])].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
++  const axes = axesSorted.map((a) => ({
++    id: String(a.id),
++    axis_key: String(a.axis_key),
++    label: a.label ?? null,
++    sort_order: a.sort_order ?? 0,
++    options: [...(a.variant_template_axis_options ?? [])]
++      .sort((x, y) => (x.sort_order ?? 0) - (y.sort_order ?? 0))
++      .map((o) => ({
++        id: String(o.id),
++        option_key: String(o.option_key),
++        label: o.label ?? null,
++        sort_order: o.sort_order ?? 0,
++      })),
++  }));
++  return variantTemplateSchema.parse({
++    id: String(raw.id),
++    name: String(raw.name),
++    status: variantTemplateStatusSchema.parse(raw.status),
++    axes: axes.map((ax) => variantTemplateAxisSchema.parse(ax)),
++  });
++}
++
++/**
++ * Coerce admin form model to domain template (includes generated template id for new saves).
++ */
++export function formToVariantTemplate(form: AdminVariantTemplateForm, templateId: string): VariantTemplate {
++  return variantTemplateSchema.parse({
++    id: templateId,
++    name: form.name.trim(),
++    status: form.status,
++    axes: form.axes
++      .slice()
++      .sort((a, b) => a.sort_order - b.sort_order)
++      .map((ax) =>
++        variantTemplateAxisSchema.parse({
++          id: ax.id,
++          axis_key: ax.axis_key.trim(),
++          label: ax.label?.trim() ? ax.label.trim() : null,
++          sort_order: ax.sort_order,
++          options: ax.options
++            .slice()
++            .sort((a, b) => a.sort_order - b.sort_order)
++            .map((o) =>
++              variantTemplateAxisOptionSchema.parse({
++                id: o.id,
++                option_key: o.option_key.trim(),
++                label: o.label?.trim() ? o.label.trim() : null,
++                sort_order: o.sort_order,
++              }),
++            ),
++        }),
++      ),
++  });
++}
++
++/** True when an edit removes/changes structural identity that assigned catalog rows might rely on. */
++export function isStructuralTemplateDestructive(before: VariantTemplate, after: VariantTemplate): boolean {
++  const afterAxisById = new Map(after.axes.map((a) => [a.id, a] as const));
++  for (const ax of before.axes) {
++    const next = afterAxisById.get(ax.id);
++    if (!next) return true;
++    if (normalizeMerchKey(next.axis_key) !== normalizeMerchKey(ax.axis_key)) return true;
++
++    const afterOptById = new Map(next.options.map((o) => [o.id, o] as const));
++    for (const op of ax.options) {
++      const nop = afterOptById.get(op.id);
++      if (!nop) return true;
++      if (normalizeMerchKey(nop.option_key) !== normalizeMerchKey(op.option_key)) return true;
++    }
++  }
++  return false;
++}
++
++/**
++ * If the template is assigned to products (`assignedCount > 0`) and variants use an option row that
++ * disappears or changes identity, callers must confirm (AC4).
++ */
++export function destructiveEditRequiresAcknowledgement(
++  beforeFull: VariantTemplate | null,
++  afterFull: VariantTemplate,
++  assignedProductCount: number,
++): boolean {
++  if (assignedProductCount <= 0) return false;
++  if (!beforeFull) return false;
++  const beforeAxisIds = new Set(beforeFull.axes.map((a) => a.id));
++  for (const ax of afterFull.axes) {
++    if (!beforeAxisIds.has(ax.id)) return true;
++  }
++  return isStructuralTemplateDestructive(beforeFull, afterFull);
++}
+diff --git a/src/domain/commerce/variantTemplate.test.ts b/src/domain/commerce/variantTemplate.test.ts
+new file mode 100644
+index 0000000..6203766
+--- /dev/null
++++ b/src/domain/commerce/variantTemplate.test.ts
+@@ -0,0 +1,201 @@
++import { describe, expect, it } from "vitest";
++import {
++  variantTemplateAxisOptionSchema,
++  variantTemplateAxisSchema,
++  variantTemplateSchema,
++  variantTemplateStatusSchema,
++} from "./variantTemplate";
++import { productSchema, productVariantSchema } from "./product";
++
++const validUuid = "11111111-1111-4111-8111-111111111111";
++
++const validTemplate = {
++  id: validUuid,
++  name: "Footwear matrix",
++  status: "draft" as const,
++  axes: [
++    {
++      id: "22222222-2222-4222-8222-222222222222",
++      axis_key: "size",
++      label: "Size",
++      sort_order: 0,
++      options: [
++        {
++          id: "33333333-3333-4333-8333-333333333333",
++          option_key: "m",
++          label: "M",
++          sort_order: 0,
++        },
++      ],
++    },
++  ],
++};
++
++describe("variantTemplateStatusSchema", () => {
++  it("accepts lifecycle values", () => {
++    expect(variantTemplateStatusSchema.safeParse("active").success).toBe(true);
++    expect(variantTemplateStatusSchema.safeParse("archived").success).toBe(true);
++  });
++
++  it("rejects unknown status", () => {
++    expect(variantTemplateStatusSchema.safeParse("published").success).toBe(false);
++  });
++});
++
++describe("variantTemplateAxisOptionSchema", () => {
++  it("requires option_key", () => {
++    const bad = {
++      ...validTemplate.axes[0].options[0],
++      option_key: "",
++    };
++    expect(variantTemplateAxisOptionSchema.safeParse(bad).success).toBe(false);
++  });
++
++  it("allows null label from database rows", () => {
++    const row = {
++      ...validTemplate.axes[0].options[0],
++      label: null,
++    };
++    expect(variantTemplateAxisOptionSchema.safeParse(row).success).toBe(true);
++  });
++
++  it("rejects unstable option keys", () => {
++    const bad = {
++      ...validTemplate.axes[0].options[0],
++      option_key: "Display Size",
++    };
++    expect(variantTemplateAxisOptionSchema.safeParse(bad).success).toBe(false);
++  });
++});
++
++describe("variantTemplateAxisSchema", () => {
++  it("requires non-empty axis_key", () => {
++    const bad = {
++      ...validTemplate.axes[0],
++      axis_key: "",
++      options: validTemplate.axes[0].options,
++    };
++    expect(variantTemplateAxisSchema.safeParse(bad).success).toBe(false);
++  });
++
++  it("allows null label from database rows", () => {
++    const row = {
++      ...validTemplate.axes[0],
++      label: null,
++      options: validTemplate.axes[0].options,
++    };
++    expect(variantTemplateAxisSchema.safeParse(row).success).toBe(true);
++  });
++
++  it("rejects whitespace axis keys", () => {
++    const bad = {
++      ...validTemplate.axes[0],
++      axis_key: "   ",
++      options: validTemplate.axes[0].options,
++    };
++    expect(variantTemplateAxisSchema.safeParse(bad).success).toBe(false);
++  });
++});
++
++describe("variantTemplateSchema", () => {
++  it("parses a valid nested template", () => {
++    expect(() => variantTemplateSchema.parse(validTemplate)).not.toThrow();
++  });
++
++  it("rejects invalid nested uuid", () => {
++    const bad = {
++      ...validTemplate,
++      axes: [
++        {
++          ...validTemplate.axes[0],
++          id: "not-a-uuid",
++          options: validTemplate.axes[0].options,
++        },
++      ],
++    };
++    expect(variantTemplateSchema.safeParse(bad).success).toBe(false);
++  });
++
++  it("rejects blank template names", () => {
++    const bad = {
++      ...validTemplate,
++      name: "   ",
++    };
++    expect(variantTemplateSchema.safeParse(bad).success).toBe(false);
++  });
++});
++
++describe("productSchema variant_template_id", () => {
++  const minimalVariant = productVariantSchema.parse({
++    sku: "SKU-1",
++    price_cents: 100,
++    currency: "USD",
++    inventory_quantity: 1,
++    status: "active",
++  });
++
++  it("allows omitting variant_template_id", () => {
++    const p = productSchema.parse({
++      slug: "x",
++      title: "t",
++      status: "draft",
++      variants: [],
++    });
++    expect(p.variant_template_id).toBeUndefined();
++  });
++
++  it("allows null variant_template_id", () => {
++    const p = productSchema.parse({
++      slug: "x",
++      title: "t",
++      status: "draft",
++      variants: [],
++      variant_template_id: null,
++    });
++    expect(p.variant_template_id).toBeNull();
++  });
++
++  it("accepts a uuid variant_template_id", () => {
++    const p = productSchema.parse({
++      slug: "x",
++      title: "t",
++      status: "draft",
++      variants: [],
++      variant_template_id: validUuid,
++    });
++    expect(p.variant_template_id).toBe(validUuid);
++  });
++
++  it("rejects malformed uuid", () => {
++    const r = productSchema.safeParse({
++      slug: "x",
++      title: "t",
++      status: "draft",
++      variants: [],
++      variant_template_id: "nope",
++    });
++    expect(r.success).toBe(false);
++  });
++
++  it("still requires variants for non-draft when template id set", () => {
++    const r = productSchema.safeParse({
++      slug: "x",
++      title: "t",
++      status: "active",
++      variants: [],
++      variant_template_id: validUuid,
++    });
++    expect(r.success).toBe(false);
++  });
++
++  it("accepts active product with variant and template id", () => {
++    const p = productSchema.parse({
++      slug: "x",
++      title: "t",
++      status: "active",
++      variants: [minimalVariant],
++      variant_template_id: validUuid,
++    });
++    expect(p.variant_template_id).toBe(validUuid);
++  });
++});
+diff --git a/src/domain/commerce/variantTemplate.ts b/src/domain/commerce/variantTemplate.ts
+new file mode 100644
+index 0000000..8efff62
+--- /dev/null
++++ b/src/domain/commerce/variantTemplate.ts
+@@ -0,0 +1,36 @@
++import { z } from "zod";
++
++/** Matches `public.variant_template_status`. */
++export const variantTemplateStatusSchema = z.enum(["draft", "active", "archived"]);
++
++const stableKeySchema = z.string().trim().regex(/^[a-z0-9][a-z0-9_-]*$/);
++
++/** Single option row under an axis (DB + admin projections). */
++export const variantTemplateAxisOptionSchema = z.object({
++  id: z.string().uuid(),
++  option_key: stableKeySchema,
++  label: z.string().nullish(),
++  sort_order: z.number().int(),
++});
++
++/** Axis row with nested options (ordered merchandising dimension). */
++export const variantTemplateAxisSchema = z.object({
++  id: z.string().uuid(),
++  axis_key: stableKeySchema,
++  label: z.string().nullish(),
++  sort_order: z.number().int(),
++  options: z.array(variantTemplateAxisOptionSchema),
++});
++
++/** Full template with axes + options (admin read model / Epic 11-2 payloads). */
++export const variantTemplateSchema = z.object({
++  id: z.string().uuid(),
++  name: z.string().trim().min(1),
++  status: variantTemplateStatusSchema,
++  axes: z.array(variantTemplateAxisSchema),
++});
++
++export type VariantTemplateStatus = z.infer<typeof variantTemplateStatusSchema>;
++export type VariantTemplateAxisOption = z.infer<typeof variantTemplateAxisOptionSchema>;
++export type VariantTemplateAxis = z.infer<typeof variantTemplateAxisSchema>;
++export type VariantTemplate = z.infer<typeof variantTemplateSchema>;
+diff --git a/supabase/migrations/20260504180000_variant_templates_normalized_rls_admin_bundle.sql b/supabase/migrations/20260504180000_variant_templates_normalized_rls_admin_bundle.sql
+new file mode 100644
+index 0000000..2e5880b
+--- /dev/null
++++ b/supabase/migrations/20260504180000_variant_templates_normalized_rls_admin_bundle.sql
+@@ -0,0 +1,624 @@
++-- Story 11-1: Variant templates (normalized axes + options), products.variant_template_id,
++-- admin-only RLS, admin_save_product_bundle persistence for variant_template_id.
++--
++-- Physical model (Option A — normalized): variant_templates holds metadata + lifecycle;
++-- variant_template_axes defines ordered axes (stable axis_key); variant_template_axis_options
++-- holds ordered options per axis. Supports admin CRUD and explicit sort_order in Epic 11-2.
++
++CREATE TYPE public.variant_template_status AS ENUM ('draft', 'active', 'archived');
++
++CREATE TABLE public.variant_templates (
++  id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
++  name text NOT NULL,
++  status public.variant_template_status NOT NULL DEFAULT 'draft',
++  created_at timestamptz NOT NULL DEFAULT now(),
++  updated_at timestamptz NOT NULL DEFAULT now(),
++  CONSTRAINT variant_templates_name_nonempty_chk CHECK (btrim(name) <> '')
++);
++
++CREATE TABLE public.variant_template_axes (
++  id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
++  variant_template_id uuid NOT NULL REFERENCES public.variant_templates (id) ON DELETE CASCADE,
++  axis_key text NOT NULL,
++  label text,
++  sort_order integer NOT NULL DEFAULT 0,
++  created_at timestamptz NOT NULL DEFAULT now (),
++  updated_at timestamptz NOT NULL DEFAULT now (),
++  CONSTRAINT variant_template_axes_axis_key_format_chk CHECK (axis_key ~ '^[a-z0-9][a-z0-9_-]*$'),
++  CONSTRAINT variant_template_axes_template_axis_unique UNIQUE (variant_template_id, axis_key)
++);
++
++CREATE INDEX variant_template_axes_variant_template_id_idx ON public.variant_template_axes (variant_template_id);
++
++CREATE TABLE public.variant_template_axis_options (
++  id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
++  axis_id uuid NOT NULL REFERENCES public.variant_template_axes (id) ON DELETE CASCADE,
++  option_key text NOT NULL,
++  label text,
++  sort_order integer NOT NULL DEFAULT 0,
++  created_at timestamptz NOT NULL DEFAULT now (),
++  updated_at timestamptz NOT NULL DEFAULT now (),
++  CONSTRAINT variant_template_axis_options_option_key_format_chk CHECK (option_key ~ '^[a-z0-9][a-z0-9_-]*$'),
++  CONSTRAINT variant_template_axis_options_axis_option_unique UNIQUE (axis_id, option_key)
++);
++
++CREATE INDEX variant_template_axis_options_axis_id_idx ON public.variant_template_axis_options (axis_id);
++
++ALTER TABLE public.products
++  ADD COLUMN variant_template_id uuid REFERENCES public.variant_templates (id) ON DELETE SET NULL;
++
++CREATE INDEX products_variant_template_id_idx ON public.products (variant_template_id);
++
++-- Storefront anon reads should not expose template assignment before Epic 11-3.
++-- RLS remains row-based; column privileges keep `variant_template_id` admin-only.
++REVOKE SELECT ON public.products FROM anon;
++GRANT SELECT (
++  id,
++  slug,
++  title,
++  subtitle,
++  description,
++  brand,
++  category,
++  fabric_type,
++  care_instructions,
++  origin,
++  status,
++  legacy_storefront_id,
++  created_at,
++  updated_at
++) ON public.products TO anon;
++
++COMMENT ON TABLE public.variant_templates IS 'Merchandising variant template definitions; admin-only until storefront policies land (Epic 11-3).';
++
++COMMENT ON TABLE public.variant_template_axes IS 'Ordered axes (e.g. size, material) for a template; axis_key is stable for code and APIs.';
++
++COMMENT ON TABLE public.variant_template_axis_options IS 'Ordered selectable values under each axis.';
++
++CREATE OR REPLACE FUNCTION public.variant_templates_set_updated_at ()
++RETURNS TRIGGER
++LANGUAGE plpgsql
++AS $tg$
++BEGIN
++  NEW.updated_at = now ();
++  RETURN NEW;
++END
++$tg$;
++
++CREATE TRIGGER variant_templates_before_update_touch_updated_at
++BEFORE UPDATE ON public.variant_templates
++FOR EACH ROW
++EXECUTE FUNCTION public.variant_templates_set_updated_at ();
++
++CREATE TRIGGER variant_template_axes_before_update_touch_updated_at
++BEFORE UPDATE ON public.variant_template_axes
++FOR EACH ROW
++EXECUTE FUNCTION public.variant_templates_set_updated_at ();
++
++CREATE TRIGGER variant_template_axis_options_before_update_touch_updated_at
++BEFORE UPDATE ON public.variant_template_axis_options
++FOR EACH ROW
++EXECUTE FUNCTION public.variant_templates_set_updated_at ();
++
++CREATE OR REPLACE FUNCTION public.variant_templates_touch_parent_updated_at ()
++RETURNS TRIGGER
++LANGUAGE plpgsql
++AS $tg$
++DECLARE
++  v_template_id uuid;
++BEGIN
++  IF TG_TABLE_NAME = 'variant_template_axes' THEN
++    IF TG_OP = 'DELETE' THEN
++      v_template_id := OLD.variant_template_id;
++    ELSE
++      v_template_id := NEW.variant_template_id;
++    END IF;
++  ELSE
++    SELECT a.variant_template_id INTO v_template_id
++    FROM public.variant_template_axes a
++    WHERE a.id =
++      CASE
++        WHEN TG_OP = 'DELETE' THEN OLD.axis_id
++        ELSE NEW.axis_id
++      END;
++  END IF;
++
++  IF v_template_id IS NOT NULL THEN
++    UPDATE public.variant_templates
++    SET updated_at = now ()
++    WHERE id = v_template_id;
++  END IF;
++
++  RETURN coalesce(NEW, OLD);
++END
++$tg$;
++
++CREATE TRIGGER variant_template_axes_after_change_touch_parent
++AFTER INSERT OR UPDATE OR DELETE ON public.variant_template_axes
++FOR EACH ROW
++EXECUTE FUNCTION public.variant_templates_touch_parent_updated_at ();
++
++CREATE TRIGGER variant_template_axis_options_after_change_touch_parent
++AFTER INSERT OR UPDATE OR DELETE ON public.variant_template_axis_options
++FOR EACH ROW
++EXECUTE FUNCTION public.variant_templates_touch_parent_updated_at ();
++
++-- ---------------------------------------------------------------------------
++-- RLS: admin-only (matches catalog_admin_* predicate); no anon/authenticated non-admin access.
++-- ---------------------------------------------------------------------------
++ALTER TABLE public.variant_templates ENABLE ROW LEVEL SECURITY;
++
++ALTER TABLE public.variant_template_axes ENABLE ROW LEVEL SECURITY;
++
++ALTER TABLE public.variant_template_axis_options ENABLE ROW LEVEL SECURITY;
++
++CREATE POLICY variant_templates_admin_all ON public.variant_templates
++  FOR ALL
++  TO authenticated
++  USING (coalesce((auth.jwt () -> 'app_metadata' ->> 'role'), '') = 'admin')
++  WITH CHECK (coalesce((auth.jwt () -> 'app_metadata' ->> 'role'), '') = 'admin');
++
++CREATE POLICY variant_template_axes_admin_all ON public.variant_template_axes
++  FOR ALL
++  TO authenticated
++  USING (coalesce((auth.jwt () -> 'app_metadata' ->> 'role'), '') = 'admin')
++  WITH CHECK (coalesce((auth.jwt () -> 'app_metadata' ->> 'role'), '') = 'admin');
++
++CREATE POLICY variant_template_axis_options_admin_all ON public.variant_template_axis_options
++  FOR ALL
++  TO authenticated
++  USING (coalesce((auth.jwt () -> 'app_metadata' ->> 'role'), '') = 'admin')
++  WITH CHECK (coalesce((auth.jwt () -> 'app_metadata' ->> 'role'), '') = 'admin');
++
++-- ---------------------------------------------------------------------------
++-- admin_save_product_bundle: copy-forward from 20260430202100 + variant_template_id on products.
++-- ---------------------------------------------------------------------------
++CREATE OR REPLACE FUNCTION public.admin_save_product_bundle (p_payload jsonb)
++RETURNS uuid
++LANGUAGE plpgsql
++SECURITY INVOKER
++SET search_path = public
++AS $func$
++DECLARE
++  v_p jsonb;
++  v_id uuid;
++  v_slug text;
++  v_status public.product_status;
++  v_v jsonb;
++  v_g jsonb;
++  v_pl jsonb;
++  v_var_id uuid;
++  v_var_ids uuid[] := array[]::uuid[];
++  v_img_id uuid;
++  v_img_ids uuid[] := array[]::uuid[];
++  v_sku text;
++  v_cents int;
++  v_vstatus public.product_variant_status;
++  v_var_for_img uuid;
++  v_cents_null text;
++  v_dup_sku text;
++  v_plan_id uuid;
++  v_plan_ids uuid[] := array[]::uuid[];
++  v_pslug text;
++  v_pnm text;
++  v_pstat public.subscription_plan_status;
++  v_sp_id text;
++  v_stripe_price text;
++  v_interval public.subscription_plan_interval;
++  v_icount int;
++  v_pcents int;
++  v_cur text;
++  v_trial int;
++  v_var_plan uuid;
++  v_variant_template_id uuid;
++  v_vtid text;
++BEGIN
++  IF coalesce((auth.jwt () -> 'app_metadata' ->> 'role'), '') != 'admin' THEN
++    RAISE EXCEPTION 'Admin role is required' USING ERRCODE = '42501';
++  END IF;
++
++  v_p := p_payload->'product';
++  IF v_p IS NULL THEN
++    RAISE EXCEPTION 'Missing product payload' USING ERRCODE = '22023';
++  END IF;
++
++  v_slug := trim(both FROM (v_p->>'slug'));
++  IF v_slug = '' OR (v_p->>'title') IS NULL OR trim(both FROM (v_p->>'title')) = '' THEN
++    RAISE EXCEPTION 'Product slug and title are required' USING ERRCODE = '22023';
++  END IF;
++
++  v_status := coalesce(
++    (v_p->>'status')::public.product_status,
++    'draft'::public.product_status
++  );
++
++  v_vtid := nullif(trim(both FROM coalesce(v_p->>'variant_template_id', '')), '');
++  IF v_vtid IS NULL THEN
++    v_variant_template_id := NULL;
++  ELSE
++    BEGIN
++      v_variant_template_id := v_vtid::uuid;
++    EXCEPTION
++      WHEN invalid_text_representation THEN
++        RAISE EXCEPTION 'variant_template_id must be a valid uuid' USING ERRCODE = '22023';
++    END;
++  END IF;
++
++  IF
++    v_status IN ('active'::public.product_status, 'coming_soon'::public.product_status)
++    AND coalesce(jsonb_array_length(p_payload->'variants'), 0) = 0
++  THEN
++    RAISE EXCEPTION 'Active or coming-soon products require at least one variant' USING ERRCODE = '22023';
++  END IF;
++
++  IF (v_p->>'id') IS NULL OR trim(both FROM (v_p->>'id')) = '' THEN
++    INSERT INTO public.products (
++      slug,
++      title,
++      subtitle,
++      description,
++      brand,
++      category,
++      fabric_type,
++      care_instructions,
++      origin,
++      status,
++      variant_template_id
++    )
++    VALUES (
++      v_slug,
++      trim(both FROM (v_p->>'title')),
++      nullif (v_p->>'subtitle', ''),
++      nullif (v_p->>'description', ''),
++      coalesce (nullif (v_p->>'brand', ''), 'Zephyr Lux'),
++      nullif (v_p->>'category', ''),
++      nullif (v_p->>'fabric_type', ''),
++      nullif (v_p->>'care_instructions', ''),
++      nullif (v_p->>'origin', ''),
++      v_status,
++      v_variant_template_id
++    )
++    RETURNING id INTO v_id;
++  ELSE
++    v_id := (v_p->>'id')::uuid;
++    UPDATE public.products
++    SET
++      slug = v_slug,
++      title = trim(both FROM (v_p->>'title')),
++      subtitle = nullif (v_p->>'subtitle', ''),
++      description = nullif (v_p->>'description', ''),
++      brand = coalesce (nullif (v_p->>'brand', ''), 'Zephyr Lux'),
++      category = nullif (v_p->>'category', ''),
++      fabric_type = nullif (v_p->>'fabric_type', ''),
++      care_instructions = nullif (v_p->>'care_instructions', ''),
++      origin = nullif (v_p->>'origin', ''),
++      status = v_status,
++      variant_template_id = v_variant_template_id,
++      updated_at = now()
++    WHERE
++      id = v_id;
++    IF NOT found THEN
++      RAISE EXCEPTION 'Product not found: %', v_id USING ERRCODE = 'P0002';
++    END IF;
++  END IF;
++
++  v_var_ids := array[]::uuid[];
++  FOR v_v IN
++  SELECT
++    value
++  FROM
++    jsonb_array_elements (coalesce(p_payload->'variants', '[]'::jsonb)) AS t (value)
++  LOOP
++    v_var_id := (v_v->>'id')::uuid;
++    IF v_var_id IS NULL THEN
++      RAISE EXCEPTION 'Each variant must include a client-generated id (uuid)' USING ERRCODE = '22023';
++    END IF;
++    v_var_ids := array_append (v_var_ids, v_var_id);
++  END LOOP;
++
++  IF coalesce (array_length (v_var_ids, 1), 0) > 0 THEN
++    DELETE FROM public.product_variants
++    WHERE
++      product_id = v_id
++      AND id != ALL (v_var_ids);
++  ELSE
++    DELETE FROM public.product_variants
++    WHERE
++      product_id = v_id;
++  END IF;
++
++  FOR v_v IN
++  SELECT
++    value
++  FROM
++    jsonb_array_elements (coalesce(p_payload->'variants', '[]'::jsonb)) AS t (value)
++  LOOP
++    v_var_id := (v_v->>'id')::uuid;
++    v_sku := trim(both FROM coalesce (v_v->>'sku', ''));
++    IF v_sku = '' THEN
++      RAISE EXCEPTION 'Each variant must have a non-empty sku' USING ERRCODE = '22023';
++    END IF;
++    SELECT
++      p.sku INTO v_dup_sku
++    FROM
++      public.product_variants p
++    WHERE
++      p.sku = v_sku
++      AND p.id != v_var_id
++    LIMIT 1;
++    IF v_dup_sku IS NOT NULL THEN
++      RAISE EXCEPTION 'SKU is already in use: %', v_sku USING ERRCODE = '23505';
++    END IF;
++    v_cents_null := (v_v->>'price_cents');
++    IF v_cents_null IS NULL OR v_cents_null = '' THEN
++      RAISE EXCEPTION 'price_cents is required for every variant' USING ERRCODE = '22023';
++    END IF;
++    v_cents := (v_v->>'price_cents')::int;
++    IF v_cents < 0 THEN
++      RAISE EXCEPTION 'price_cents must be non-negative' USING ERRCODE = '22023';
++    END IF;
++    v_vstatus := coalesce(
++      (v_v->>'status')::public.product_variant_status,
++      'active'::public.product_variant_status
++    );
++    IF EXISTS (SELECT 1 FROM public.product_variants p WHERE p.id = v_var_id) THEN
++      UPDATE public.product_variants
++      SET
++        product_id = v_id,
++        sku = v_sku,
++        size = nullif (v_v->>'size', ''),
++        color = nullif (v_v->>'color', ''),
++        price_cents = v_cents,
++        currency = lower (coalesce (nullif (v_v->>'currency', ''), 'usd')),
++        inventory_quantity = coalesce (nullif (v_v->>'inventory_quantity', '')::int, 0),
++        low_stock_threshold = nullif (v_v->>'low_stock_threshold', '')::int,
++        status = v_vstatus,
++        image_url = nullif (v_v->>'image_url', ''),
++        updated_at = now()
++      WHERE
++        id = v_var_id
++        AND product_id = v_id;
++      IF NOT found THEN
++        RAISE EXCEPTION 'Variant % is not part of this product or does not exist', v_var_id USING ERRCODE = '23503';
++      END IF;
++    ELSE
++      INSERT INTO public.product_variants (
++        id, product_id, sku, size, color, price_cents, currency, inventory_quantity, low_stock_threshold, status, image_url, updated_at
++      )
++      VALUES (
++        v_var_id,
++        v_id,
++        v_sku,
++        nullif (v_v->>'size', ''),
++        nullif (v_v->>'color', ''),
++        v_cents,
++        lower (coalesce (nullif (v_v->>'currency', ''), 'usd')),
++        coalesce (nullif (v_v->>'inventory_quantity', '')::int, 0),
++        nullif (v_v->>'low_stock_threshold', '')::int,
++        v_vstatus,
++        nullif (v_v->>'image_url', ''),
++        now()
++      );
++    END IF;
++  END LOOP;
++
++  v_img_ids := array[]::uuid[];
++  FOR v_g IN
++  SELECT
++    value
++  FROM
++    jsonb_array_elements (coalesce(p_payload->'images', '[]'::jsonb)) AS t (value)
++  LOOP
++    v_img_id := (v_g->>'id')::uuid;
++    IF v_img_id IS NULL THEN
++      RAISE EXCEPTION 'Each image must include a client-generated id (uuid)' USING ERRCODE = '22023';
++    END IF;
++    v_img_ids := array_append (v_img_ids, v_img_id);
++  END LOOP;
++
++  IF coalesce (array_length (v_img_ids, 1), 0) > 0 THEN
++    DELETE FROM public.product_images
++    WHERE
++      product_id = v_id
++      AND id != ALL (v_img_ids);
++  ELSE
++    DELETE FROM public.product_images
++    WHERE
++      product_id = v_id;
++  END IF;
++
++  FOR v_g IN
++  SELECT
++    value
++  FROM
++    jsonb_array_elements (coalesce(p_payload->'images', '[]'::jsonb)) AS t (value)
++  LOOP
++    v_img_id := (v_g->>'id')::uuid;
++    IF trim(both FROM coalesce (v_g->>'storage_path', '')) = '' THEN
++      RAISE EXCEPTION 'Each image must have storage_path' USING ERRCODE = '22023';
++    END IF;
++    v_var_for_img := nullif (v_g->>'variant_id', '')::uuid;
++    IF
++      v_var_for_img IS NOT NULL
++      AND NOT EXISTS (SELECT 1 FROM public.product_variants pv WHERE pv.id = v_var_for_img AND pv.product_id = v_id)
++    THEN
++      RAISE EXCEPTION 'image variant_id does not match this product' USING ERRCODE = '22023';
++    END IF;
++    IF EXISTS (SELECT 1 FROM public.product_images i WHERE i.id = v_img_id) THEN
++      UPDATE public.product_images
++      SET
++        product_id = v_id,
++        variant_id = v_var_for_img,
++        storage_path = (v_g->>'storage_path'),
++        alt_text = nullif (v_g->>'alt_text', ''),
++        sort_order = coalesce (nullif (v_g->>'sort_order', '')::int, 0),
++        is_primary = coalesce (nullif (v_g->>'is_primary', '')::bool, false)
++      WHERE
++        id = v_img_id
++        AND product_id = v_id;
++      IF NOT found THEN
++        RAISE EXCEPTION 'Image % is not part of this product or does not exist', v_img_id USING ERRCODE = '23503';
++      END IF;
++    ELSE
++      INSERT INTO public.product_images (id, product_id, variant_id, storage_path, alt_text, sort_order, is_primary)
++      VALUES (
++        v_img_id,
++        v_id,
++        v_var_for_img,
++        (v_g->>'storage_path'),
++        nullif (v_g->>'alt_text', ''),
++        coalesce (nullif (v_g->>'sort_order', '')::int, 0),
++        coalesce (nullif (v_g->>'is_primary', '')::bool, false)
++      );
++    END IF;
++  END LOOP;
++
++  v_plan_ids := array[]::uuid[];
++  FOR v_pl IN
++  SELECT
++    value
++  FROM
++    jsonb_array_elements (coalesce(p_payload->'subscription_plans', '[]'::jsonb)) AS t (value)
++  LOOP
++    v_plan_id := (v_pl->>'id')::uuid;
++    IF v_plan_id IS NULL THEN
++      RAISE EXCEPTION 'Each subscription plan must include a client-generated id (uuid)' USING ERRCODE = '22023';
++    END IF;
++    v_plan_ids := array_append (v_plan_ids, v_plan_id);
++  END LOOP;
++
++  IF coalesce (array_length (v_plan_ids, 1), 0) > 0 THEN
++    DELETE FROM public.product_subscription_plans
++    WHERE
++      product_id = v_id
++      AND id != ALL (v_plan_ids);
++  ELSE
++    DELETE FROM public.product_subscription_plans
++    WHERE
++      product_id = v_id;
++  END IF;
++
++  FOR v_pl IN
++  SELECT
++    value
++  FROM
++    jsonb_array_elements (coalesce(p_payload->'subscription_plans', '[]'::jsonb)) AS t (value)
++  LOOP
++    v_plan_id := (v_pl->>'id')::uuid;
++    v_pslug := lower(trim(both FROM coalesce (v_pl->>'slug', '')));
++    IF v_pslug = '' THEN
++      RAISE EXCEPTION 'subscription plan slug required' USING ERRCODE = '22023';
++    END IF;
++    v_pstat := coalesce(
++      (v_pl->>'status')::public.subscription_plan_status,
++      'draft'::public.subscription_plan_status
++    );
++    v_pnm := trim(both FROM coalesce (v_pl->>'name', ''));
++    v_sp_id := nullif(trim(both FROM coalesce (v_pl->>'stripe_product_id', '')), '');
++    v_stripe_price := nullif(trim(both FROM coalesce (v_pl->>'stripe_price_id', '')), '');
++    IF v_sp_id IS NOT NULL AND v_sp_id !~ '^prod_[a-zA-Z0-9_]+$' THEN
++      RAISE EXCEPTION 'subscription plan stripe_product_id must be a Stripe product id (prod_…)' USING ERRCODE = '22023';
++    END IF;
++    IF v_stripe_price IS NOT NULL AND v_stripe_price !~ '^price_[a-zA-Z0-9_]+$' THEN
++      RAISE EXCEPTION 'subscription plan stripe_price_id must be a Stripe price id (price_…)' USING ERRCODE = '22023';
++    END IF;
++    v_interval := coalesce (
++      nullif(trim(both FROM coalesce(v_pl->>'interval', '')), '')::public.subscription_plan_interval,
++      'month'::public.subscription_plan_interval
++    );
++    v_icount := coalesce(nullif(trim(both FROM coalesce(v_pl->>'interval_count', '')), '')::int, 1);
++    IF v_icount < 1 THEN
++      RAISE EXCEPTION 'subscription plan interval_count must be at least 1' USING ERRCODE = '22023';
++    END IF;
++    v_pcents := coalesce(nullif(trim(both FROM coalesce(v_pl->>'price_cents', '')), '')::int, 0);
++    IF v_pcents < 0 THEN
++      RAISE EXCEPTION 'subscription plan price_cents must be non-negative' USING ERRCODE = '22023';
++    END IF;
++    v_cur := lower (coalesce (nullif(trim(both FROM coalesce(v_pl->>'currency', '')), ''), 'usd'));
++    IF v_pl->>'trial_period_days' IS NULL OR trim(both FROM coalesce(v_pl->>'trial_period_days', '')) = '' THEN
++      v_trial := NULL::int;
++    ELSE
++      v_trial := (v_pl->>'trial_period_days')::int;
++      IF v_trial < 0 THEN
++        RAISE EXCEPTION 'subscription plan trial_period_days must be non-negative' USING ERRCODE = '22023';
++      END IF;
++    END IF;
++    v_var_plan := nullif(trim(both FROM coalesce(v_pl->>'variant_id', '')), '')::uuid;
++    IF
++      v_var_plan IS NOT NULL
++      AND NOT EXISTS (SELECT 1 FROM public.product_variants pv WHERE pv.id = v_var_plan AND pv.product_id = v_id)
++    THEN
++      RAISE EXCEPTION 'subscription plan variant_id does not match this product' USING ERRCODE = '22023';
++    END IF;
++    IF v_pstat = 'active'::public.subscription_plan_status THEN
++      IF v_pnm = '' THEN
++        RAISE EXCEPTION 'Active subscription plans require name' USING ERRCODE = '22023';
++      END IF;
++      IF v_stripe_price IS NULL OR btrim(v_stripe_price) = '' THEN
++        RAISE EXCEPTION 'Active subscription plans require stripe_price_id' USING ERRCODE = '22023';
++      END IF;
++    END IF;
++    IF EXISTS (SELECT 1 FROM public.product_subscription_plans spp WHERE spp.id = v_plan_id) THEN
++      UPDATE public.product_subscription_plans spp
++      SET
++        product_id = v_id,
++        variant_id = v_var_plan,
++        slug = v_pslug,
++        name =
++          CASE
++            WHEN v_pnm <> '' THEN v_pnm
++            ELSE spp.name
++          END,
++        description = nullif(trim(both FROM coalesce(v_pl->>'description', '')), ''),
++        stripe_product_id = v_sp_id,
++        stripe_price_id = v_stripe_price,
++        interval = v_interval,
++        interval_count = v_icount,
++        price_cents = v_pcents,
++        currency = v_cur,
++        trial_period_days = v_trial,
++        status = v_pstat
++      WHERE spp.id = v_plan_id
++        AND spp.product_id = v_id;
++      IF NOT found THEN
++        RAISE EXCEPTION 'Subscription plan % is not part of this product or does not exist', v_plan_id USING ERRCODE = '23503';
++      END IF;
++    ELSE
++      INSERT INTO public.product_subscription_plans (
++        id,
++        product_id,
++        variant_id,
++        slug,
++        name,
++        description,
++        stripe_product_id,
++        stripe_price_id,
++        interval,
++        interval_count,
++        price_cents,
++        currency,
++        trial_period_days,
++        status
++      )
++      VALUES (
++        v_plan_id,
++        v_id,
++        v_var_plan,
++        v_pslug,
++        CASE WHEN v_pnm <> '' THEN v_pnm ELSE '(draft plan)' END,
++        nullif(trim(both FROM coalesce(v_pl->>'description', '')), ''),
++        v_sp_id,
++        v_stripe_price,
++        v_interval,
++        v_icount,
++        v_pcents,
++        v_cur,
++        v_trial,
++        v_pstat
++      );
++    END IF;
++  END LOOP;
++
++  RETURN v_id;
++END
++$func$;
+diff --git a/supabase/migrations/20260505183000_admin_save_variant_template_rpc.sql b/supabase/migrations/20260505183000_admin_save_variant_template_rpc.sql
+new file mode 100644
+index 0000000..d4d1042
+--- /dev/null
++++ b/supabase/migrations/20260505183000_admin_save_variant_template_rpc.sql
+@@ -0,0 +1,130 @@
++-- Story 11-2: Single-transaction variant template persistence for admin CRUD.
++
++CREATE OR REPLACE FUNCTION public.admin_save_variant_template (p_payload jsonb)
++RETURNS uuid
++LANGUAGE plpgsql
++SECURITY INVOKER
++SET search_path TO 'public'
++AS $func$
++DECLARE
++  v_tid uuid;
++  v_name text;
++  v_status public.variant_template_status;
++  v_axis_ids uuid[] := ARRAY[]::uuid[];
++  v_ax_row jsonb;
++  v_opt_row jsonb;
++  r_ax RECORD;
++  r_opt RECORD;
++  v_axis_id uuid;
++  v_opt_ids uuid[];
++  v_opt_id uuid;
++BEGIN
++  IF coalesce((auth.jwt () -> 'app_metadata' ->> 'role'), '') <> 'admin' THEN
++    RAISE EXCEPTION 'Admin role is required' USING ERRCODE = '42501';
++  END IF;
++
++  v_name := trim(BOTH FROM coalesce(p_payload->>'name', ''));
++  IF v_name = '' THEN RAISE EXCEPTION 'template name is required' USING ERRCODE = '22023'; END IF;
++
++  BEGIN
++    v_status := (p_payload->>'status')::public.variant_template_status;
++  EXCEPTION
++    WHEN invalid_text_representation THEN
++      v_status := 'draft'::public.variant_template_status;
++  END;
++
++  IF p_payload->>'id' IS NULL OR trim(BOTH FROM (p_payload->>'id')) = '' THEN
++    INSERT INTO public.variant_templates (name, status)
++    VALUES (v_name, v_status)
++    RETURNING id INTO v_tid;
++  ELSE
++    v_tid := (p_payload->>'id')::uuid;
++    UPDATE public.variant_templates SET name = v_name, status = v_status WHERE id = v_tid;
++    IF NOT FOUND THEN RAISE EXCEPTION 'Template not found: %', v_tid USING ERRCODE = 'P0002'; END IF;
++  END IF;
++
++  SELECT COALESCE(array_agg((t_arr.value ->> 'id')::uuid) FILTER (
++    WHERE (t_arr.value ->> 'id')
++    IS NOT NULL
++    AND trim(BOTH FROM coalesce(t_arr.value ->> 'id', '')) <> ''), ARRAY[]::uuid[])
++  INTO v_axis_ids
++  FROM jsonb_array_elements(coalesce(p_payload->'axes', '[]'::jsonb)) AS t_arr;
++
++  DELETE FROM public.variant_template_axes vt
++    WHERE vt.variant_template_id = v_tid AND NOT vt.id = ANY (v_axis_ids);
++
++  FOR r_ax IN SELECT * FROM jsonb_array_elements(coalesce(p_payload->'axes', '[]'::jsonb))
++    LOOP v_ax_row := r_ax.value;
++
++    v_axis_id := (v_ax_row ->> 'id')::uuid;
++
++      IF EXISTS (
++        SELECT 1 FROM public.variant_template_axes old_ax
++        WHERE old_ax.id = v_axis_id AND old_ax.variant_template_id IS DISTINCT FROM v_tid LIMIT 1
++      )
++      THEN
++        RAISE EXCEPTION 'Axis uuid already belongs to a different template' USING ERRCODE = '23503';
++      END IF;
++
++      INSERT INTO public.variant_template_axes (id, variant_template_id, axis_key, label, sort_order)
++      VALUES (
++      v_axis_id,
++      v_tid,
++      trim(BOTH FROM v_ax_row ->> 'axis_key'),
++      nullif (trim(BOTH FROM coalesce(v_ax_row ->> 'label', '')), ''),
++      COALESCE(NULLIF(trim(BOTH FROM coalesce(v_ax_row ->> 'sort_order', '')), '')::int, 0))
++      ON CONFLICT (id) DO UPDATE
++      SET variant_template_id = excluded.variant_template_id,
++        axis_key = excluded.axis_key,
++        label = excluded.label,
++        sort_order = excluded.sort_order;
++
++      SELECT COALESCE(array_agg((t_opt.value ->> 'id')::uuid) FILTER (
++        WHERE (t_opt.value ->> 'id')
++        IS NOT NULL
++        AND trim(BOTH FROM coalesce(t_opt.value ->> 'id', '')) <> ''), ARRAY[]::uuid[])
++        INTO v_opt_ids FROM jsonb_array_elements(coalesce(v_ax_row->'options', '[]'::jsonb)) AS t_opt;
++
++    DELETE FROM public.variant_template_axis_options opt
++      WHERE opt.axis_id = v_axis_id AND NOT opt.id = ANY (v_opt_ids);
++
++      FOR r_opt IN SELECT * FROM jsonb_array_elements(coalesce(v_ax_row->'options', '[]'::jsonb))
++        LOOP v_opt_row := r_opt.value;
++          v_opt_id := (v_opt_row ->> 'id')::uuid;
++
++          IF EXISTS (
++            SELECT 1 FROM public.variant_template_axis_options oo
++            WHERE oo.id = v_opt_id AND oo.axis_id IS DISTINCT FROM v_axis_id LIMIT 1
++          )
++          THEN
++            RAISE EXCEPTION 'Option uuid already belongs to another axis' USING ERRCODE = '23503';
++          END IF;
++
++          INSERT INTO public.variant_template_axis_options (id, axis_id, option_key, label, sort_order)
++          VALUES (
++          v_opt_id,
++          v_axis_id,
++          trim(BOTH FROM v_opt_row ->> 'option_key'),
++          nullif (trim(BOTH FROM coalesce(v_opt_row ->> 'label', '')), ''),
++          COALESCE(NULLIF(trim(BOTH FROM coalesce(v_opt_row ->> 'sort_order', '')), '')::int, 0))
++          ON CONFLICT (id) DO UPDATE
++        SET axis_id = excluded.axis_id,
++          option_key = excluded.option_key,
++          label = excluded.label,
++          sort_order = excluded.sort_order;
++
++        END LOOP;
++
++    END LOOP;
++
++  RETURN v_tid;
++END;
++
++$func$;
++
++REVOKE ALL ON FUNCTION public.admin_save_variant_template (jsonb)
++FROM PUBLIC;
++GRANT EXECUTE ON FUNCTION public.admin_save_variant_template (jsonb)
++TO authenticated;
++GRANT EXECUTE ON FUNCTION public.admin_save_variant_template (jsonb)
++TO service_role;

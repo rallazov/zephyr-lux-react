@@ -161,7 +161,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     let itemRows: ReturnType<typeof orderItemRowsFromQuote>;
     try {
-      itemRows = orderItemRowsFromQuote(quote);
+      itemRows = orderItemRowsFromQuote(quote, data.items);
     } catch (err) {
       log.error({ err }, "create-payment-intent: snapshot build failed");
       return paymentSetupFailure(res, "ORDER_SNAPSHOT_FAILED");
@@ -216,6 +216,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         image_url: row.image_url,
         product_id: row.product_id,
         variant_id: row.variant_id,
+        variant_options_snapshot: row.variant_options_snapshot,
       })),
     );
 

@@ -20,7 +20,13 @@ export function toCheckoutLines(items: StorefrontCartLine[]): CheckoutLineDraft[
       quantity: item.quantity,
       product_slug: item.product_slug,
     };
-    const withVariant = { ...base, variant_id: item.variant_id };
+    const withVariant = {
+      ...base,
+      variant_id: item.variant_id,
+      ...(item.variant_display_snapshot && item.variant_display_snapshot.length > 0
+        ? { variant_display_snapshot: item.variant_display_snapshot }
+        : {}),
+    };
     let r = checkoutLineDraftSchema.safeParse(withVariant);
     if (!r.success && item.variant_id) {
       r = checkoutLineDraftSchema.safeParse(base);

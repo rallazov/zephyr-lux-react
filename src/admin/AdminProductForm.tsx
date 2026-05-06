@@ -59,11 +59,24 @@ function newVariantRow(): VRow {
     sku: "",
     size: "",
     color: "",
+    template_option_values: [],
     price_cents: 0,
     currency: "USD",
     inventory_quantity: 0,
     status: "active",
   };
+}
+
+function defaultTemplateSelections(template: VariantTemplate): Array<{ axis_id: string; option_id: string }> {
+  const axes = [...template.axes].sort((a, b) => a.sort_order - b.sort_order);
+  const out: Array<{ axis_id: string; option_id: string }> = [];
+  for (const ax of axes) {
+    const opts = [...ax.options].sort((a, b) => a.sort_order - b.sort_order);
+    const first = opts[0];
+    if (!first) return [];
+    out.push({ axis_id: ax.id, option_id: first.id });
+  }
+  return out;
 }
 
 function newImageRow(): IRow {
@@ -155,7 +168,9 @@ export default function AdminProductForm() {
       setLoading(true);
       const { data, error } = await supabase
         .from("products")
-        .select("*, product_variants(*), product_images(*), product_subscription_plans(*)")
+        .select(
+          "*, product_variants(*, product_variant_option_values(axis_id, option_id)), product_images(*), product_subscription_plans(*)",
+        )
         .eq("id", productId)
         .single();
       if (error) {
@@ -184,18 +199,28 @@ export default function AdminProductForm() {
 
       const vRows = (data as { product_variants: Record<string, unknown>[] }).product_variants
         .slice()
-        .map((r) => ({
-          id: r.id as string,
-          sku: (r.sku as string) ?? "",
-          size: (r.size as string | null) ?? "",
-          color: (r.color as string | null) ?? "",
-          price_cents: (r.price_cents as number) ?? 0,
-          currency: ((r.currency as string) ?? "usd").toUpperCase(),
-          inventory_quantity: (r.inventory_quantity as number) ?? 0,
-          low_stock_threshold: r.low_stock_threshold as number | undefined,
-          status: (r.status as ProductVariantStatus) ?? "active",
-          image_url: (r.image_url as string | null) ?? undefined,
-        })) as VRow[];
+        .map((r) => {
+          const tovRaw = r.product_variant_option_values as
+            | Array<{ axis_id: string; option_id: string }>
+            | undefined;
+          const template_option_values = (tovRaw ?? []).map((x) => ({
+            axis_id: String(x.axis_id),
+            option_id: String(x.option_id),
+          }));
+          return {
+            id: r.id as string,
+            sku: (r.sku as string) ?? "",
+            size: (r.size as string | null) ?? "",
+            color: (r.color as string | null) ?? "",
+            template_option_values,
+            price_cents: (r.price_cents as number) ?? 0,
+            currency: ((r.currency as string) ?? "usd").toUpperCase(),
+            inventory_quantity: (r.inventory_quantity as number) ?? 0,
+            low_stock_threshold: r.low_stock_threshold as number | undefined,
+            status: (r.status as ProductVariantStatus) ?? "active",
+            image_url: (r.image_url as string | null) ?? undefined,
+          } as VRow;
+        }) as VRow[];
       setVariants(vRows.length > 0 ? vRows : [newVariantRow()]);
 
       const iRows = (data as { product_images: Record<string, unknown>[] }).product_images
@@ -274,6 +299,7 @@ export default function AdminProductForm() {
           sku: v.sku.trim(),
           size: v.size || undefined,
           color: v.color || undefined,
+          template_option_values: variantTemplateId ? v.template_option_values : undefined,
           low_stock_threshold: v.low_stock_threshold,
           image_url: v.image_url || undefined,
         })),
@@ -312,6 +338,7 @@ export default function AdminProductForm() {
             sku: v.sku,
             size: v.size,
             color: v.color,
+            template_option_values: v.template_option_values,
           })),
           entry.domain,
         );
@@ -540,7 +567,20 @@ export default function AdminProductForm() {
             value={variantTemplateId ?? ""}
             onChange={(e) => {
               const v = e.target.value;
-              setVariantTemplateId(v === "" ? null : v);
+              const nextId = v === "" ? null : v;
+              setVariantTemplateId(nextId);
+              if (!nextId) {
+                setVariants((rows) =>
+                  rows.map((row) => ({ ...row, template_option_values: [] })),
+                );
+                return;
+              }
+              const t = variantTemplates.find((x) => x.id === nextId);
+              if (!t) return;
+              const defaults = defaultTemplateSelections(t.domain);
+              setVariants((rows) =>
+                rows.map((row) => ({ ...row, template_option_values: defaults })),
+              );
             }}
           >
             <option value="">(none — legacy size / color only)</option>
@@ -590,7 +630,21 @@ export default function AdminProductForm() {
           <button
             type="button"
             className="text-sm text-blue-700"
-            onClick={() => setVariants((v) => [...v, newVariantRow()])}
+            onClick={() =>
+              setVariants((rows) => {
+                const base = newVariantRow();
+                const t = variantTemplateId
+                  ? variantTemplates.find((x) => x.id === variantTemplateId)
+                  : null;
+                return [
+                  ...rows,
+                  {
+                    ...base,
+                    template_option_values: t ? defaultTemplateSelections(t.domain) : [],
+                  },
+                ];
+              })
+            }
           >
             + Add variant
           </button>
@@ -638,6 +692,68 @@ export default function AdminProductForm() {
                   }}
                 />
               </label>
+              {variantTemplateId ? (
+                (() => {
+                  const tplEntry = variantTemplates.find((x) => x.id === variantTemplateId);
+                  if (!tplEntry) {
+                    return (
+                      <p className="md:col-span-3 text-sm text-amber-800" role="status">
+                        Template rows are unavailable until templates finish loading.
+                      </p>
+                    );
+                  }
+                  const axes = [...tplEntry.domain.axes].sort(
+                    (a, b) => a.sort_order - b.sort_order,
+                  );
+                  return (
+                    <fieldset className="md:col-span-3 space-y-2 rounded border border-slate-200 p-3">
+                      <legend className="px-1 text-xs font-medium text-slate-600">
+                        Template axes
+                      </legend>
+                      <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
+                        {axes.map((ax) => {
+                          const options = [...ax.options].sort(
+                            (a, b) => a.sort_order - b.sort_order,
+                          );
+                          const current =
+                            v.template_option_values?.find((p) => p.axis_id === ax.id)
+                              ?.option_id ?? "";
+                          const labelText = ax.label?.trim() || ax.axis_key;
+                          return (
+                            <label key={ax.id} className="block text-sm">
+                              <span className="text-slate-600">{labelText}</span>
+                              <select
+                                className="mt-0.5 w-full rounded border border-slate-300 px-1 py-1"
+                                aria-label={`${labelText} option for SKU ${v.sku || "variant"}`}
+                                value={current}
+                                onChange={(e) => {
+                                  const optId = e.target.value;
+                                  const n = variants.slice();
+                                  const row = { ...n[i]! };
+                                  const pairs = [...(row.template_option_values ?? [])].filter(
+                                    (p) => p.axis_id !== ax.id,
+                                  );
+                                  if (optId !== "") pairs.push({ axis_id: ax.id, option_id: optId });
+                                  row.template_option_values = pairs;
+                                  n[i] = row;
+                                  setVariants(n);
+                                }}
+                              >
+                                <option value="">Select…</option>
+                                {options.map((o) => (
+                                  <option key={o.id} value={o.id}>
+                                    {o.label?.trim() || o.option_key}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </fieldset>
+                  );
+                })()
+              ) : null}
               <label>
                 Price (cents) *{" "}
                 <input

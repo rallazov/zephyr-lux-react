@@ -1,3 +1,5 @@
+import type { VariantDisplaySnapshotLine } from "../catalog/types";
+
 /**
  * Storefront cart line persisted in memory and localStorage (Epic 3).
  * `id` is the numeric storefront product id (see CatalogListItem.storefrontProductId).
@@ -13,4 +15,6 @@ export interface StorefrontCartLine {
   /** Canonical variant UUID when catalog provides it (Supabase-backed). */
   variant_id?: string;
   product_slug?: string;
+  /** Labels frozen at add-to-cart for checkout receipts (Epic 11-3). */
+  variant_display_snapshot?: VariantDisplaySnapshotLine[];
 }
