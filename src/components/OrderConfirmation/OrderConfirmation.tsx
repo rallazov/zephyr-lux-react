@@ -1,13 +1,15 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import { ANALYTICS_EVENTS } from "../../analytics/events";
 import { consumePurchaseAnalyticsSlot } from "../../analytics/purchaseDedupe";
 import { dispatchAnalyticsEvent } from "../../analytics/sink";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { CartContext } from "../../context/CartContext";
 import {
   formatLineSubtotalDollars,
   queryPartialHeading,
   queryPartialSubtitle,
   resolveConfirmationView,
+  shouldClearCartForConfirmation,
   type ConfirmationItemLine,
 } from "../../order-confirmation/confirmationViewModel";
 import { formatPageTitleWithBrand, usePageMeta } from "../../seo/meta";
@@ -17,6 +19,7 @@ import { apiUrl } from "../../lib/apiBase";
 const SUPPORT_MAIL = "mailto:support@zephyrlux.com";
 const ORDER_LOOKUP_POLL_ATTEMPTS = 15;
 const ORDER_LOOKUP_POLL_DELAY_MS = 2_000;
+const CART_CLEARED_STORAGE_PREFIX = "zlx_cart_cleared_";
 
 type PaidOrderApiResponse = {
   order_number: string;
@@ -28,6 +31,7 @@ type PaidOrderApiResponse = {
 const OrderConfirmation: React.FC = () => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const { clearCart } = useContext(CartContext);
   const [paidOrder, setPaidOrder] = useState<PaidOrderApiResponse | null>(null);
   const [paidOrderLoading, setPaidOrderLoading] = useState(false);
 
@@ -39,6 +43,35 @@ const OrderConfirmation: React.FC = () => {
       }),
     [location.state, searchParams]
   );
+
+  /**
+   * Clear the cart once we know the redirect represents a committed payment intent.
+   * Stripe Payment Element redirects on success — `confirmPayment` never resolves in
+   * the original tree, so the inline `clearCart()` in CheckoutPage cannot be relied
+   * on. Idempotent via sessionStorage so a back-nav / re-render does not wipe items
+   * the shopper added afterward.
+   */
+  useEffect(() => {
+    const decision = shouldClearCartForConfirmation({
+      paymentRef: view.paymentRef,
+      redirectStatus: view.stripeQuery.redirectStatus,
+      paidOrderNumber: paidOrder?.order_number ?? null,
+    });
+    if (!decision.shouldClear || !decision.dedupeKey) return;
+    const storageKey = `${CART_CLEARED_STORAGE_PREFIX}${decision.dedupeKey}`;
+    try {
+      if (sessionStorage.getItem(storageKey)) return;
+      sessionStorage.setItem(storageKey, "1");
+    } catch {
+      /* private mode — accept potential double-clear (no-op anyway) */
+    }
+    clearCart();
+  }, [
+    view.paymentRef,
+    view.stripeQuery.redirectStatus,
+    paidOrder?.order_number,
+    clearCart,
+  ]);
 
   const paymentIntentForLookup =
     view.stripeQuery.paymentIntentId ??

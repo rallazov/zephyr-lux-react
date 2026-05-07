@@ -199,6 +199,46 @@ export function resolveConfirmationView(
   };
 }
 
+export interface CartClearDecisionInput {
+  /** Payment intent / session id surfaced to the confirmation view. */
+  paymentRef: string | null;
+  /** `redirect_status` query param Stripe appends to the return URL. */
+  redirectStatus: string | null;
+  /** Order number once the webhook-backed lookup resolves. */
+  paidOrderNumber: string | null;
+}
+
+export interface CartClearDecision {
+  shouldClear: boolean;
+  /**
+   * Stable key used to dedupe cart-clear side effects per payment.
+   * Always set when {@link CartClearDecision.shouldClear} is true.
+   */
+  dedupeKey: string | null;
+}
+
+/**
+ * Decide whether `/order-confirmation` should reset the cart.
+ *
+ * Clears when the user landed here from a Stripe redirect that committed the
+ * payment intent (`succeeded` or `processing` — both mean the order intent is
+ * downstream of the cart) or when the paid order record finally resolves. Does
+ * NOT clear on `failed` / unknown statuses so the shopper can retry from /cart.
+ */
+export function shouldClearCartForConfirmation(
+  input: CartClearDecisionInput
+): CartClearDecision {
+  const ref = input.paymentRef?.trim() || null;
+  if (!ref) return { shouldClear: false, dedupeKey: null };
+  const status = input.redirectStatus?.trim().toLowerCase() ?? null;
+  const stripeCommitted = status === "succeeded" || status === "processing";
+  const orderRecorded = Boolean(input.paidOrderNumber?.trim());
+  if (!stripeCommitted && !orderRecorded) {
+    return { shouldClear: false, dedupeKey: null };
+  }
+  return { shouldClear: true, dedupeKey: ref };
+}
+
 export function queryPartialHeading(redirectStatus: string | null): string {
   if (!redirectStatus) {
     return "Confirming your payment";

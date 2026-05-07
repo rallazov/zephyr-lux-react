@@ -6,6 +6,7 @@ import {
   queryPartialHeading,
   queryPartialSubtitle,
   resolveConfirmationView,
+  shouldClearCartForConfirmation,
 } from "./confirmationViewModel";
 
 describe("parseStripeQueryParams", () => {
@@ -129,5 +130,75 @@ describe("formatLineSubtotalDollars", () => {
       price: Number.NaN,
     };
     expect(formatLineSubtotalDollars(bad)).toBe("—");
+  });
+});
+
+describe("shouldClearCartForConfirmation", () => {
+  it("clears when Stripe redirect_status is succeeded with a payment ref", () => {
+    const d = shouldClearCartForConfirmation({
+      paymentRef: "pi_abc",
+      redirectStatus: "succeeded",
+      paidOrderNumber: null,
+    });
+    expect(d.shouldClear).toBe(true);
+    expect(d.dedupeKey).toBe("pi_abc");
+  });
+
+  it("clears when redirect_status is processing (intent committed, settle pending)", () => {
+    const d = shouldClearCartForConfirmation({
+      paymentRef: "pi_abc",
+      redirectStatus: "processing",
+      paidOrderNumber: null,
+    });
+    expect(d.shouldClear).toBe(true);
+  });
+
+  it("clears once the paid order record resolves even without a redirect_status", () => {
+    const d = shouldClearCartForConfirmation({
+      paymentRef: "pi_abc",
+      redirectStatus: null,
+      paidOrderNumber: "ZLX-2026-0001",
+    });
+    expect(d.shouldClear).toBe(true);
+    expect(d.dedupeKey).toBe("pi_abc");
+  });
+
+  it("does NOT clear when the redirect reports failure — shopper should retry", () => {
+    const d = shouldClearCartForConfirmation({
+      paymentRef: "pi_abc",
+      redirectStatus: "failed",
+      paidOrderNumber: null,
+    });
+    expect(d.shouldClear).toBe(false);
+    expect(d.dedupeKey).toBeNull();
+  });
+
+  it("does NOT clear when there is no payment ref (direct nav, fallback view)", () => {
+    const d = shouldClearCartForConfirmation({
+      paymentRef: null,
+      redirectStatus: "succeeded",
+      paidOrderNumber: null,
+    });
+    expect(d.shouldClear).toBe(false);
+  });
+
+  it("treats redirect_status case-insensitively", () => {
+    expect(
+      shouldClearCartForConfirmation({
+        paymentRef: "pi_abc",
+        redirectStatus: "SUCCEEDED",
+        paidOrderNumber: null,
+      }).shouldClear,
+    ).toBe(true);
+  });
+
+  it("does NOT clear for an unknown redirect_status with no order yet", () => {
+    expect(
+      shouldClearCartForConfirmation({
+        paymentRef: "pi_abc",
+        redirectStatus: "requires_action",
+        paidOrderNumber: null,
+      }).shouldClear,
+    ).toBe(false);
   });
 });
