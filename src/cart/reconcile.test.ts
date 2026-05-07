@@ -86,6 +86,42 @@ describe("validateStorefrontCartLines", () => {
     expect(isCartOkForCheckout(v)).toBe(false);
   });
 
+  it("resolves by variant_id when SKU is stale after catalog rename", () => {
+    const lines: StorefrontCartLine[] = [
+      {
+        id: list[0].storefrontProductId,
+        name: "Old label",
+        quantity: 1,
+        price: 15,
+        image: "",
+        sku: "LEGACY-SKU",
+        variant_id: "550e8400-e29b-41d4-a716-446655440000",
+        product_slug: "recon-product",
+      },
+    ];
+    const v = validateStorefrontCartLines(lines, list);
+    expect(v[0].issues).toHaveLength(0);
+    expect(v[0].variant?.sku).toBe("GOOD");
+    expect(isCartOkForCheckout(v)).toBe(true);
+  });
+
+  it("flags unknown SKU when variant_id also mismatches", () => {
+    const lines: StorefrontCartLine[] = [
+      {
+        id: list[0].storefrontProductId,
+        name: "X",
+        quantity: 1,
+        price: 1,
+        image: "",
+        sku: "LEGACY-SKU",
+        variant_id: "00000000-0000-0000-0000-000000000000",
+        product_slug: "recon-product",
+      },
+    ];
+    const v = validateStorefrontCartLines(lines, list);
+    expect(v[0].issues.some((i) => i.code === "unknown_sku")).toBe(true);
+  });
+
   it("flags discontinued variant", () => {
     const lines: StorefrontCartLine[] = [
       {
@@ -207,6 +243,23 @@ describe("syncCartLinesFromCatalog", () => {
     expect(priceUpdated).toBe(true);
     expect(next[0].price).toBe(15);
     expect(next[0].variant_id).toBe("550e8400-e29b-41d4-a716-446655440000");
+  });
+
+  it("rewrites stale SKU from catalog when variant_id matches", () => {
+    const lines: StorefrontCartLine[] = [
+      {
+        id: list[0].storefrontProductId,
+        name: "Old name",
+        quantity: 1,
+        price: 15,
+        image: "",
+        sku: "LEGACY-SKU",
+        variant_id: "550e8400-e29b-41d4-a716-446655440000",
+        product_slug: "recon-product",
+      },
+    ];
+    const { lines: next } = syncCartLinesFromCatalog(lines, list);
+    expect(next[0].sku).toBe("GOOD");
   });
 
   it("keeps unknown SKU line in cart (no removal)", () => {
