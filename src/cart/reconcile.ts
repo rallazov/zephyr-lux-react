@@ -1,7 +1,11 @@
 import type { CatalogListItem } from "../catalog/types";
-import { isPurchasable } from "../components/ProductDetail/variantSelection";
+import {
+  formatOptionLabel,
+  isPurchasable,
+} from "../components/ProductDetail/variantSelection";
 import type { ProductVariant } from "../domain/commerce";
 import type { StorefrontCartLine } from "./cartLine";
+import { remapLegacyBoxerBriefSku } from "./legacyBoxerBriefSku";
 import { normalizeLineSku } from "./lineKey";
 
 export type CartLineIssueCode =
@@ -62,6 +66,35 @@ function listItemByLine(
   return byStorefrontId.get(line.id);
 }
 
+/**
+ * Applies {@link remapLegacyBoxerBriefSku} only for `boxer-briefs` list rows.
+ * (BLK/BLU prefixes are legacy listing keys; the pack is always dual-color.)
+ */
+function remapLegacyBoxerBriefSkuIfNeeded(
+  productSlug: string,
+  skuNorm: string
+): string {
+  if (productSlug !== "boxer-briefs") {
+    return skuNorm;
+  }
+  return remapLegacyBoxerBriefSku(skuNorm);
+}
+
+function cartDisplayNameForResolvedVariant(
+  row: CatalogListItem,
+  variant: ProductVariant
+): string {
+  const parts: string[] = [];
+  if (variant.size) {
+    parts.push(String(variant.size));
+  }
+  if (variant.color) {
+    parts.push(formatOptionLabel(String(variant.color)));
+  }
+  const suffix = parts.length ? ` — ${parts.join(" / ")}` : "";
+  return `${row.product.title}${suffix}`;
+}
+
 function findVariant(
   variants: ProductVariant[],
   sku: string,
@@ -100,7 +133,8 @@ export function resolveVariantForLine(
     return { variant: null, skuNorm: "", ambiguous: true };
   }
 
-  const variant = findVariant(variants, skuNorm, line.variant_id);
+  const lookupSku = remapLegacyBoxerBriefSkuIfNeeded(row.product.slug, skuNorm);
+  const variant = findVariant(variants, lookupSku, line.variant_id);
   if (!variant) {
     return { variant: null, skuNorm, ambiguous: false };
   }
@@ -304,6 +338,12 @@ export function syncCartLinesFromCatalog(
       priceUpdated = true;
     }
 
+    const legacyPackSkuRemapped =
+      row.product.slug === "boxer-briefs" &&
+      normalizeLineSku(line.sku) !== "" &&
+      remapLegacyBoxerBriefSkuIfNeeded(row.product.slug, normalizeLineSku(line.sku)) !==
+        normalizeLineSku(line.sku);
+
     return {
       ...line,
       id: row.storefrontProductId,
@@ -312,6 +352,7 @@ export function syncCartLinesFromCatalog(
       variant_id: variant.id ?? line.variant_id,
       price: newPrice,
       image: variant.image_url ?? line.image,
+      ...(legacyPackSkuRemapped ? { name: cartDisplayNameForResolvedVariant(row, variant) } : {}),
     };
   });
 

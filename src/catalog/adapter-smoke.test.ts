@@ -18,7 +18,9 @@ it("getProductBySlug returns null for unknown slug", async () => {
 it("listProductsByCategory filters bundled underwear row", async () => {
   const adapter = getDefaultCatalogAdapter();
   const underwear = await adapter.listProductsByCategory("underwear");
-  expect(underwear.map((l) => l.product.slug)).toContain("boxer-briefs");
+  expect(underwear.map((l) => l.product.slug)).toEqual(
+    expect.arrayContaining(["boxer-briefs", "boxer-briefs-long-leg"]),
+  );
   const women = await adapter.listProductsByCategory("women");
   expect(women.map((l) => l.product.slug)).toContain("silk-relaxed-shell");
 });
@@ -26,7 +28,10 @@ it("listProductsByCategory filters bundled underwear row", async () => {
 it("listProducts returns bundled active rows with list invariants", async () => {
   const adapter = getDefaultCatalogAdapter();
   const list = await adapter.listProducts();
-  expect(list.map((l) => l.product.slug)).toContain("boxer-briefs");
+  const slugs = list.map((l) => l.product.slug);
+  expect(slugs).toEqual(
+    expect.arrayContaining(["boxer-briefs", "boxer-briefs-long-leg"]),
+  );
   expect(
     list.every(
       (l) => l.product.status === "active" || l.product.status === "coming_soon",

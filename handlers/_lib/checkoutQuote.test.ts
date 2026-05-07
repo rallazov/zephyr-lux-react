@@ -4,12 +4,12 @@ import { FLAT_SHIPPING_CENTS, TAX_BPS, quoteCartLines } from "./catalog";
 import { totalChargeCentsFromCatalogLines } from "./checkoutQuote";
 
 describe("totalChargeCentsFromCatalogLines", () => {
-  it("matches quoteCartLines total (ZLX-2PK-S @ 2400¢ × 1, flat ship until free threshold)", () => {
+  it("matches quoteCartLines total (ZLX-2PK-S @ 1899¢ × 1, flat ship until free threshold)", () => {
     const items = [{ sku: "ZLX-2PK-S", qty: 1 }];
     const got = totalChargeCentsFromCatalogLines(items);
     const q = quoteCartLines(items.map((l) => ({ sku: l.sku, quantity: l.qty })));
     expect(got).toBe(q.total_cents);
-    const merchandise = 2400;
+    const merchandise = 1899;
     const tax = Math.round((merchandise * TAX_BPS) / 10_000);
     const shipping = merchandise >= 5_000 ? 0 : FLAT_SHIPPING_CENTS;
     expect(got).toBe(merchandise + tax + shipping);
@@ -21,7 +21,7 @@ describe("totalChargeCentsFromCatalogLines", () => {
 
   it("waives flat shipping at or above $50 merchandise (3 × ZLX-2PK-S)", () => {
     const got = totalChargeCentsFromCatalogLines([{ sku: "ZLX-2PK-S", qty: 3 }]);
-    const sub = 7200;
+    const sub = 5697;
     const tax = Math.round((sub * TAX_BPS) / 10_000);
     expect(got).toBe(sub + tax);
   });

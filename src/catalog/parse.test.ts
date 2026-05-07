@@ -12,10 +12,11 @@ describe("parseStaticCatalogData", () => {
   it("accepts the repo canonical seed file", () => {
     const raw = JSON.parse(readFileSync(productsJsonPath, "utf-8")) as unknown;
     const { products, listItems, bySlug } = parseStaticCatalogData(raw);
-    expect(products).toHaveLength(5);
+    expect(products).toHaveLength(6);
     expect(listItems.some((l) => l.storefrontProductId === 101)).toBe(true);
-    expect(bySlug.get("boxer-briefs")?.product.title).toMatch(/Zephyr Lux Boxer Briefs/);
+    expect(bySlug.get("boxer-briefs")?.product.title).toMatch(/Men's Boxer Briefs.*Short leg/i);
     expect(bySlug.get("boxer-briefs")?.variantTemplate).toBeFalsy();
+    expect(bySlug.get("boxer-briefs-long-leg")?.product.title).toMatch(/Long leg/i);
   });
 
   it("rejects duplicate SKUs", () => {

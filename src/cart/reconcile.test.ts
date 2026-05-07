@@ -86,6 +86,46 @@ describe("validateStorefrontCartLines", () => {
     expect(isCartOkForCheckout(v)).toBe(false);
   });
 
+  it("maps legacy BLK/BLU-prefixed boxer SKU to ZLX-2PK pack SKU (Epic 9)", () => {
+    const boxerList = parseStaticCatalogData([
+      {
+        id: 101,
+        slug: "boxer-briefs",
+        title: "Zephyr Lux Men's Boxer Briefs — Short leg",
+        status: "active",
+        variants: [
+          {
+            sku: "ZLX-2PK-L",
+            size: "L",
+            price_cents: 1899,
+            currency: "USD",
+            inventory_quantity: 5,
+            status: "active",
+          },
+        ],
+      },
+    ]).listItems;
+    const lines: StorefrontCartLine[] = [
+      {
+        id: boxerList[0].storefrontProductId,
+        name: "Zephyr Lux Boxer Briefs — L / Black",
+        quantity: 1,
+        price: 18.99,
+        image: "",
+        sku: "ZLX-BLK-L",
+        product_slug: "boxer-briefs",
+      },
+    ];
+    const v = validateStorefrontCartLines(lines, boxerList);
+    expect(v[0].issues).toHaveLength(0);
+    expect(v[0].variant?.sku).toBe("ZLX-2PK-L");
+    expect(isCartOkForCheckout(v)).toBe(true);
+
+    const { lines: synced } = syncCartLinesFromCatalog(lines, boxerList);
+    expect(synced[0].sku).toBe("ZLX-2PK-L");
+    expect(synced[0].name).toBe("Zephyr Lux Men's Boxer Briefs — Short leg — L");
+  });
+
   it("resolves by variant_id when SKU is stale after catalog rename", () => {
     const lines: StorefrontCartLine[] = [
       {
