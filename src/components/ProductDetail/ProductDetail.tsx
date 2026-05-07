@@ -227,8 +227,10 @@ const ProductDetail: React.FC = () => {
   const [templateSel, setTemplateSel] = useState<TemplateAxisSelection>({});
 
   useEffect(() => {
+    let cancelled = false;
     const load = async () => {
       if (!slug) {
+        if (cancelled) return;
         setError("Product not found");
         setLoading(false);
         return;
@@ -236,18 +238,27 @@ const ProductDetail: React.FC = () => {
       try {
         const adapter = getDefaultCatalogAdapter();
         const found = await adapter.getProductBySlug(slug);
+        // Guard against stale resolves (e.g. effect re-run, slug change, unmount). Without
+        // this, a late `setRow(found)` can churn `product` reference, which fires the
+        // selection auto-reset effect below and wipes the user's variant pick — surfacing
+        // as a flaky CI gallery/selection test.
+        if (cancelled) return;
         if (!found) {
           setError("Product not found");
         } else {
           setRow(found);
         }
       } catch {
+        if (cancelled) return;
         setError("Failed to load product");
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     void load();
+    return () => {
+      cancelled = true;
+    };
   }, [slug]);
 
   const analyticsProductId = row?.product.id;
@@ -327,7 +338,13 @@ const ProductDetail: React.FC = () => {
       setSelSize(null);
       setSelColor(null);
     }
-  }, [product, tmpl, layout.autoSelectSingle, purchasableSkuKey, purchasable]);
+    // Depend only on **stable identity primitives** — never on object references like
+    // `product`, `tmpl`, or `purchasable`. Any of those can churn between renders if
+    // `row` is re-set (StrictMode double-invoke, route re-render, async load resolve)
+    // and would re-fire this reset *after* the shopper has already picked a size,
+    // wiping the selection. Surfaced as a 1% flaky CI gallery test.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.slug, tmpl?.id, purchasableSkuKey, layout.autoSelectSingle]);
 
   useEffect(() => {
     if (!tmpl || !product) {
@@ -346,7 +363,9 @@ const ProductDetail: React.FC = () => {
       return;
     }
     setTemplateSel({});
-  }, [tmpl, product, purchasable, purchasableSkuKey]);
+    // Depend on stable identity primitives only — see note on the previous reset effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tmpl?.id, product?.slug, purchasableSkuKey]);
 
   useEffect(() => {
     if (tmpl || !layout.showSize || !layout.showColor) {
