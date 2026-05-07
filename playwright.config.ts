@@ -11,15 +11,24 @@ const startLocalPreview =
   !remoteBase &&
   process.env.PLAYWRIGHT_SKIP_WEBSERVER !== "1";
 
+const apiHealthURL =
+  process.env.PLAYWRIGHT_API_HEALTH_URL?.trim() ||
+  "http://127.0.0.1:3333/health";
+
 /**
  * Default: Playwright targets the production bundle (`vite preview`).
- * Run `npm run build` before `npm run test:e2e`, or use `npm run test:e2e:ci`.
  *
- * Remote storefront (staging/production — no local preview started):  
- * `PLAYWRIGHT_BASE_URL=https://your-origin.example npm run test:e2e`
+ * **`vite preview` has no `/api` proxy** (unlike `vite dev`). Without
+ * `VITE_PUBLIC_API_URL` at build time, cart/checkout calls `POST /api/cart-quote`
+ * on the preview origin and get **HTTP 404**. So local runs start:
+ * 1. `npm run api:dev` (wait for `/health`)
+ * 2. `npm run build:e2e` (uses `.env.e2e` → `VITE_PUBLIC_API_URL=http://127.0.0.1:3333`) + `vite preview`
  *
- * Custom preview URL already running locally:  
- * `PLAYWRIGHT_BASE_URL=http://127.0.0.1:4173 PLAYWRIGHT_SKIP_WEBSERVER=1 npm run test:e2e`
+ * Remote storefront (staging/production — no local servers):  
+ * `PLAYWRIGHT_BASE_URL=https://your-origin.example PLAYWRIGHT_SKIP_WEBSERVER=1 npm run test:e2e`
+ *
+ * Custom preview + API already running:  
+ * `PLAYWRIGHT_BASE_URL=... PLAYWRIGHT_SKIP_WEBSERVER=1 PLAYWRIGHT_API_ORIGIN=... npm run test:e2e`
  */
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -45,12 +54,20 @@ export default defineConfig({
   ],
   ...(startLocalPreview
     ? {
-        webServer: {
-          command: `npm run preview -- --host ${host} --strictPort --port ${port}`,
-          url: baseURL,
-          reuseExistingServer: !process.env.CI,
-          timeout: 120_000,
-        },
+        webServer: [
+          {
+            command: "npm run api:dev",
+            url: apiHealthURL,
+            reuseExistingServer: !process.env.CI,
+            timeout: 120_000,
+          },
+          {
+            command: `npm run build:e2e && npm run preview -- --host ${host} --strictPort --port ${port}`,
+            url: baseURL,
+            reuseExistingServer: !process.env.CI,
+            timeout: 180_000,
+          },
+        ],
       }
     : {}),
 });

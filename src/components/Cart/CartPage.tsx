@@ -252,6 +252,7 @@ const CartPage: React.FC = () => {
             )}
             {quoteError && (
               <div
+                data-testid="cart-quote-error"
                 role="alert"
                 className="zlx-alert-danger mb-4 flex flex-col gap-2 p-4 text-sm text-neutral-200 sm:flex-row sm:items-center sm:justify-between"
               >
