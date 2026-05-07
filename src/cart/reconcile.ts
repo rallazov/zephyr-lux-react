@@ -68,12 +68,18 @@ function findVariant(
   variantId?: string
 ): ProductVariant | undefined {
   const bySku = variants.filter((v) => v.sku === sku);
-  if (bySku.length === 0) return undefined;
-  if (variantId) {
-    const byId = bySku.find((v) => v.id === variantId);
-    if (byId) return byId;
+  if (bySku.length > 0) {
+    if (variantId) {
+      const byId = bySku.find((v) => v.id === variantId);
+      if (byId) return byId;
+    }
+    return bySku[0];
   }
-  return bySku[0];
+  /** SKU rename or stale cart row — still resolve when `variant_id` matches this product (Epic 11 / ops). */
+  if (variantId) {
+    return variants.find((v) => v.id === variantId);
+  }
+  return undefined;
 }
 
 /**
@@ -95,7 +101,10 @@ export function resolveVariantForLine(
   }
 
   const variant = findVariant(variants, skuNorm, line.variant_id);
-  return { variant: variant ?? null, skuNorm, ambiguous: false };
+  if (!variant) {
+    return { variant: null, skuNorm, ambiguous: false };
+  }
+  return { variant, skuNorm: variant.sku, ambiguous: false };
 }
 
 function variantUnavailableMessage(v: ProductVariant): string {
