@@ -59,17 +59,31 @@ export function useCartQuote(
             json = raw ? (JSON.parse(raw) as unknown) : {};
           } catch {
             setQuote(null);
-            setError("Could not get price quote from the server.");
+            const devHint =
+              import.meta.env.DEV &&
+              (res.status === 502 || res.status === 503 || res.status === 504)
+                ? " Start the API (`npm run api:dev`) or run both apps with `npm run dev:full`."
+                : "";
+            setError(
+              `Price quote response was not valid JSON (HTTP ${res.status}).${devHint}`,
+            );
             return;
           }
           if (!res.ok) {
             const errBody = json as { error?: string; code?: string };
-            const msg =
-              typeof errBody.error === "string"
+            const fromServer =
+              typeof errBody.error === "string" && errBody.error.trim().length > 0
                 ? errBody.error
-                : "Could not get price quote from the server.";
+                : null;
+            const devHint =
+              import.meta.env.DEV &&
+              (res.status === 502 || res.status === 503 || res.status === 504)
+                ? " Start the API (`npm run api:dev`) or use `npm run dev:full`."
+                : "";
             setQuote(null);
-            setError(msg);
+            setError(
+              fromServer ?? `Could not get price quote (HTTP ${res.status}).${devHint}`,
+            );
             return;
           }
           if (!isServerCartQuote(json)) {
