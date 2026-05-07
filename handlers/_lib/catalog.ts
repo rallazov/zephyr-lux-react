@@ -1,4 +1,5 @@
 import { parseStaticCatalogData } from "../../src/catalog/parse";
+import { remapLegacyBoxerBriefSku } from "../../src/cart/legacyBoxerBriefSku";
 import type { Product, ProductVariant } from "../../src/domain/commerce";
 /**
  * Bundled at compile time so lambdas always have catalog data (avoids `fs` / `import.meta` on Vercel CJS output).
@@ -67,7 +68,13 @@ export function loadCatalog(): Product[] {
 }
 
 export function findVariantBySku(sku: string) {
-  return loadCatalogData().bySku.get(sku) ?? null;
+  const hit = loadCatalogData().bySku.get(sku) ?? null;
+  if (hit) return hit;
+  const legacy = remapLegacyBoxerBriefSku(sku);
+  if (legacy !== sku) {
+    return loadCatalogData().bySku.get(legacy) ?? null;
+  }
+  return null;
 }
 
 export type CartLineQuote = {
@@ -130,11 +137,11 @@ export function quoteCartLines(
     }
     const unit_cents = hit.variant.price_cents;
     if (typeof unit_cents !== "number" || !Number.isFinite(unit_cents) || unit_cents < 0) {
-      throw new QuoteError("INVALID_LINE", `SKU ${row.sku} has no valid price in catalog`);
+      throw new QuoteError("INVALID_LINE", `SKU ${hit.variant.sku} has no valid price in catalog`);
     }
     const line_cents = unit_cents * q;
     lines.push({
-      sku: row.sku,
+      sku: hit.variant.sku,
       quantity: q,
       unit_cents,
       line_cents,

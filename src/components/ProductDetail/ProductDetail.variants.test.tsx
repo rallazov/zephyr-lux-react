@@ -38,7 +38,7 @@ describe("ProductDetail variant selection", () => {
 
     const price = await screen.findByTestId("pdp-selected-price");
     await waitFor(() => {
-      expect(price).toHaveTextContent("$24.00");
+      expect(price).toHaveTextContent("$18.99");
     });
     const stock = screen.getByTestId("pdp-stock-message");
     expect(stock.textContent).toMatch(/3|Only 3|left/);

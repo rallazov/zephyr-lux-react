@@ -17,7 +17,7 @@ const OPT_M = "44444444-4444-4444-8444-444444444444";
 const baseProduct: SupabaseProductWithRelations = {
   id: "a0000001-0000-4000-8000-000000000001",
   slug: "boxer-briefs",
-  title: "Zephyr Lux Boxer Briefs",
+  title: "Zephyr Lux Men's Boxer Briefs — Short leg",
   subtitle: null,
   description: null,
   brand: "Zephyr Lux",
@@ -34,7 +34,7 @@ const baseProduct: SupabaseProductWithRelations = {
       sku: "ZLX-2PK-S",
       size: "S",
       color: null,
-      price_cents: 2400,
+      price_cents: 1899,
       currency: "usd",
       inventory_quantity: 2,
       low_stock_threshold: null,

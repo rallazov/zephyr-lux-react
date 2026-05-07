@@ -3,19 +3,31 @@ import { describe, expect, it } from "vitest";
 import { isQuoteError, QuoteError, quoteCartLines } from "./catalog";
 
 describe("quoteCartLines", () => {
-  it("prices a known line and order totals (ZLX-2PK-S)", () => {
+  it("accepts legacy BLK/BLU-prefixed boxer-brief SKU and returns canonical ZLX-2PK pack SKU", () => {
+    const q = quoteCartLines([{ sku: "ZLX-BLK-L", quantity: 1 }]);
+    expect(q.lines[0]!.sku).toBe("ZLX-2PK-L");
+    expect(q.lines[0]!.unit_cents).toBe(1899);
+  });
+
+  it("prices short-leg boxer (ZLX-2PK-S) with bundled catalog cents + tax/shipping", () => {
     const q = quoteCartLines([{ sku: "ZLX-2PK-S", quantity: 1 }]);
-    expect(q.lines[0]!.line_cents).toBe(2400);
-    expect(q.subtotal_cents).toBe(2400);
+    expect(q.lines[0]!.line_cents).toBe(1899);
+    expect(q.subtotal_cents).toBe(1899);
     expect(q.shipping_cents).toBe(500);
-    expect(q.tax_cents).toBe(168);
-    expect(q.total_cents).toBe(2400 + 500 + 168);
+    expect(q.tax_cents).toBe(133);
+    expect(q.total_cents).toBe(1899 + 500 + 133);
+  });
+
+  it("prices long-leg boxer separately from short-leg", () => {
+    const q = quoteCartLines([{ sku: "ZLX-2PK-LONG-M", quantity: 1 }]);
+    expect(q.lines[0]!.sku).toBe("ZLX-2PK-LONG-M");
+    expect(q.lines[0]!.unit_cents).toBe(1699);
   });
 
   it("resolves unit and line cents from bundled catalog by SKU only (no display metadata on quote lines)", () => {
     const q = quoteCartLines([{ sku: "ZLX-2PK-M", quantity: 1 }]);
     expect(q.lines[0]!.sku).toBe("ZLX-2PK-M");
-    expect(q.lines[0]!.unit_cents).toBe(2400);
+    expect(q.lines[0]!.unit_cents).toBe(1899);
   });
 
   it("rejects unknown SKU with QuoteError", () => {
@@ -44,6 +56,6 @@ describe("quoteCartLines", () => {
     ]);
     expect(q.lines).toHaveLength(1);
     expect(q.lines[0]!.quantity).toBe(2);
-    expect(q.subtotal_cents).toBe(4800);
+    expect(q.subtotal_cents).toBe(3798);
   });
 });

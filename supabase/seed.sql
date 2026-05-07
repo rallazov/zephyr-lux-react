@@ -18,9 +18,9 @@ INSERT INTO public.products (
 VALUES (
   'a0000001-0000-4000-8000-000000000001',
   'boxer-briefs',
-  'Zephyr Lux Boxer Briefs',
-  '2-piece pack: one black + one blue boxer brief per unit.',
-  'Each unit is one retail pack containing two boxer briefs—one black, one blue—in breathable bamboo viscose with a tailored fit. Designed for all-day support without bulk—your daily foundation, elevated.',
+  'Zephyr Lux Men''s Boxer Briefs — Short leg',
+  'Regular inseam · 2-piece pack: one black + one blue boxer brief per unit.',
+  'Short-leg (regular) fit. Each unit is one retail pack containing two boxer briefs—one black, one blue—in breathable bamboo viscose with a tailored fit. Designed for all-day support without bulk—your daily foundation, elevated.',
   'Zephyr Lux',
   'underwear',
   'Bamboo Viscose',
@@ -84,6 +84,20 @@ VALUES (
   'USA',
   'coming_soon',
   105
+),
+(
+  'a0000006-0000-4000-8000-000000000006',
+  'boxer-briefs-long-leg',
+  'Zephyr Lux Men''s Boxer Briefs — Long leg',
+  'Extended inseam · 2-piece pack: one black + one blue boxer brief per unit.',
+  'Long-leg fit with the same dual-color retail pack as our short-leg style—one black and one blue boxer brief per unit—in breathable bamboo viscose. Same packaging and color bundle; choose long leg when you want extra coverage.',
+  'Zephyr Lux',
+  'underwear',
+  'Bamboo Viscose',
+  'Machine wash cold with like colors. Tumble dry low. Do not bleach. Cool iron if needed.',
+  'USA',
+  'active',
+  106
 );
 
 INSERT INTO public.product_variants (
@@ -105,7 +119,7 @@ VALUES
     'ZLX-2PK-S',
     'S',
     NULL,
-    2400,
+    1899,
     'usd',
     50,
     NULL,
@@ -117,7 +131,7 @@ VALUES
     'ZLX-2PK-M',
     'M',
     NULL,
-    2400,
+    1899,
     'usd',
     50,
     NULL,
@@ -129,7 +143,7 @@ VALUES
     'ZLX-2PK-L',
     'L',
     NULL,
-    2400,
+    1899,
     'usd',
     3,
     5,
@@ -141,7 +155,7 @@ VALUES
     'ZLX-2PK-XL',
     'XL',
     NULL,
-    2400,
+    1899,
     'usd',
     50,
     NULL,
@@ -230,6 +244,54 @@ VALUES
     0,
     NULL,
     'inactive'
+  ),
+  (
+    'b0000012-0000-4000-8000-000000000012',
+    'a0000006-0000-4000-8000-000000000006',
+    'ZLX-2PK-LONG-S',
+    'S',
+    NULL,
+    1699,
+    'usd',
+    50,
+    NULL,
+    'active'
+  ),
+  (
+    'b0000013-0000-4000-8000-000000000013',
+    'a0000006-0000-4000-8000-000000000006',
+    'ZLX-2PK-LONG-M',
+    'M',
+    NULL,
+    1699,
+    'usd',
+    50,
+    NULL,
+    'active'
+  ),
+  (
+    'b0000014-0000-4000-8000-000000000014',
+    'a0000006-0000-4000-8000-000000000006',
+    'ZLX-2PK-LONG-L',
+    'L',
+    NULL,
+    1699,
+    'usd',
+    50,
+    NULL,
+    'active'
+  ),
+  (
+    'b0000015-0000-4000-8000-000000000015',
+    'a0000006-0000-4000-8000-000000000006',
+    'ZLX-2PK-LONG-XL',
+    'XL',
+    NULL,
+    1699,
+    'usd',
+    50,
+    NULL,
+    'active'
   );
 
 INSERT INTO public.product_images (
@@ -271,6 +333,13 @@ VALUES (
   'a0000005-0000-4000-8000-000000000005',
   NULL,
   '/assets/img/sale_placeholder.jpeg',
+  0,
+  true
+),
+(
+  'a0000006-0000-4000-8000-000000000006',
+  NULL,
+  '/assets/img/Listing2.jpeg',
   0,
   true
 );
