@@ -262,4 +262,77 @@ describe("create-payment-intent handler (Stripe create)", () => {
       error_code: "ORDER_INSERT_FAILED/42703",
     });
   });
+
+  it("omits variant_options_snapshot from order_items insert rows when checkout has no template snapshot", async () => {
+    const body = {
+      items: [{ sku: "ZLX-2PK-S", quantity: 1 }],
+      currency: "usd" as const,
+      email: "buyer@example.com",
+    };
+    const req = { method: "POST", body } as VercelRequest;
+    const resJson = vi.fn();
+    const res = {
+      setHeader: vi.fn(),
+      status: vi.fn().mockReturnValue({ json: resJson }),
+    } as unknown as VercelResponse;
+
+    await handler(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    const insertedRows = orderItemsInsert.mock.calls[0][0] as Record<string, unknown>[];
+    expect(insertedRows).toHaveLength(1);
+    expect(insertedRows[0]).not.toHaveProperty("variant_options_snapshot");
+  });
+
+  it("includes variant_options_snapshot on order_items rows when checkout sends variant_display_snapshot", async () => {
+    const snap = [
+      { axis_label: "Size", option_label: "M" },
+      { axis_label: "Color", option_label: "Black" },
+    ];
+    const body = {
+      items: [{ sku: "ZLX-2PK-S", quantity: 1, variant_display_snapshot: snap }],
+      currency: "usd" as const,
+      email: "buyer@example.com",
+    };
+    const req = { method: "POST", body } as VercelRequest;
+    const resJson = vi.fn();
+    const res = {
+      setHeader: vi.fn(),
+      status: vi.fn().mockReturnValue({ json: resJson }),
+    } as unknown as VercelResponse;
+
+    await handler(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    const insertedRows = orderItemsInsert.mock.calls[0][0] as Record<string, unknown>[];
+    expect(insertedRows[0].variant_options_snapshot).toEqual(snap);
+  });
+
+  it("returns a safe database cause code when order_items insert fails", async () => {
+    orderItemsInsert.mockResolvedValueOnce({
+      error: { code: "42703", message: "column does not exist" },
+    });
+
+    const req = {
+      method: "POST",
+      body: {
+        items: [{ sku: "ZLX-2PK-S", quantity: 1 }],
+        currency: "usd",
+        email: "buyer@example.com",
+      },
+    } as VercelRequest;
+    const resJson = vi.fn();
+    const res = {
+      setHeader: vi.fn(),
+      status: vi.fn().mockReturnValue({ json: resJson }),
+    } as unknown as VercelResponse;
+
+    await handler(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(resJson).toHaveBeenCalledWith({
+      error: "Payment setup failed. Please try again.",
+      error_code: "ORDER_ITEMS_INSERT_FAILED/42703",
+    });
+  });
 });

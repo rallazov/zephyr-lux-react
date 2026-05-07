@@ -216,7 +216,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         image_url: row.image_url,
         product_id: row.product_id,
         variant_id: row.variant_id,
-        // Omit key when null — avoids inserts referencing a missing `variant_options_snapshot` column on older DBs.
         ...(row.variant_options_snapshot != null
           ? { variant_options_snapshot: row.variant_options_snapshot }
           : {}),
