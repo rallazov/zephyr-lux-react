@@ -11,6 +11,17 @@ export function getPurchasableVariants(
   return variants.filter(isPurchasable);
 }
 
+/**
+ * Controls which variants drive PDP option axes (sizes/colors).
+ * When nothing is in stock, still surface active SKUs so shoppers can pick a
+ * size and see accurate out-of-stock messaging instead of hiding the selector.
+ */
+export function variantsForPdpLayout(variants: ProductVariant[]): ProductVariant[] {
+  const purchasable = getPurchasableVariants(variants);
+  if (purchasable.length > 0) return purchasable;
+  return variants.filter((v) => v.status === "active");
+}
+
 function uniqueSorted(
   values: (string | undefined)[]
 ): string[] {

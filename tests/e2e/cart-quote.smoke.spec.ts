@@ -53,7 +53,7 @@ test.describe("cart-quote API (direct)", () => {
 
 test.describe("cart quote in the UI", () => {
   test("bag loads server quote after add to cart (no quote error)", async ({ page }) => {
-    await page.goto("/product/boxer-briefs");
+    await page.goto("/product/merino-everyday-crew");
     await page.getByTestId("pdp-variant-selector").waitFor({ state: "visible" });
     await page.getByTestId("pdp-select-size").selectOption("M");
     await page.getByTestId("pdp-add-to-cart").click();
@@ -61,6 +61,6 @@ test.describe("cart quote in the UI", () => {
 
     await expect(page.getByTestId("cart-quote-error")).toHaveCount(0);
     await expect(page.getByText(/Subtotal:/)).toBeVisible();
-    await expect(page.getByText(/\$18\.99/).first()).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText(/\$62\.00/).first()).toBeVisible({ timeout: 20_000 });
   });
 });

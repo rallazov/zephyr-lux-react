@@ -24,8 +24,41 @@ function lineKey(item: { id: number; sku?: string }): string {
 function incrementDisabled(v: CartLineValidation | undefined): boolean {
   if (!v) return false;
   if (v.issues.length > 0) return true;
-  if (v.maxQuantity == null) return true;
-  return v.line.quantity >= v.maxQuantity;
+  if (v.maxLineQuantity == null) return true;
+  return v.line.quantity >= v.maxLineQuantity;
+}
+
+/**
+ * Resolved catalog quantity on hand — shown whenever validation has stock data
+ * (reduces surprises before checkout).
+ */
+function lineInventoryLabel(v: CartLineValidation | undefined): string | null {
+  if (!v || v.inventoryQuantity == null) return null;
+  return `${v.inventoryQuantity} in stock`;
+}
+
+/**
+ * When quantity is capped by per-order policy (not by inventory alone), clarify
+ * the limit — stock count is handled by {@link lineInventoryLabel}.
+ */
+function linePolicyCapCeilingHint(v: CartLineValidation): string | null {
+  if (
+    v.maxLineQuantity == null ||
+    v.inventoryQuantity == null ||
+    v.maxUnitsPerOrder == null
+  ) {
+    return null;
+  }
+  if (v.inventoryQuantity <= v.maxUnitsPerOrder) return null;
+
+  const hasCapIssue = v.issues.some((i) => i.code === "quantity_exceeds_checkout_cap");
+  if (hasCapIssue) {
+    return `${v.maxUnitsPerOrder} units max per order (store policy).`;
+  }
+  if (v.issues.length > 0) return null;
+  if (v.line.quantity < v.maxLineQuantity) return null;
+
+  return `${v.maxUnitsPerOrder} units max per order (store policy).`;
 }
 
 const CartPage: React.FC = () => {
@@ -382,12 +415,22 @@ const CartPage: React.FC = () => {
                         Remove
                       </button>
                     </div>
-                    {v &&
-                    v.issues.length === 0 &&
-                    v.maxQuantity != null &&
-                    item.quantity >= v.maxQuantity ? (
-                      <p className="text-neutral-400 text-xs mt-2">Maximum {v.maxQuantity} available.</p>
-                    ) : null}
+                    {(() => {
+                      const stock = lineInventoryLabel(v);
+                      const capHint = v ? linePolicyCapCeilingHint(v) : null;
+                      return (
+                        <>
+                          {stock ? (
+                            <p className="text-neutral-400 text-xs mt-2" role="status">
+                              {stock}
+                            </p>
+                          ) : null}
+                          {capHint ? (
+                            <p className="text-neutral-500 text-xs mt-1">{capHint}</p>
+                          ) : null}
+                        </>
+                      );
+                    })()}
                   </article>
                 ),
               )}
@@ -490,14 +533,27 @@ const CartPage: React.FC = () => {
                               +
                             </button>
                           </div>
-                          {v &&
-                            v.issues.length === 0 &&
-                            v.maxQuantity != null &&
-                            item.quantity >= v.maxQuantity && (
-                              <p className="text-neutral-400 text-xs mt-1 max-w-[12rem] mx-auto">
-                                Maximum {v.maxQuantity} available.
-                              </p>
-                            )}
+                          {(() => {
+                            const stock = lineInventoryLabel(v);
+                            const capHint = v ? linePolicyCapCeilingHint(v) : null;
+                            return (
+                              <>
+                                {stock ? (
+                                  <p
+                                    className="text-neutral-400 text-xs mt-1 max-w-[12rem] mx-auto"
+                                    role="status"
+                                  >
+                                    {stock}
+                                  </p>
+                                ) : null}
+                                {capHint ? (
+                                  <p className="text-neutral-500 text-xs mt-1 max-w-[12rem] mx-auto">
+                                    {capHint}
+                                  </p>
+                                ) : null}
+                              </>
+                            );
+                          })()}
                         </td>
                         <td className="py-4 px-6 text-center font-bold text-white">
                           {lineTotalDisplay}

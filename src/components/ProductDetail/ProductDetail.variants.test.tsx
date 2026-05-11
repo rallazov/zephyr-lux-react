@@ -30,7 +30,7 @@ describe("ProductDetail variant selection", () => {
     expect(screen.queryByTestId("pdp-select-color")).not.toBeInTheDocument();
   });
 
-  it("updates price and low-stock message when size is selected", async () => {
+  it("updates price and stock message when size is selected", async () => {
     renderPdp();
     expect(await screen.findByTestId("pdp-variant-selector")).toBeInTheDocument();
 
@@ -41,7 +41,7 @@ describe("ProductDetail variant selection", () => {
       expect(price).toHaveTextContent("$18.99");
     });
     const stock = screen.getByTestId("pdp-stock-message");
-    expect(stock.textContent).toMatch(/3|Only 3|left/);
+    expect(stock.textContent).toMatch(/In stock/i);
   });
 
   it("enables add-to-cart after size is chosen (single dimension)", async () => {

@@ -121,7 +121,7 @@ VALUES
     NULL,
     1899,
     'usd',
-    50,
+    25,
     NULL,
     'active'
   ),
@@ -133,7 +133,7 @@ VALUES
     NULL,
     1899,
     'usd',
-    50,
+    25,
     NULL,
     'active'
   ),
@@ -145,8 +145,8 @@ VALUES
     NULL,
     1899,
     'usd',
-    3,
-    5,
+    25,
+    NULL,
     'active'
   ),
   (
@@ -157,7 +157,7 @@ VALUES
     NULL,
     1899,
     'usd',
-    50,
+    25,
     NULL,
     'active'
   ),
@@ -169,7 +169,7 @@ VALUES
     NULL,
     8900,
     'usd',
-    14,
+    25,
     NULL,
     'active'
   ),
@@ -181,7 +181,7 @@ VALUES
     NULL,
     8900,
     'usd',
-    18,
+    25,
     NULL,
     'active'
   ),
@@ -193,7 +193,7 @@ VALUES
     NULL,
     6200,
     'usd',
-    20,
+    25,
     NULL,
     'active'
   ),
@@ -205,7 +205,7 @@ VALUES
     NULL,
     6200,
     'usd',
-    24,
+    25,
     NULL,
     'active'
   ),
@@ -217,7 +217,7 @@ VALUES
     NULL,
     2800,
     'usd',
-    16,
+    25,
     NULL,
     'active'
   ),
@@ -229,7 +229,7 @@ VALUES
     NULL,
     2800,
     'usd',
-    22,
+    25,
     NULL,
     'active'
   ),
@@ -253,7 +253,7 @@ VALUES
     NULL,
     1699,
     'usd',
-    50,
+    25,
     NULL,
     'active'
   ),
@@ -265,7 +265,7 @@ VALUES
     NULL,
     1699,
     'usd',
-    50,
+    25,
     NULL,
     'active'
   ),
@@ -277,7 +277,7 @@ VALUES
     NULL,
     1699,
     'usd',
-    50,
+    25,
     NULL,
     'active'
   ),
@@ -289,7 +289,7 @@ VALUES
     NULL,
     1699,
     'usd',
-    50,
+    25,
     NULL,
     'active'
   );

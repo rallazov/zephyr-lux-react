@@ -1,0 +1,1142 @@
+diff --git a/data/products.json b/data/products.json
+index 2f1f449..28b813d 100644
+--- a/data/products.json
++++ b/data/products.json
+@@ -17,7 +17,7 @@
+         "color": null,
+         "price_cents": 1899,
+         "currency": "USD",
+-        "inventory_quantity": 50,
++        "inventory_quantity": 25,
+         "status": "active",
+         "image_url": "/assets/img/Listing2.jpeg"
+       },
+@@ -27,7 +27,7 @@
+         "color": null,
+         "price_cents": 1899,
+         "currency": "USD",
+-        "inventory_quantity": 50,
++        "inventory_quantity": 25,
+         "status": "active",
+         "image_url": "/assets/img/Listing2.jpeg"
+       },
+@@ -37,8 +37,7 @@
+         "color": null,
+         "price_cents": 1899,
+         "currency": "USD",
+-        "inventory_quantity": 3,
+-        "low_stock_threshold": 5,
++        "inventory_quantity": 25,
+         "status": "active",
+         "image_url": "/assets/img/Listing2.jpeg"
+       },
+@@ -48,7 +47,7 @@
+         "color": null,
+         "price_cents": 1899,
+         "currency": "USD",
+-        "inventory_quantity": 50,
++        "inventory_quantity": 25,
+         "status": "active",
+         "image_url": "/assets/img/Listing2.jpeg"
+       }
+@@ -72,7 +71,7 @@
+         "color": null,
+         "price_cents": 1699,
+         "currency": "USD",
+-        "inventory_quantity": 50,
++        "inventory_quantity": 25,
+         "status": "active",
+         "image_url": "/assets/img/Listing2.jpeg"
+       },
+@@ -82,7 +81,7 @@
+         "color": null,
+         "price_cents": 1699,
+         "currency": "USD",
+-        "inventory_quantity": 50,
++        "inventory_quantity": 25,
+         "status": "active",
+         "image_url": "/assets/img/Listing2.jpeg"
+       },
+@@ -92,7 +91,7 @@
+         "color": null,
+         "price_cents": 1699,
+         "currency": "USD",
+-        "inventory_quantity": 50,
++        "inventory_quantity": 25,
+         "status": "active",
+         "image_url": "/assets/img/Listing2.jpeg"
+       },
+@@ -102,7 +101,7 @@
+         "color": null,
+         "price_cents": 1699,
+         "currency": "USD",
+-        "inventory_quantity": 50,
++        "inventory_quantity": 25,
+         "status": "active",
+         "image_url": "/assets/img/Listing2.jpeg"
+       }
+@@ -126,7 +125,7 @@
+         "color": null,
+         "price_cents": 8900,
+         "currency": "USD",
+-        "inventory_quantity": 14,
++        "inventory_quantity": 25,
+         "status": "active",
+         "image_url": "/assets/img/Lifestyle.jpeg"
+       },
+@@ -136,7 +135,7 @@
+         "color": null,
+         "price_cents": 8900,
+         "currency": "USD",
+-        "inventory_quantity": 18,
++        "inventory_quantity": 25,
+         "status": "active",
+         "image_url": "/assets/img/Lifestyle.jpeg"
+       }
+@@ -160,7 +159,7 @@
+         "color": null,
+         "price_cents": 6200,
+         "currency": "USD",
+-        "inventory_quantity": 20,
++        "inventory_quantity": 25,
+         "status": "active",
+         "image_url": "/assets/img/Listing.jpeg"
+       },
+@@ -170,7 +169,7 @@
+         "color": null,
+         "price_cents": 6200,
+         "currency": "USD",
+-        "inventory_quantity": 24,
++        "inventory_quantity": 25,
+         "status": "active",
+         "image_url": "/assets/img/Listing.jpeg"
+       }
+@@ -194,7 +193,7 @@
+         "color": null,
+         "price_cents": 2800,
+         "currency": "USD",
+-        "inventory_quantity": 16,
++        "inventory_quantity": 25,
+         "status": "active",
+         "image_url": "/assets/img/kids_placeholder.jpeg"
+       },
+@@ -204,7 +203,7 @@
+         "color": null,
+         "price_cents": 2800,
+         "currency": "USD",
+-        "inventory_quantity": 22,
++        "inventory_quantity": 25,
+         "status": "active",
+         "image_url": "/assets/img/kids_placeholder.jpeg"
+       }
+diff --git a/handlers/_lib/catalog.quote.test.ts b/handlers/_lib/catalog.quote.test.ts
+index 16b997b..b6a414c 100644
+--- a/handlers/_lib/catalog.quote.test.ts
++++ b/handlers/_lib/catalog.quote.test.ts
+@@ -58,4 +58,17 @@ describe("quoteCartLines", () => {
+     expect(q.lines[0]!.quantity).toBe(2);
+     expect(q.subtotal_cents).toBe(3798);
+   });
++
++  it("rejects quantity above per-order line cap", () => {
++    expect(() => quoteCartLines([{ sku: "ZLX-2PK-S", quantity: 6 }])).toThrow(QuoteError);
++  });
++
++  it("rejects merged quantities above per-order line cap", () => {
++    expect(() =>
++      quoteCartLines([
++        { sku: "ZLX-2PK-S", quantity: 4 },
++        { sku: "ZLX-2PK-S", quantity: 2 },
++      ]),
++    ).toThrow(QuoteError);
++  });
+ });
+diff --git a/handlers/_lib/catalog.ts b/handlers/_lib/catalog.ts
+index 4f37f42..125073a 100644
+--- a/handlers/_lib/catalog.ts
++++ b/handlers/_lib/catalog.ts
+@@ -1,4 +1,5 @@
+ import { parseStaticCatalogData } from "../../src/catalog/parse";
++import { effectiveMaxLineQuantity } from "../../src/cart/orderLimits";
+ import { remapLegacyBoxerBriefSku } from "../../src/cart/legacyBoxerBriefSku";
+ import type { Product, ProductVariant } from "../../src/domain/commerce";
+ /**
+@@ -139,6 +140,16 @@ export function quoteCartLines(
+     if (typeof unit_cents !== "number" || !Number.isFinite(unit_cents) || unit_cents < 0) {
+       throw new QuoteError("INVALID_LINE", `SKU ${hit.variant.sku} has no valid price in catalog`);
+     }
++    const maxQty = effectiveMaxLineQuantity(hit.variant.inventory_quantity);
++    if (maxQty <= 0) {
++      throw new QuoteError("INVALID_LINE", `SKU ${hit.variant.sku} is out of stock`);
++    }
++    if (q > maxQty) {
++      throw new QuoteError(
++        "INVALID_LINE",
++        `Maximum quantity for SKU ${hit.variant.sku} per order is ${maxQty}. Reduce the quantity.`,
++      );
++    }
+     const line_cents = unit_cents * q;
+     lines.push({
+       sku: hit.variant.sku,
+diff --git a/src/cart/reconcile.test.ts b/src/cart/reconcile.test.ts
+index 78eaf80..2e6f1df 100644
+--- a/src/cart/reconcile.test.ts
++++ b/src/cart/reconcile.test.ts
+@@ -66,9 +66,84 @@ describe("validateStorefrontCartLines", () => {
+     expect(v).toHaveLength(1);
+     expect(v[0].issues).toHaveLength(0);
+     expect(v[0].displayUnitPrice).toBe(15);
++    expect(v[0].inventoryQuantity).toBe(3);
++    expect(v[0].maxUnitsPerOrder).toBe(5);
++    expect(v[0].maxLineQuantity).toBe(3);
+     expect(isCartOkForCheckout(v)).toBe(true);
+   });
+ 
++  it("exposes inventory and policy cap separately when inventory exceeds per-order limit", () => {
++    const bigList = parseStaticCatalogData([
++      {
++        id: 901,
++        slug: "bulk-test",
++        title: "Bulk",
++        status: "active",
++        variants: [
++          {
++            sku: "BULK-V",
++            price_cents: 1000,
++            currency: "USD",
++            inventory_quantity: 40,
++            status: "active",
++          },
++        ],
++      },
++    ]).listItems;
++    const lines: StorefrontCartLine[] = [
++      {
++        id: bigList[0].storefrontProductId,
++        name: "B",
++        quantity: 4,
++        price: 10,
++        image: "",
++        sku: "BULK-V",
++        product_slug: "bulk-test",
++      },
++    ];
++    const v = validateStorefrontCartLines(lines, bigList);
++    expect(v[0].inventoryQuantity).toBe(40);
++    expect(v[0].maxUnitsPerOrder).toBe(5);
++    expect(v[0].maxLineQuantity).toBe(5);
++    expect(v[0].issues).toHaveLength(0);
++  });
++
++  it("flags quantity above checkout cap when inventory allows more", () => {
++    const bigList = parseStaticCatalogData([
++      {
++        id: 902,
++        slug: "bulk-test-2",
++        title: "Bulk 2",
++        status: "active",
++        variants: [
++          {
++            sku: "BULK-V2",
++            price_cents: 1000,
++            currency: "USD",
++            inventory_quantity: 40,
++            status: "active",
++          },
++        ],
++      },
++    ]).listItems;
++    const lines: StorefrontCartLine[] = [
++      {
++        id: bigList[0].storefrontProductId,
++        name: "B",
++        quantity: 9,
++        price: 10,
++        image: "",
++        sku: "BULK-V2",
++        product_slug: "bulk-test-2",
++      },
++    ];
++    const v = validateStorefrontCartLines(lines, bigList);
++    expect(v[0].issues.some((i) => i.code === "quantity_exceeds_checkout_cap")).toBe(
++      true,
++    );
++    expect(isCartOkForCheckout(v)).toBe(false);
++  });
++
+   it("flags unknown SKU with plain message", () => {
+     const lines: StorefrontCartLine[] = [
+       {
+@@ -302,6 +377,39 @@ describe("syncCartLinesFromCatalog", () => {
+     expect(next[0].sku).toBe("GOOD");
+   });
+ 
++  it("clamps quantity to checkout cap during catalog sync", () => {
++    const bigList = parseStaticCatalogData([
++      {
++        id: 903,
++        slug: "bulk-sync",
++        title: "Bulk sync",
++        status: "active",
++        variants: [
++          {
++            sku: "BULK-SYNC",
++            price_cents: 1000,
++            currency: "USD",
++            inventory_quantity: 99,
++            status: "active",
++          },
++        ],
++      },
++    ]).listItems;
++    const lines: StorefrontCartLine[] = [
++      {
++        id: bigList[0].storefrontProductId,
++        name: "B",
++        quantity: 17,
++        price: 10,
++        image: "",
++        sku: "BULK-SYNC",
++        product_slug: "bulk-sync",
++      },
++    ];
++    const { lines: next } = syncCartLinesFromCatalog(lines, bigList);
++    expect(next[0].quantity).toBe(5);
++  });
++
+   it("keeps unknown SKU line in cart (no removal)", () => {
+     const lines: StorefrontCartLine[] = [
+       {
+diff --git a/src/cart/reconcile.ts b/src/cart/reconcile.ts
+index 421158a..2812528 100644
+--- a/src/cart/reconcile.ts
++++ b/src/cart/reconcile.ts
+@@ -7,6 +7,10 @@ import type { ProductVariant } from "../domain/commerce";
+ import type { StorefrontCartLine } from "./cartLine";
+ import { remapLegacyBoxerBriefSku } from "./legacyBoxerBriefSku";
+ import { normalizeLineSku } from "./lineKey";
++import {
++  STOREFRONT_MAX_UNITS_PER_LINE,
++  effectiveMaxLineQuantity,
++} from "./orderLimits";
+ 
+ export type CartLineIssueCode =
+   | "unknown_product"
+@@ -14,7 +18,8 @@ export type CartLineIssueCode =
+   | "unknown_sku"
+   | "variant_unavailable"
+   | "out_of_stock"
+-  | "quantity_exceeds_stock";
++  | "quantity_exceeds_stock"
++  | "quantity_exceeds_checkout_cap";
+ 
+ export type CartLineIssue = {
+   code: CartLineIssueCode;
+@@ -28,8 +33,12 @@ export type CartLineValidation = {
+   listRow: CatalogListItem | null;
+   /** Catalog unit price in dollars when variant resolved */
+   displayUnitPrice: number | null;
+-  /** `inventory_quantity` when variant resolved; else null */
+-  maxQuantity: number | null;
++  /** Catalog `inventory_quantity` when variant resolved & purchasable; else null */
++  inventoryQuantity: number | null;
++  /** Policy cap applied to every buyer on this storefront (null when N/A). */
++  maxUnitsPerOrder: number | null;
++  /** Highest allowed line qty: min(inventory, {@link STOREFRONT_MAX_UNITS_PER_LINE}). */
++  maxLineQuantity: number | null;
+   issues: CartLineIssue[];
+ };
+ 
+@@ -171,7 +180,9 @@ export function validateStorefrontCartLines(
+         variant: null,
+         listRow: null,
+         displayUnitPrice: null,
+-        maxQuantity: null,
++        inventoryQuantity: null,
++        maxUnitsPerOrder: null,
++        maxLineQuantity: null,
+         issues: [
+           {
+             code: "missing_variant",
+@@ -194,7 +205,9 @@ export function validateStorefrontCartLines(
+         variant: null,
+         listRow: null,
+         displayUnitPrice: null,
+-        maxQuantity: null,
++        inventoryQuantity: null,
++        maxUnitsPerOrder: null,
++        maxLineQuantity: null,
+         issues,
+       });
+       return;
+@@ -211,7 +224,9 @@ export function validateStorefrontCartLines(
+         variant: null,
+         listRow: row,
+         displayUnitPrice: null,
+-        maxQuantity: null,
++        inventoryQuantity: null,
++        maxUnitsPerOrder: null,
++        maxLineQuantity: null,
+         issues,
+       });
+       return;
+@@ -231,7 +246,9 @@ export function validateStorefrontCartLines(
+         variant: null,
+         listRow: row,
+         displayUnitPrice: null,
+-        maxQuantity: null,
++        inventoryQuantity: null,
++        maxUnitsPerOrder: null,
++        maxLineQuantity: null,
+         issues,
+       });
+       return;
+@@ -248,14 +265,22 @@ export function validateStorefrontCartLines(
+         variant: null,
+         listRow: row,
+         displayUnitPrice: null,
+-        maxQuantity: null,
++        inventoryQuantity: null,
++        maxUnitsPerOrder: null,
++        maxLineQuantity: null,
+         issues,
+       });
+       return;
+     }
+ 
+     const displayUnitPrice = variant.price_cents / 100;
+-    const maxQuantity = variant.inventory_quantity;
++    const purchasable = variant.status === "active" && isPurchasable(variant);
++    const inventoryQuantity = purchasable ? variant.inventory_quantity : null;
++    const maxUnitsPerOrder = purchasable ? STOREFRONT_MAX_UNITS_PER_LINE : null;
++    const maxLineQuantity =
++      purchasable && inventoryQuantity !== null
++        ? effectiveMaxLineQuantity(inventoryQuantity)
++        : null;
+ 
+     if (variant.status !== "active") {
+       issues.push({
+@@ -272,6 +297,11 @@ export function validateStorefrontCartLines(
+         code: "quantity_exceeds_stock",
+         message: `Only ${variant.inventory_quantity} available. Reduce the quantity or remove the line.`,
+       });
++    } else if (line.quantity > STOREFRONT_MAX_UNITS_PER_LINE) {
++      issues.push({
++        code: "quantity_exceeds_checkout_cap",
++        message: `You can add at most ${STOREFRONT_MAX_UNITS_PER_LINE} units per order for this variant. Reduce the quantity.`,
++      });
+     }
+ 
+     out.push({
+@@ -280,7 +310,9 @@ export function validateStorefrontCartLines(
+       variant,
+       listRow: row,
+       displayUnitPrice,
+-      maxQuantity,
++      inventoryQuantity,
++      maxUnitsPerOrder,
++      maxLineQuantity,
+       issues,
+     });
+   });
+@@ -295,8 +327,9 @@ export function isCartOkForCheckout(validation: CartLineValidation[]): boolean {
+ 
+ /**
+  * `true` when at least one line references something the server can't price
+- * (unknown product/SKU or a legacy multi-variant line missing its SKU).
+- * Stock/quantity issues are excluded — those still quote successfully server-side.
++ * (unknown product/SKU or a legacy multi-variant line missing its SKU), or when
++ * quantity exceeds available stock or the per-line checkout cap (server quote
++ * would reject those lines).
+  *
+  * Callers use this to suppress `/api/cart-quote` calls that we know will 400.
+  */
+@@ -309,7 +342,9 @@ export function cartHasUnpriceableLine(
+       (i) =>
+         i.code === "unknown_sku" ||
+         i.code === "unknown_product" ||
+-        i.code === "missing_variant",
++        i.code === "missing_variant" ||
++        i.code === "quantity_exceeds_stock" ||
++        i.code === "quantity_exceeds_checkout_cap",
+     ),
+   );
+ }
+@@ -344,12 +379,19 @@ export function syncCartLinesFromCatalog(
+       remapLegacyBoxerBriefSkuIfNeeded(row.product.slug, normalizeLineSku(line.sku)) !==
+         normalizeLineSku(line.sku);
+ 
++    const lineCeiling =
++      variant.status === "active" && isPurchasable(variant)
++        ? effectiveMaxLineQuantity(variant.inventory_quantity)
++        : null;
++    const qty = lineCeiling != null && line.quantity > lineCeiling ? lineCeiling : line.quantity;
++
+     return {
+       ...line,
+       id: row.storefrontProductId,
+       sku: skuNorm,
+       product_slug: row.product.slug,
+       variant_id: variant.id ?? line.variant_id,
++      quantity: qty,
+       price: newPrice,
+       image: variant.image_url ?? line.image,
+       ...(legacyPackSkuRemapped ? { name: cartDisplayNameForResolvedVariant(row, variant) } : {}),
+diff --git a/src/components/Cart/CartPage.mobile.test.tsx b/src/components/Cart/CartPage.mobile.test.tsx
+index c59b6f0..a252654 100644
+--- a/src/components/Cart/CartPage.mobile.test.tsx
++++ b/src/components/Cart/CartPage.mobile.test.tsx
+@@ -91,6 +91,7 @@ describe("CartPage mobile layout (responsive markup contract)", () => {
+     const mobileLine = await screen.findByTestId(`cart-line-mobile-${row.storefrontProductId}::S1`);
+     expect(mobileLine).toHaveClass("zlx-card");
+ 
++    expect(within(mobileLine).getByRole("status")).toHaveTextContent(/3 in stock/i);
+     expect(screen.getByRole("columnheader", { name: /^product$/i })).toBeInTheDocument();
+ 
+     expect(screen.getByRole("note")).toHaveTextContent(/pinned to the bottom on small screens/i);
+diff --git a/src/components/Cart/CartPage.tsx b/src/components/Cart/CartPage.tsx
+index 58bf19f..f99ff5b 100644
+--- a/src/components/Cart/CartPage.tsx
++++ b/src/components/Cart/CartPage.tsx
+@@ -24,8 +24,37 @@ function lineKey(item: { id: number; sku?: string }): string {
+ function incrementDisabled(v: CartLineValidation | undefined): boolean {
+   if (!v) return false;
+   if (v.issues.length > 0) return true;
+-  if (v.maxQuantity == null) return true;
+-  return v.line.quantity >= v.maxQuantity;
++  if (v.maxLineQuantity == null) return true;
++  return v.line.quantity >= v.maxLineQuantity;
++}
++
++/**
++ * Resolved catalog quantity on hand — shown whenever validation has stock data
++ * (reduces surprises before checkout).
++ */
++function lineInventoryLabel(v: CartLineValidation | undefined): string | null {
++  if (!v || v.inventoryQuantity == null) return null;
++  return `${v.inventoryQuantity} in stock`;
++}
++
++/**
++ * When quantity is capped by per-order policy (not by inventory alone), clarify
++ * the limit — stock count is handled by {@link lineInventoryLabel}.
++ */
++function linePolicyCapCeilingHint(v: CartLineValidation): string | null {
++  if (
++    v.maxLineQuantity == null ||
++    v.inventoryQuantity == null ||
++    v.maxUnitsPerOrder == null
++  ) {
++    return null;
++  }
++  if (v.issues.length > 0) return null;
++  if (v.line.quantity < v.maxLineQuantity) return null;
++  if (v.inventoryQuantity > v.maxUnitsPerOrder) {
++    return `${v.maxUnitsPerOrder} units max per order (store policy).`;
++  }
++  return null;
+ }
+ 
+ const CartPage: React.FC = () => {
+@@ -382,12 +411,22 @@ const CartPage: React.FC = () => {
+                         Remove
+                       </button>
+                     </div>
+-                    {v &&
+-                    v.issues.length === 0 &&
+-                    v.maxQuantity != null &&
+-                    item.quantity >= v.maxQuantity ? (
+-                      <p className="text-neutral-400 text-xs mt-2">Maximum {v.maxQuantity} available.</p>
+-                    ) : null}
++                    {(() => {
++                      const stock = lineInventoryLabel(v);
++                      const capHint = v ? linePolicyCapCeilingHint(v) : null;
++                      return (
++                        <>
++                          {stock ? (
++                            <p className="text-neutral-400 text-xs mt-2" role="status">
++                              {stock}
++                            </p>
++                          ) : null}
++                          {capHint ? (
++                            <p className="text-neutral-500 text-xs mt-1">{capHint}</p>
++                          ) : null}
++                        </>
++                      );
++                    })()}
+                   </article>
+                 ),
+               )}
+@@ -490,14 +529,27 @@ const CartPage: React.FC = () => {
+                               +
+                             </button>
+                           </div>
+-                          {v &&
+-                            v.issues.length === 0 &&
+-                            v.maxQuantity != null &&
+-                            item.quantity >= v.maxQuantity && (
+-                              <p className="text-neutral-400 text-xs mt-1 max-w-[12rem] mx-auto">
+-                                Maximum {v.maxQuantity} available.
+-                              </p>
+-                            )}
++                          {(() => {
++                            const stock = lineInventoryLabel(v);
++                            const capHint = v ? linePolicyCapCeilingHint(v) : null;
++                            return (
++                              <>
++                                {stock ? (
++                                  <p
++                                    className="text-neutral-400 text-xs mt-1 max-w-[12rem] mx-auto"
++                                    role="status"
++                                  >
++                                    {stock}
++                                  </p>
++                                ) : null}
++                                {capHint ? (
++                                  <p className="text-neutral-500 text-xs mt-1 max-w-[12rem] mx-auto">
++                                    {capHint}
++                                  </p>
++                                ) : null}
++                              </>
++                            );
++                          })()}
+                         </td>
+                         <td className="py-4 px-6 text-center font-bold text-white">
+                           {lineTotalDisplay}
+diff --git a/src/components/ProductDetail/ProductDetail.tsx b/src/components/ProductDetail/ProductDetail.tsx
+index 666898b..1af798c 100644
+--- a/src/components/ProductDetail/ProductDetail.tsx
++++ b/src/components/ProductDetail/ProductDetail.tsx
+@@ -35,6 +35,7 @@ import {
+   minMaxPriceCentsFromPurchasable,
+   resolveSelection,
+   resolveTemplateSelection,
++  variantsForPdpLayout,
+   type TemplateAxisSelection,
+ } from "./variantSelection";
+ import VariantSelector from "./VariantSelector";
+@@ -316,9 +317,13 @@ const ProductDetail: React.FC = () => {
+     () => (product ? getPurchasableVariants(product.variants) : []),
+     [product]
+   );
++  const layoutVariants = useMemo(
++    () => (product ? variantsForPdpLayout(product.variants) : []),
++    [product],
++  );
+   const layout = useMemo(
+-    () => computeOptionLayout(purchasable),
+-    [purchasable]
++    () => computeOptionLayout(layoutVariants),
++    [layoutVariants],
+   );
+ 
+   const purchasableSkuKey = useMemo(
+@@ -428,15 +433,22 @@ const ProductDetail: React.FC = () => {
+     selColor,
+   ]);
+ 
+-  const selectedVariant: ProductVariant | null =
+-    selectionRes.kind === "purchasable" ? selectionRes.variant : null;
++  const displayVariant: ProductVariant | null =
++    selectionRes.kind === "purchasable" || selectionRes.kind === "not_purchasable"
++      ? selectionRes.variant
++      : null;
+ 
+-  const gallerySelectionKey = `${selectedVariant?.sku ?? "none"}|${selSize ?? ""}|${selColor ?? ""}|${tmpl ? JSON.stringify(templateSel) : ""}`;
++  const gallerySelectionKey = `${displayVariant?.sku ?? "none"}|${selSize ?? ""}|${selColor ?? ""}|${tmpl ? JSON.stringify(templateSel) : ""}`;
+ 
+-  const { min: pMin, max: pMax } = useMemo(
+-    () => (product ? minMaxPriceCentsFromPurchasable(purchasable) : { min: 0, max: 0 }),
+-    [product, purchasable]
+-  );
++  const { min: pMin, max: pMax } = useMemo(() => {
++    if (!product) return { min: 0, max: 0 };
++    if (purchasable.length > 0) {
++      return minMaxPriceCentsFromPurchasable(purchasable);
++    }
++    return minMaxPriceCentsFromPurchasable(
++      product.variants.filter((v) => v.status === "active"),
++    );
++  }, [product, purchasable]);
+ 
+   const cta = useMemo(() => {
+     if (!product) {
+@@ -471,7 +483,7 @@ const ProductDetail: React.FC = () => {
+       return "";
+     }
+     return resolvePdpHeroImageUrl({
+-      selectedVariant,
++      selectedVariant: displayVariant,
+       productLevelGallery: catalogGallery.galleryImages,
+       displayGalleryUrls: catalogGallery.displayGalleryUrls,
+       variantPrimaryImageBySku: catalogGallery.variantPrimaryImageBySku,
+@@ -479,7 +491,7 @@ const ProductDetail: React.FC = () => {
+     });
+   }, [
+     product,
+-    selectedVariant,
++    displayVariant,
+     catalogGallery.galleryImages,
+     catalogGallery.displayGalleryUrls,
+     catalogGallery.variantPrimaryImageBySku,
+@@ -640,23 +652,24 @@ const ProductDetail: React.FC = () => {
+   const { storefrontProductId } = row;
+   const showPriceRange = selectionRes.kind === "incomplete" && pMin !== pMax;
+   const showSelectCopy = selectionRes.kind === "incomplete" && pMin === pMax;
+-  const selectedLowStockMessage = selectedVariant
+-    ? lowStockMessage(selectedVariant)
++  const selectedLowStockMessage = displayVariant
++    ? lowStockMessage(displayVariant)
+     : null;
+   const stockTone =
+-    selectedVariant?.inventory_quantity === 0
++    displayVariant?.inventory_quantity === 0
+       ? "text-zlx-danger"
+       : selectedLowStockMessage
+         ? "text-zlx-warning"
+         : "text-zlx-success";
+ 
+   const addHandler = () => {
+-    if (cta.disabled || !selectedVariant) {
++    if (cta.disabled || selectionRes.kind !== "purchasable") {
+       return;
+     }
+-    const price = selectedVariant.price_cents / 100;
++    const cartVariant = selectionRes.variant;
++    const price = cartVariant.price_cents / 100;
+     const img = resolvePdpHeroImageUrl({
+-      selectedVariant,
++      selectedVariant: cartVariant,
+       productLevelGallery: catalogGallery.galleryImages,
+       displayGalleryUrls: catalogGallery.displayGalleryUrls,
+       variantPrimaryImageBySku: catalogGallery.variantPrimaryImageBySku,
+@@ -664,15 +677,15 @@ const ProductDetail: React.FC = () => {
+     });
+     addToCart({
+       id: storefrontProductId,
+-      name: `${product.title}${variantNameSuffixForDetail(selectedVariant, tmpl)}`,
++      name: `${product.title}${variantNameSuffixForDetail(cartVariant, tmpl)}`,
+       quantity: 1,
+       price,
+       image: img,
+-      sku: selectedVariant.sku,
+-      variant_id: selectedVariant.id,
++      sku: cartVariant.sku,
++      variant_id: cartVariant.id,
+       product_slug: product.slug,
+       variant_display_snapshot: tmpl
+-        ? buildVariantDisplaySnapshot(selectedVariant, tmpl)
++        ? buildVariantDisplaySnapshot(cartVariant, tmpl)
+         : undefined,
+     });
+   };
+@@ -735,9 +748,9 @@ const ProductDetail: React.FC = () => {
+           </>
+         ) : (
+           <>
+-            {selectedVariant && (
++            {displayVariant && (
+               <p data-testid="pdp-selected-price" className="mb-3 text-3xl font-extrabold text-white">
+-                ${(selectedVariant.price_cents / 100).toFixed(2)}
++                ${(displayVariant.price_cents / 100).toFixed(2)}
+               </p>
+             )}
+             {showPriceRange && (
+@@ -750,14 +763,14 @@ const ProductDetail: React.FC = () => {
+                 ${(pMin / 100).toFixed(2)} — select options to confirm price.
+               </p>
+             )}
+-            {selectedVariant && (
++            {displayVariant && (
+               <p data-testid="pdp-stock-message" className={`mb-5 text-sm font-bold ${stockTone}`}>
+-                {selectedVariant.inventory_quantity === 0
++                {displayVariant.inventory_quantity === 0
+                   ? "Out of stock for this color and size."
+                   : selectedLowStockMessage ?? "In stock."}
+               </p>
+             )}
+-            {purchasable.length === 0 && (
++            {purchasable.length === 0 && selectionRes.kind === "incomplete" && (
+               <p data-testid="pdp-oos" className="mb-3 text-sm font-bold text-zlx-warning">
+                 Unavailable. No purchasable variants.
+               </p>
+@@ -787,7 +800,9 @@ const ProductDetail: React.FC = () => {
+         {!isComingSoon ? (
+           <PdpSubscriptionBlock
+             plans={row.subscriptionPlans}
+-            selectedVariant={selectedVariant}
++            selectedVariant={
++              selectionRes.kind === "purchasable" ? selectionRes.variant : null
++            }
+           />
+         ) : null}
+ 
+diff --git a/src/components/ProductDetail/ProductDetail.variants.test.tsx b/src/components/ProductDetail/ProductDetail.variants.test.tsx
+index e6a742f..8f34ee6 100644
+--- a/src/components/ProductDetail/ProductDetail.variants.test.tsx
++++ b/src/components/ProductDetail/ProductDetail.variants.test.tsx
+@@ -30,7 +30,7 @@ describe("ProductDetail variant selection", () => {
+     expect(screen.queryByTestId("pdp-select-color")).not.toBeInTheDocument();
+   });
+ 
+-  it("updates price and low-stock message when size is selected", async () => {
++  it("updates price and stock message when size is selected", async () => {
+     renderPdp();
+     expect(await screen.findByTestId("pdp-variant-selector")).toBeInTheDocument();
+ 
+@@ -41,7 +41,7 @@ describe("ProductDetail variant selection", () => {
+       expect(price).toHaveTextContent("$18.99");
+     });
+     const stock = screen.getByTestId("pdp-stock-message");
+-    expect(stock.textContent).toMatch(/3|Only 3|left/);
++    expect(stock.textContent).toMatch(/In stock/i);
+   });
+ 
+   it("enables add-to-cart after size is chosen (single dimension)", async () => {
+diff --git a/src/components/ProductDetail/variantSelection.test.ts b/src/components/ProductDetail/variantSelection.test.ts
+index 7b7cc0c..d08c62a 100644
+--- a/src/components/ProductDetail/variantSelection.test.ts
++++ b/src/components/ProductDetail/variantSelection.test.ts
+@@ -5,6 +5,7 @@ import {
+   getPurchasableVariants,
+   lowStockMessage,
+   resolveSelection,
++  variantsForPdpLayout,
+ } from "./variantSelection";
+ 
+ const baseV = (o: Partial<ProductVariant> & { sku: string }): ProductVariant => ({
+@@ -20,6 +21,18 @@ const baseV = (o: Partial<ProductVariant> & { sku: string }): ProductVariant =>
+ });
+ 
+ describe("variantSelection", () => {
++  it("variantsForPdpLayout falls back to active SKUs when nothing is purchasable", () => {
++    const all: ProductVariant[] = [
++      baseV({ sku: "ZLX-2PK-S", size: "S", inventory_quantity: 0 }),
++      baseV({ sku: "ZLX-2PK-M", size: "M", inventory_quantity: 0 }),
++    ];
++    expect(getPurchasableVariants(all)).toHaveLength(0);
++    expect(variantsForPdpLayout(all).map((v) => v.sku)).toEqual([
++      "ZLX-2PK-S",
++      "ZLX-2PK-M",
++    ]);
++  });
++
+   it("excludes OOS and inactive from purchasable", () => {
+     const vs: ProductVariant[] = [
+       baseV({ sku: "a", size: "M", color: "black", inventory_quantity: 0 }),
+diff --git a/src/components/ProductDetail/variantSelection.ts b/src/components/ProductDetail/variantSelection.ts
+index b5d68f8..6913ab5 100644
+--- a/src/components/ProductDetail/variantSelection.ts
++++ b/src/components/ProductDetail/variantSelection.ts
+@@ -11,6 +11,17 @@ export function getPurchasableVariants(
+   return variants.filter(isPurchasable);
+ }
+ 
++/**
++ * Controls which variants drive PDP option axes (sizes/colors).
++ * When nothing is in stock, still surface active SKUs so shoppers can pick a
++ * size and see accurate out-of-stock messaging instead of hiding the selector.
++ */
++export function variantsForPdpLayout(variants: ProductVariant[]): ProductVariant[] {
++  const purchasable = getPurchasableVariants(variants);
++  if (purchasable.length > 0) return purchasable;
++  return variants.filter((v) => v.status === "active");
++}
++
+ function uniqueSorted(
+   values: (string | undefined)[]
+ ): string[] {
+diff --git a/src/routes.smoke.test.tsx b/src/routes.smoke.test.tsx
+index 5c84ca6..b2ada8e 100644
+--- a/src/routes.smoke.test.tsx
++++ b/src/routes.smoke.test.tsx
+@@ -153,13 +153,13 @@ describe("storefront route smoke (App.tsx router tree)", () => {
+           v: 1,
+           items: [
+             {
+-              id: 101,
+-              name: "Zephyr Lux Boxer Briefs",
++              id: 103,
++              name: "Zephyr Lux Merino Everyday Crew",
+               quantity: 1,
+-              price: 24,
+-              image: "/assets/img/Listing2.jpeg",
+-              sku: "ZLX-2PK-M",
+-              product_slug: "boxer-briefs",
++              price: 62,
++              image: "/assets/img/Listing.jpeg",
++              sku: "ZLX-MN-CREW-M",
++              product_slug: "merino-everyday-crew",
+             },
+           ],
+         })
+diff --git a/supabase/seed.sql b/supabase/seed.sql
+index 19b33ac..0a85058 100644
+--- a/supabase/seed.sql
++++ b/supabase/seed.sql
+@@ -121,7 +121,7 @@ VALUES
+     NULL,
+     1899,
+     'usd',
+-    50,
++    25,
+     NULL,
+     'active'
+   ),
+@@ -133,7 +133,7 @@ VALUES
+     NULL,
+     1899,
+     'usd',
+-    50,
++    25,
+     NULL,
+     'active'
+   ),
+@@ -145,8 +145,8 @@ VALUES
+     NULL,
+     1899,
+     'usd',
+-    3,
+-    5,
++    25,
++    NULL,
+     'active'
+   ),
+   (
+@@ -157,7 +157,7 @@ VALUES
+     NULL,
+     1899,
+     'usd',
+-    50,
++    25,
+     NULL,
+     'active'
+   ),
+@@ -169,7 +169,7 @@ VALUES
+     NULL,
+     8900,
+     'usd',
+-    14,
++    25,
+     NULL,
+     'active'
+   ),
+@@ -181,7 +181,7 @@ VALUES
+     NULL,
+     8900,
+     'usd',
+-    18,
++    25,
+     NULL,
+     'active'
+   ),
+@@ -193,7 +193,7 @@ VALUES
+     NULL,
+     6200,
+     'usd',
+-    20,
++    25,
+     NULL,
+     'active'
+   ),
+@@ -205,7 +205,7 @@ VALUES
+     NULL,
+     6200,
+     'usd',
+-    24,
++    25,
+     NULL,
+     'active'
+   ),
+@@ -217,7 +217,7 @@ VALUES
+     NULL,
+     2800,
+     'usd',
+-    16,
++    25,
+     NULL,
+     'active'
+   ),
+@@ -229,7 +229,7 @@ VALUES
+     NULL,
+     2800,
+     'usd',
+-    22,
++    25,
+     NULL,
+     'active'
+   ),
+@@ -253,7 +253,7 @@ VALUES
+     NULL,
+     1699,
+     'usd',
+-    50,
++    25,
+     NULL,
+     'active'
+   ),
+@@ -265,7 +265,7 @@ VALUES
+     NULL,
+     1699,
+     'usd',
+-    50,
++    25,
+     NULL,
+     'active'
+   ),
+@@ -277,7 +277,7 @@ VALUES
+     NULL,
+     1699,
+     'usd',
+-    50,
++    25,
+     NULL,
+     'active'
+   ),
+@@ -289,7 +289,7 @@ VALUES
+     NULL,
+     1699,
+     'usd',
+-    50,
++    25,
+     NULL,
+     'active'
+   );
+diff --git a/tests/e2e/cart-quote.smoke.spec.ts b/tests/e2e/cart-quote.smoke.spec.ts
+index 3e32981..f6a62aa 100644
+--- a/tests/e2e/cart-quote.smoke.spec.ts
++++ b/tests/e2e/cart-quote.smoke.spec.ts
+@@ -53,7 +53,7 @@ test.describe("cart-quote API (direct)", () => {
+ 
+ test.describe("cart quote in the UI", () => {
+   test("bag loads server quote after add to cart (no quote error)", async ({ page }) => {
+-    await page.goto("/product/boxer-briefs");
++    await page.goto("/product/merino-everyday-crew");
+     await page.getByTestId("pdp-variant-selector").waitFor({ state: "visible" });
+     await page.getByTestId("pdp-select-size").selectOption("M");
+     await page.getByTestId("pdp-add-to-cart").click();
+@@ -61,6 +61,6 @@ test.describe("cart quote in the UI", () => {
+ 
+     await expect(page.getByTestId("cart-quote-error")).toHaveCount(0);
+     await expect(page.getByText(/Subtotal:/)).toBeVisible();
+-    await expect(page.getByText(/\$18\.99/).first()).toBeVisible({ timeout: 20_000 });
++    await expect(page.getByText(/\$62\.00/).first()).toBeVisible({ timeout: 20_000 });
+   });
+ });
+diff --git a/tests/e2e/checkout-confirmation.smoke.spec.ts b/tests/e2e/checkout-confirmation.smoke.spec.ts
+index c6291bd..4fc6609 100644
+--- a/tests/e2e/checkout-confirmation.smoke.spec.ts
++++ b/tests/e2e/checkout-confirmation.smoke.spec.ts
+@@ -14,9 +14,9 @@ import { test, expect, type Page } from "@playwright/test";
+  * assert the cart-clear contract from the user's perspective.
+  */
+ 
+-const PRIMED_CART_PATH = "/product/boxer-briefs";
++const PRIMED_CART_PATH = "/product/merino-everyday-crew";
+ 
+-async function addBoxerBriefsToCart(page: Page): Promise<void> {
++async function addMerinoCrewToCart(page: Page): Promise<void> {
+   await page.goto(PRIMED_CART_PATH);
+   await page.getByTestId("pdp-variant-selector").waitFor({ state: "visible" });
+   await page.getByTestId("pdp-select-size").selectOption("M");
+@@ -38,7 +38,7 @@ async function readPersistedCartLength(page: Page): Promise<number> {
+ 
+ test.describe("Stripe return → cart reset", () => {
+   test("succeeded redirect empties the cart and the bag page reflects it", async ({ page }) => {
+-    await addBoxerBriefsToCart(page);
++    await addMerinoCrewToCart(page);
+     expect(await readPersistedCartLength(page)).toBeGreaterThan(0);
+ 
+     // Mimic the URL Stripe redirects to after a successful Payment Element confirmation.
+@@ -55,7 +55,7 @@ test.describe("Stripe return → cart reset", () => {
+   });
+ 
+   test("processing redirect also clears the cart (intent committed, settlement pending)", async ({ page }) => {
+-    await addBoxerBriefsToCart(page);
++    await addMerinoCrewToCart(page);
+     expect(await readPersistedCartLength(page)).toBeGreaterThan(0);
+ 
+     await page.goto(
+@@ -68,7 +68,7 @@ test.describe("Stripe return → cart reset", () => {
+   });
+ 
+   test("failed redirect preserves the cart so the shopper can retry", async ({ page }) => {
+-    await addBoxerBriefsToCart(page);
++    await addMerinoCrewToCart(page);
+     const beforeLen = await readPersistedCartLength(page);
+     expect(beforeLen).toBeGreaterThan(0);
+ 
+@@ -86,7 +86,7 @@ test.describe("Stripe return → cart reset", () => {
+   });
+ 
+   test("direct navigation to /order-confirmation without Stripe params does not touch the cart", async ({ page }) => {
+-    await addBoxerBriefsToCart(page);
++    await addMerinoCrewToCart(page);
+     const beforeLen = await readPersistedCartLength(page);
+     expect(beforeLen).toBeGreaterThan(0);
+ 
+@@ -97,7 +97,7 @@ test.describe("Stripe return → cart reset", () => {
+   });
+ 
+   test("idempotent: revisiting the same successful confirmation URL does not wipe a freshly-added item", async ({ page }) => {
+-    await addBoxerBriefsToCart(page);
++    await addMerinoCrewToCart(page);
+ 
+     await page.goto(
+       "/order-confirmation?payment_intent=pi_e2e_idem&redirect_status=succeeded",
+@@ -108,7 +108,7 @@ test.describe("Stripe return → cart reset", () => {
+ 
+     // Shopper continues shopping, adds another item, then somehow lands on the
+     // same confirmation URL again (browser back / deep link).
+-    await addBoxerBriefsToCart(page);
++    await addMerinoCrewToCart(page);
+     expect(await readPersistedCartLength(page)).toBeGreaterThan(0);
+ 
+     await page.goto(
+
+# --- UNTRACKED (conceptually part of change-set) ---
+
+## src/cart/orderLimits.ts
+/**
+ * Per-order policy: max units of one SKU on a single cart line, regardless of
+ * how much inventory is on hand (`inventory_quantity` can be higher).
+ */
+export const STOREFRONT_MAX_UNITS_PER_LINE = 5;
+
+/**
+ * Highest quantity allowed on one line this order — the tighter of inventory
+ * and {@link STOREFRONT_MAX_UNITS_PER_LINE}. Inventory itself is unchanged;
+ * callers that show stock to shoppers should use raw `inventory_quantity`.
+ */
+export function effectiveMaxLineQuantity(inventory_quantity: number): number {
+  return Math.min(Math.max(0, inventory_quantity), STOREFRONT_MAX_UNITS_PER_LINE);
+}
+
+/** Alias for server quote paths; same as {@link effectiveMaxLineQuantity}. */
+export function maxCheckoutUnitsForVariant(inventory_quantity: number): number {
+  return effectiveMaxLineQuantity(inventory_quantity);
+}
+
+## src/cart/orderLimits.test.ts
+import { describe, expect, it } from "vitest";
+import {
+  effectiveMaxLineQuantity,
+  maxCheckoutUnitsForVariant,
+  STOREFRONT_MAX_UNITS_PER_LINE,
+} from "./orderLimits";
+
+describe("orderLimits", () => {
+  it("effective max is the smaller of sanitized inventory and per-order policy", () => {
+    expect(effectiveMaxLineQuantity(999)).toBe(STOREFRONT_MAX_UNITS_PER_LINE);
+    expect(effectiveMaxLineQuantity(3)).toBe(3);
+  });
+
+  it("aliases maxCheckoutUnitsForVariant to effectiveMaxLineQuantity", () => {
+    expect(maxCheckoutUnitsForVariant(999)).toBe(effectiveMaxLineQuantity(999));
+  });
+
+  it("sanitizes non-positive inventory to zero", () => {
+    expect(effectiveMaxLineQuantity(0)).toBe(0);
+    expect(effectiveMaxLineQuantity(-1)).toBe(0);
+  });
+});

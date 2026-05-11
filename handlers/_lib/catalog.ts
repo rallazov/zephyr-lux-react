@@ -1,4 +1,5 @@
 import { parseStaticCatalogData } from "../../src/catalog/parse";
+import { effectiveMaxLineQuantity } from "../../src/cart/orderLimits";
 import { remapLegacyBoxerBriefSku } from "../../src/cart/legacyBoxerBriefSku";
 import type { Product, ProductVariant } from "../../src/domain/commerce";
 /**
@@ -44,7 +45,12 @@ export type { Product, ProductVariant };
 
 export class QuoteError extends Error {
   constructor(
-    public readonly code: "UNKNOWN_SKU" | "INVALID_LINE" | "NOT_FOR_SALE",
+    public readonly code:
+      | "UNKNOWN_SKU"
+      | "INVALID_LINE"
+      | "NOT_FOR_SALE"
+      | "OUT_OF_STOCK"
+      | "QUANTITY_EXCEEDS_CAP",
     message: string,
   ) {
     super(message);
@@ -57,9 +63,14 @@ export function isQuoteError(e: unknown): e is QuoteError {
   if (e instanceof QuoteError) return true;
   if (typeof e !== "object" || e === null) return false;
   const o = e as { name?: unknown; code?: unknown };
+  const c = o.code;
   return (
     o.name === "QuoteError" &&
-    (o.code === "UNKNOWN_SKU" || o.code === "INVALID_LINE" || o.code === "NOT_FOR_SALE")
+    (c === "UNKNOWN_SKU" ||
+      c === "INVALID_LINE" ||
+      c === "NOT_FOR_SALE" ||
+      c === "OUT_OF_STOCK" ||
+      c === "QUANTITY_EXCEEDS_CAP")
   );
 }
 
@@ -138,6 +149,16 @@ export function quoteCartLines(
     const unit_cents = hit.variant.price_cents;
     if (typeof unit_cents !== "number" || !Number.isFinite(unit_cents) || unit_cents < 0) {
       throw new QuoteError("INVALID_LINE", `SKU ${hit.variant.sku} has no valid price in catalog`);
+    }
+    const maxQty = effectiveMaxLineQuantity(hit.variant.inventory_quantity);
+    if (maxQty <= 0) {
+      throw new QuoteError("OUT_OF_STOCK", `SKU ${hit.variant.sku} is out of stock`);
+    }
+    if (q > maxQty) {
+      throw new QuoteError(
+        "QUANTITY_EXCEEDS_CAP",
+        `Maximum quantity for SKU ${hit.variant.sku} per order is ${maxQty}. Reduce the quantity.`,
+      );
     }
     const line_cents = unit_cents * q;
     lines.push({

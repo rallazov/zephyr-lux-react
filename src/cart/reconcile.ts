@@ -7,6 +7,10 @@ import type { ProductVariant } from "../domain/commerce";
 import type { StorefrontCartLine } from "./cartLine";
 import { remapLegacyBoxerBriefSku } from "./legacyBoxerBriefSku";
 import { normalizeLineSku } from "./lineKey";
+import {
+  STOREFRONT_MAX_UNITS_PER_LINE,
+  effectiveMaxLineQuantity,
+} from "./orderLimits";
 
 export type CartLineIssueCode =
   | "unknown_product"
@@ -14,7 +18,8 @@ export type CartLineIssueCode =
   | "unknown_sku"
   | "variant_unavailable"
   | "out_of_stock"
-  | "quantity_exceeds_stock";
+  | "quantity_exceeds_stock"
+  | "quantity_exceeds_checkout_cap";
 
 export type CartLineIssue = {
   code: CartLineIssueCode;
@@ -28,14 +33,20 @@ export type CartLineValidation = {
   listRow: CatalogListItem | null;
   /** Catalog unit price in dollars when variant resolved */
   displayUnitPrice: number | null;
-  /** `inventory_quantity` when variant resolved; else null */
-  maxQuantity: number | null;
+  /** Catalog `inventory_quantity` when variant resolved & purchasable; else null */
+  inventoryQuantity: number | null;
+  /** Policy cap applied to every buyer on this storefront (null when N/A). */
+  maxUnitsPerOrder: number | null;
+  /** Highest allowed line qty: min(inventory, {@link STOREFRONT_MAX_UNITS_PER_LINE}). */
+  maxLineQuantity: number | null;
   issues: CartLineIssue[];
 };
 
 export type CatalogSyncResult = {
   lines: StorefrontCartLine[];
   priceUpdated: boolean;
+  /** Set when sync lowered any line quantity to the checkout ceiling */
+  quantityClampNotice: string | null;
 };
 
 /** Deep equality for cart lines (persisted shape). */
@@ -151,6 +162,40 @@ function variantUnavailableMessage(v: ProductVariant): string {
   return "This option is not available for purchase.";
 }
 
+/** Matches server quote merge: multiple bag rows with the same purchasable SKU share one cap. */
+function applyMergedSkuCheckoutCapIssues(validations: CartLineValidation[]): void {
+  const bucketBySku = new Map<string, { indices: number[]; inventory: number }>();
+  for (let i = 0; i < validations.length; i++) {
+    const v = validations[i]!;
+    if (!v.variant) continue;
+    if (v.variant.status !== "active" || !isPurchasable(v.variant)) continue;
+    const sku = v.variant.sku;
+    const inv = v.variant.inventory_quantity;
+    const cur = bucketBySku.get(sku);
+    if (!cur) bucketBySku.set(sku, { indices: [i], inventory: inv });
+    else cur.indices.push(i);
+  }
+
+  for (const { indices, inventory } of bucketBySku.values()) {
+    if (indices.length < 2) continue;
+    const maxLine = effectiveMaxLineQuantity(inventory);
+    if (maxLine <= 0) continue;
+    const sum = indices.reduce((s, idx) => s + validations[idx]!.line.quantity, 0);
+    if (sum <= maxLine) continue;
+
+    const msg = `You have ${sum} of this SKU across multiple bag lines; maximum ${maxLine} per order. Reduce quantities on one or more lines.`;
+    for (const idx of indices) {
+      const issues = validations[idx]!.issues;
+      const existingIdx = issues.findIndex((x) => x.code === "quantity_exceeds_checkout_cap");
+      if (existingIdx === -1) {
+        issues.push({ code: "quantity_exceeds_checkout_cap", message: msg });
+      } else {
+        issues[existingIdx] = { code: "quantity_exceeds_checkout_cap", message: msg };
+      }
+    }
+  }
+}
+
 /**
  * Per-line validation for cart / checkout (pure). Uses `isPurchasable` for stock semantics.
  */
@@ -171,7 +216,9 @@ export function validateStorefrontCartLines(
         variant: null,
         listRow: null,
         displayUnitPrice: null,
-        maxQuantity: null,
+        inventoryQuantity: null,
+        maxUnitsPerOrder: null,
+        maxLineQuantity: null,
         issues: [
           {
             code: "missing_variant",
@@ -194,7 +241,9 @@ export function validateStorefrontCartLines(
         variant: null,
         listRow: null,
         displayUnitPrice: null,
-        maxQuantity: null,
+        inventoryQuantity: null,
+        maxUnitsPerOrder: null,
+        maxLineQuantity: null,
         issues,
       });
       return;
@@ -211,7 +260,9 @@ export function validateStorefrontCartLines(
         variant: null,
         listRow: row,
         displayUnitPrice: null,
-        maxQuantity: null,
+        inventoryQuantity: null,
+        maxUnitsPerOrder: null,
+        maxLineQuantity: null,
         issues,
       });
       return;
@@ -231,7 +282,9 @@ export function validateStorefrontCartLines(
         variant: null,
         listRow: row,
         displayUnitPrice: null,
-        maxQuantity: null,
+        inventoryQuantity: null,
+        maxUnitsPerOrder: null,
+        maxLineQuantity: null,
         issues,
       });
       return;
@@ -248,14 +301,22 @@ export function validateStorefrontCartLines(
         variant: null,
         listRow: row,
         displayUnitPrice: null,
-        maxQuantity: null,
+        inventoryQuantity: null,
+        maxUnitsPerOrder: null,
+        maxLineQuantity: null,
         issues,
       });
       return;
     }
 
     const displayUnitPrice = variant.price_cents / 100;
-    const maxQuantity = variant.inventory_quantity;
+    const purchasable = variant.status === "active" && isPurchasable(variant);
+    const inventoryQuantity = purchasable ? variant.inventory_quantity : null;
+    const maxUnitsPerOrder = purchasable ? STOREFRONT_MAX_UNITS_PER_LINE : null;
+    const maxLineQuantity =
+      purchasable && inventoryQuantity !== null
+        ? effectiveMaxLineQuantity(inventoryQuantity)
+        : null;
 
     if (variant.status !== "active") {
       issues.push({
@@ -272,6 +333,11 @@ export function validateStorefrontCartLines(
         code: "quantity_exceeds_stock",
         message: `Only ${variant.inventory_quantity} available. Reduce the quantity or remove the line.`,
       });
+    } else if (line.quantity > STOREFRONT_MAX_UNITS_PER_LINE) {
+      issues.push({
+        code: "quantity_exceeds_checkout_cap",
+        message: `You can add at most ${STOREFRONT_MAX_UNITS_PER_LINE} units per order for this variant. Reduce the quantity.`,
+      });
     }
 
     out.push({
@@ -280,10 +346,14 @@ export function validateStorefrontCartLines(
       variant,
       listRow: row,
       displayUnitPrice,
-      maxQuantity,
+      inventoryQuantity,
+      maxUnitsPerOrder,
+      maxLineQuantity,
       issues,
     });
   });
+
+  applyMergedSkuCheckoutCapIssues(out);
 
   return out;
 }
@@ -295,8 +365,9 @@ export function isCartOkForCheckout(validation: CartLineValidation[]): boolean {
 
 /**
  * `true` when at least one line references something the server can't price
- * (unknown product/SKU or a legacy multi-variant line missing its SKU).
- * Stock/quantity issues are excluded — those still quote successfully server-side.
+ * (unknown product/SKU or a legacy multi-variant line missing its SKU), or when
+ * quantity exceeds available stock or the per-line checkout cap (server quote
+ * would reject those lines).
  *
  * Callers use this to suppress `/api/cart-quote` calls that we know will 400.
  */
@@ -309,7 +380,9 @@ export function cartHasUnpriceableLine(
       (i) =>
         i.code === "unknown_sku" ||
         i.code === "unknown_product" ||
-        i.code === "missing_variant",
+        i.code === "missing_variant" ||
+        i.code === "quantity_exceeds_stock" ||
+        i.code === "quantity_exceeds_checkout_cap",
     ),
   );
 }
@@ -323,6 +396,7 @@ export function syncCartLinesFromCatalog(
 ): CatalogSyncResult {
   const { bySlug, byStorefrontId } = buildIndexes(catalogList);
   let priceUpdated = false;
+  let quantityClampNotice: string | null = null;
 
   const next = lines.map((line) => {
     if (line.quantity <= 0) return line;
@@ -344,19 +418,30 @@ export function syncCartLinesFromCatalog(
       remapLegacyBoxerBriefSkuIfNeeded(row.product.slug, normalizeLineSku(line.sku)) !==
         normalizeLineSku(line.sku);
 
+    const lineCeiling =
+      variant.status === "active" && isPurchasable(variant)
+        ? effectiveMaxLineQuantity(variant.inventory_quantity)
+        : null;
+    const qty = lineCeiling != null && line.quantity > lineCeiling ? lineCeiling : line.quantity;
+    if (qty < line.quantity) {
+      quantityClampNotice =
+        "Some quantities were reduced to match per-order limits. Review your bag.";
+    }
+
     return {
       ...line,
       id: row.storefrontProductId,
       sku: skuNorm,
       product_slug: row.product.slug,
       variant_id: variant.id ?? line.variant_id,
+      quantity: qty,
       price: newPrice,
       image: variant.image_url ?? line.image,
       ...(legacyPackSkuRemapped ? { name: cartDisplayNameForResolvedVariant(row, variant) } : {}),
     };
   });
 
-  return { lines: next, priceUpdated };
+  return { lines: next, priceUpdated, quantityClampNotice };
 }
 
 export type ReconciledCart = CatalogSyncResult & { removedLineSlots: number };
