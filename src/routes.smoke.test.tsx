@@ -157,7 +157,7 @@ describe("storefront route smoke (App.tsx router tree)", () => {
               name: "Zephyr Lux Merino Everyday Crew",
               quantity: 1,
               price: 62,
-              image: "/assets/img/Listing.jpeg",
+              image: "/assets/img/placeholder-men-apparel.svg",
               sku: "ZLX-MN-CREW-M",
               product_slug: "merino-everyday-crew",
             },

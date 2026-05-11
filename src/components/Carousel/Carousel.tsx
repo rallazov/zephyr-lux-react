@@ -1,23 +1,24 @@
 import React, { useState } from 'react';
 import './Carousel.css'; // Align this CSS with your brand
+import { PLACEHOLDER_IMAGE_BRAND } from "../../catalog/pdpImage";
+
+const slides = [
+        {
+            imgSrc: PLACEHOLDER_IMAGE_BRAND,
+            description: "Slide 1 — Brand",
+        },
+        {
+            imgSrc: "/assets/img/placeholder-women.svg",
+            description: "Slide 2 — Women (coming soon)",
+        },
+        {
+            imgSrc: "/assets/img/placeholder-kids.svg",
+            description: "Slide 3 — Kids (coming soon)",
+        },
+    ];
 
 const Carousel: React.FC = () => {
     const [currentSlide, setCurrentSlide] = useState(0);
-
-    const slides = [
-        {
-            imgSrc: "/src/assets/img/Lifestyle.jpeg",
-            description: "Slide 1 - Product Highlight",
-        },
-        {
-            imgSrc: "/src/assets/img/Infographic.jpeg",
-            description: "Slide 2 - Special Feature",
-        },
-        {
-            imgSrc: "/src/assets/img/Listing.jpeg",
-            description: "Slide 3 - New Arrival",
-        },
-    ];
 
     const handlePrev = () => {
         setCurrentSlide((prev) => (prev === 0 ? slides.length - 1 : prev - 1));

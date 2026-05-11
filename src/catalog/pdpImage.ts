@@ -1,11 +1,21 @@
 import type { Product, ProductVariant } from "../domain/commerce";
 
-/** Neutral placeholder when no usable image exists (no remote asset dependency). */
-export const PDP_IMAGE_PLACEHOLDER =
-  "data:image/svg+xml," +
-  encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800" role="img" aria-label="Placeholder"><rect fill="#e8e6e3" width="800" height="800"/><text x="400" y="400" text-anchor="middle" dy=".35em" fill="#9c9893" font-family="system-ui,sans-serif" font-size="28">No image</text></svg>`
-  );
+/**
+ * Storefront image policy: only men's boxer brief SKUs use real pack photography
+ * (`/assets/img/Listing2.jpeg`). Everything else uses committed SVG placeholders under
+ * `/assets/img/placeholder-*.svg` until stock photography exists.
+ */
+export const MENS_BOXER_BRIEFS_PACK_IMAGE = "/assets/img/Listing2.jpeg";
+
+export const PLACEHOLDER_IMAGE_GENERIC = "/assets/img/placeholder-generic.svg";
+export const PLACEHOLDER_IMAGE_WOMEN = "/assets/img/placeholder-women.svg";
+export const PLACEHOLDER_IMAGE_KIDS = "/assets/img/placeholder-kids.svg";
+export const PLACEHOLDER_IMAGE_MEN_APPAREL = "/assets/img/placeholder-men-apparel.svg";
+export const PLACEHOLDER_IMAGE_SALE = "/assets/img/placeholder-sale.svg";
+export const PLACEHOLDER_IMAGE_BRAND = "/assets/img/placeholder-brand.svg";
+
+/** Neutral placeholder when no usable image exists (product cards, PDP fallback, broken imgs). */
+export const PDP_IMAGE_PLACEHOLDER = PLACEHOLDER_IMAGE_GENERIC;
 
 export function buildDisplayGalleryUrls(
   variants: Product["variants"],

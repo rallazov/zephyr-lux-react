@@ -1,12 +1,14 @@
 /** Storefront branding and public URL helpers (story 6-5). */
 
+import { PLACEHOLDER_IMAGE_BRAND } from "../catalog/pdpImage";
+
 export const SITE_BRAND = "Zephyr Lux";
 
 export const DEFAULT_META_DESCRIPTION =
   "Zephyr Lux: soft bamboo essentials for everyday comfort.";
 
-/** Default OG image path (served from site origin). */
-export const DEFAULT_OG_IMAGE_PATH = "/assets/img/Lifestyle.jpeg";
+/** Default OG/Twitter preview when a page does not set a specific image. */
+export const DEFAULT_OG_IMAGE_PATH = PLACEHOLDER_IMAGE_BRAND;
 
 /**
  * Canonical public origin for absolute URLs (Open Graph, JSON-LD).

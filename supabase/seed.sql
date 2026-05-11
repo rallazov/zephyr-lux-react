@@ -311,28 +311,28 @@ VALUES (
 (
   'a0000002-0000-4000-8000-000000000002',
   NULL,
-  '/assets/img/Lifestyle.jpeg',
+  '/assets/img/placeholder-women.svg',
   0,
   true
 ),
 (
   'a0000003-0000-4000-8000-000000000003',
   NULL,
-  '/assets/img/Listing.jpeg',
+  '/assets/img/placeholder-men-apparel.svg',
   0,
   true
 ),
 (
   'a0000004-0000-4000-8000-000000000004',
   NULL,
-  '/assets/img/kids_placeholder.jpeg',
+  '/assets/img/placeholder-kids.svg',
   0,
   true
 ),
 (
   'a0000005-0000-4000-8000-000000000005',
   NULL,
-  '/assets/img/sale_placeholder.jpeg',
+  '/assets/img/placeholder-sale.svg',
   0,
   true
 ),

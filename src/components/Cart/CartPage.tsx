@@ -16,6 +16,7 @@ import { useCartQuote } from "../../hooks/useCartQuote";
 import type { CartLineQuote } from "../../lib/cartQuoteTypes";
 import { formatCents } from "../../lib/money";
 import { formatPageTitleWithBrand, usePageMeta } from "../../seo/meta";
+import { PDP_IMAGE_PLACEHOLDER } from "../../catalog/pdpImage";
 
 function lineKey(item: { id: number; sku?: string }): string {
   return `${item.id}::${normalizeLineSku(item.sku)}`;
@@ -341,7 +342,7 @@ const CartPage: React.FC = () => {
                   >
                     <div className="flex gap-3 min-w-0">
                       <img
-                        src={item.image || "/assets/img/Listing.jpeg"}
+                        src={item.image || PDP_IMAGE_PLACEHOLDER}
                         alt=""
                         className="h-16 w-16 shrink-0 object-contain border border-gray-600 rounded bg-white"
                       />
@@ -469,7 +470,7 @@ const CartPage: React.FC = () => {
                         <td className="py-4 px-6">
                           <div className="flex flex-col sm:flex-row gap-4 items-center">
                             <img
-                              src={item.image || "/assets/img/Listing.jpeg"}
+                              src={item.image || PDP_IMAGE_PLACEHOLDER}
                               alt=""
                               className="w-16 h-16 object-contain border border-neutral-300 rounded-lg bg-white sm:w-20 sm:h-20"
                             />
