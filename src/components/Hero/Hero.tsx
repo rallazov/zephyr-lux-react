@@ -1,7 +1,9 @@
 import React from "react";
 import { Link } from "react-router-dom";
 
-const DEFAULT_IMAGE = "/assets/img/Lifestyle.jpeg";
+import { PLACEHOLDER_IMAGE_BRAND } from "../../catalog/pdpImage";
+
+const DEFAULT_IMAGE = PLACEHOLDER_IMAGE_BRAND;
 const DEFAULT_TITLE = (
   <>
     Zephyr Lux

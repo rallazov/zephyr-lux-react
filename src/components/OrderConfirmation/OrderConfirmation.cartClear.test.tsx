@@ -3,6 +3,7 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CART_LOCAL_STORAGE_KEY } from "../../cart/storage";
 import { getDefaultCatalogAdapter } from "../../catalog/factory";
+import { PDP_IMAGE_PLACEHOLDER } from "../../catalog/pdpImage";
 import { parseStaticCatalogData } from "../../catalog/parse";
 import { CartProvider } from "../../context/CartContext";
 import OrderConfirmation from "./OrderConfirmation";
@@ -43,7 +44,7 @@ function seedCart(): void {
           name: row.product.title,
           quantity: 2,
           price: variant.price_cents / 100,
-          image: row.heroImageUrl || "/assets/img/Listing.jpeg",
+          image: row.heroImageUrl || PDP_IMAGE_PLACEHOLDER,
           sku: "ZLX-2PK-M",
           variant_id: variant.id,
           product_slug: row.product.slug,

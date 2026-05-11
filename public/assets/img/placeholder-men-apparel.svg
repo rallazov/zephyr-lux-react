@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" role="img" aria-label="Men's apparel  image coming soon">
+  <defs>
+    <linearGradient id="gm" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ebe8e4"/>
+      <stop offset="100%" stop-color="#d8d4cf"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="800" fill="url(#gm)"/>
+  <text x="600" y="350" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="34" fill="#5c5854">Men — apparel</text>
+  <text x="600" y="400" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="20" fill="#8a8580">Photography coming soon</text>
+  <text x="600" y="448" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="17" fill="#9c9893">Boxer briefs photographed separately</text>
+  <text x="600" y="492" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="16" fill="#9c9893">Zephyr Lux</text>
+</svg>

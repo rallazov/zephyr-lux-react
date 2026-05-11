@@ -127,7 +127,7 @@
         "currency": "USD",
         "inventory_quantity": 25,
         "status": "active",
-        "image_url": "/assets/img/Lifestyle.jpeg"
+        "image_url": "/assets/img/placeholder-women.svg"
       },
       {
         "sku": "ZLX-WM-SHELL-M",
@@ -137,7 +137,7 @@
         "currency": "USD",
         "inventory_quantity": 25,
         "status": "active",
-        "image_url": "/assets/img/Lifestyle.jpeg"
+        "image_url": "/assets/img/placeholder-women.svg"
       }
     ]
   },
@@ -161,7 +161,7 @@
         "currency": "USD",
         "inventory_quantity": 25,
         "status": "active",
-        "image_url": "/assets/img/Listing.jpeg"
+        "image_url": "/assets/img/placeholder-men-apparel.svg"
       },
       {
         "sku": "ZLX-MN-CREW-M",
@@ -171,7 +171,7 @@
         "currency": "USD",
         "inventory_quantity": 25,
         "status": "active",
-        "image_url": "/assets/img/Listing.jpeg"
+        "image_url": "/assets/img/placeholder-men-apparel.svg"
       }
     ]
   },
@@ -195,7 +195,7 @@
         "currency": "USD",
         "inventory_quantity": 25,
         "status": "active",
-        "image_url": "/assets/img/kids_placeholder.jpeg"
+        "image_url": "/assets/img/placeholder-kids.svg"
       },
       {
         "sku": "ZLX-KD-SHORTS-S",
@@ -205,7 +205,7 @@
         "currency": "USD",
         "inventory_quantity": 25,
         "status": "active",
-        "image_url": "/assets/img/kids_placeholder.jpeg"
+        "image_url": "/assets/img/placeholder-kids.svg"
       }
     ]
   },
@@ -229,7 +229,7 @@
         "currency": "USD",
         "inventory_quantity": 0,
         "status": "inactive",
-        "image_url": "/assets/img/sale_placeholder.jpeg"
+        "image_url": "/assets/img/placeholder-sale.svg"
       }
     ]
   }
