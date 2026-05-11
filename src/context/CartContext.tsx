@@ -67,13 +67,16 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
 
   const hydrateCartFromCatalog = useCallback((list: CatalogListItem[]) => {
     setCartItems((prev) => {
-      const { lines, priceUpdated } = reconcileCartLines(prev, list);
+      const { lines, priceUpdated, quantityClampNotice } = reconcileCartLines(prev, list);
       if (storefrontCartLinesEqual(prev, lines)) {
         return prev;
       }
-      if (priceUpdated) {
+      if (priceUpdated || quantityClampNotice) {
         queueMicrotask(() => {
-          setReconcileNotice("Prices were updated to match our current catalog.");
+          const parts: string[] = [];
+          if (priceUpdated) parts.push("Prices were updated to match our current catalog.");
+          if (quantityClampNotice) parts.push(quantityClampNotice);
+          setReconcileNotice(parts.join(" "));
         });
       }
       return lines;

@@ -153,13 +153,13 @@ describe("storefront route smoke (App.tsx router tree)", () => {
           v: 1,
           items: [
             {
-              id: 101,
-              name: "Zephyr Lux Boxer Briefs",
+              id: 103,
+              name: "Zephyr Lux Merino Everyday Crew",
               quantity: 1,
-              price: 24,
-              image: "/assets/img/Listing2.jpeg",
-              sku: "ZLX-2PK-M",
-              product_slug: "boxer-briefs",
+              price: 62,
+              image: "/assets/img/Listing.jpeg",
+              sku: "ZLX-MN-CREW-M",
+              product_slug: "merino-everyday-crew",
             },
           ],
         })

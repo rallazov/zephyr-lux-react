@@ -35,6 +35,7 @@ import {
   minMaxPriceCentsFromPurchasable,
   resolveSelection,
   resolveTemplateSelection,
+  variantsForPdpLayout,
   type TemplateAxisSelection,
 } from "./variantSelection";
 import VariantSelector from "./VariantSelector";
@@ -316,9 +317,13 @@ const ProductDetail: React.FC = () => {
     () => (product ? getPurchasableVariants(product.variants) : []),
     [product]
   );
+  const layoutVariants = useMemo(
+    () => (product ? variantsForPdpLayout(product.variants) : []),
+    [product],
+  );
   const layout = useMemo(
-    () => computeOptionLayout(purchasable),
-    [purchasable]
+    () => computeOptionLayout(layoutVariants),
+    [layoutVariants],
   );
 
   const purchasableSkuKey = useMemo(
@@ -428,15 +433,22 @@ const ProductDetail: React.FC = () => {
     selColor,
   ]);
 
-  const selectedVariant: ProductVariant | null =
-    selectionRes.kind === "purchasable" ? selectionRes.variant : null;
+  const displayVariant: ProductVariant | null =
+    selectionRes.kind === "purchasable" || selectionRes.kind === "not_purchasable"
+      ? selectionRes.variant
+      : null;
 
-  const gallerySelectionKey = `${selectedVariant?.sku ?? "none"}|${selSize ?? ""}|${selColor ?? ""}|${tmpl ? JSON.stringify(templateSel) : ""}`;
+  const gallerySelectionKey = `${displayVariant?.sku ?? "none"}|${selSize ?? ""}|${selColor ?? ""}|${tmpl ? JSON.stringify(templateSel) : ""}`;
 
-  const { min: pMin, max: pMax } = useMemo(
-    () => (product ? minMaxPriceCentsFromPurchasable(purchasable) : { min: 0, max: 0 }),
-    [product, purchasable]
-  );
+  const { min: pMin, max: pMax } = useMemo(() => {
+    if (!product) return { min: 0, max: 0 };
+    if (purchasable.length > 0) {
+      return minMaxPriceCentsFromPurchasable(purchasable);
+    }
+    return minMaxPriceCentsFromPurchasable(
+      product.variants.filter((v) => v.status === "active"),
+    );
+  }, [product, purchasable]);
 
   const cta = useMemo(() => {
     if (!product) {
@@ -471,7 +483,7 @@ const ProductDetail: React.FC = () => {
       return "";
     }
     return resolvePdpHeroImageUrl({
-      selectedVariant,
+      selectedVariant: displayVariant,
       productLevelGallery: catalogGallery.galleryImages,
       displayGalleryUrls: catalogGallery.displayGalleryUrls,
       variantPrimaryImageBySku: catalogGallery.variantPrimaryImageBySku,
@@ -479,7 +491,7 @@ const ProductDetail: React.FC = () => {
     });
   }, [
     product,
-    selectedVariant,
+    displayVariant,
     catalogGallery.galleryImages,
     catalogGallery.displayGalleryUrls,
     catalogGallery.variantPrimaryImageBySku,
@@ -640,23 +652,26 @@ const ProductDetail: React.FC = () => {
   const { storefrontProductId } = row;
   const showPriceRange = selectionRes.kind === "incomplete" && pMin !== pMax;
   const showSelectCopy = selectionRes.kind === "incomplete" && pMin === pMax;
-  const selectedLowStockMessage = selectedVariant
-    ? lowStockMessage(selectedVariant)
+  const selectedLowStockMessage = displayVariant
+    ? lowStockMessage(displayVariant)
     : null;
   const stockTone =
-    selectedVariant?.inventory_quantity === 0
-      ? "text-zlx-danger"
-      : selectedLowStockMessage
-        ? "text-zlx-warning"
-        : "text-zlx-success";
+    selectionRes.kind === "not_purchasable"
+      ? "text-zlx-warning"
+      : displayVariant?.inventory_quantity === 0
+        ? "text-zlx-danger"
+        : selectedLowStockMessage
+          ? "text-zlx-warning"
+          : "text-zlx-success";
 
   const addHandler = () => {
-    if (cta.disabled || !selectedVariant) {
+    if (cta.disabled || selectionRes.kind !== "purchasable") {
       return;
     }
-    const price = selectedVariant.price_cents / 100;
+    const cartVariant = selectionRes.variant;
+    const price = cartVariant.price_cents / 100;
     const img = resolvePdpHeroImageUrl({
-      selectedVariant,
+      selectedVariant: cartVariant,
       productLevelGallery: catalogGallery.galleryImages,
       displayGalleryUrls: catalogGallery.displayGalleryUrls,
       variantPrimaryImageBySku: catalogGallery.variantPrimaryImageBySku,
@@ -664,15 +679,15 @@ const ProductDetail: React.FC = () => {
     });
     addToCart({
       id: storefrontProductId,
-      name: `${product.title}${variantNameSuffixForDetail(selectedVariant, tmpl)}`,
+      name: `${product.title}${variantNameSuffixForDetail(cartVariant, tmpl)}`,
       quantity: 1,
       price,
       image: img,
-      sku: selectedVariant.sku,
-      variant_id: selectedVariant.id,
+      sku: cartVariant.sku,
+      variant_id: cartVariant.id,
       product_slug: product.slug,
       variant_display_snapshot: tmpl
-        ? buildVariantDisplaySnapshot(selectedVariant, tmpl)
+        ? buildVariantDisplaySnapshot(cartVariant, tmpl)
         : undefined,
     });
   };
@@ -735,9 +750,9 @@ const ProductDetail: React.FC = () => {
           </>
         ) : (
           <>
-            {selectedVariant && (
+            {displayVariant && (
               <p data-testid="pdp-selected-price" className="mb-3 text-3xl font-extrabold text-white">
-                ${(selectedVariant.price_cents / 100).toFixed(2)}
+                ${(displayVariant.price_cents / 100).toFixed(2)}
               </p>
             )}
             {showPriceRange && (
@@ -750,14 +765,16 @@ const ProductDetail: React.FC = () => {
                 ${(pMin / 100).toFixed(2)} — select options to confirm price.
               </p>
             )}
-            {selectedVariant && (
+            {displayVariant && (
               <p data-testid="pdp-stock-message" className={`mb-5 text-sm font-bold ${stockTone}`}>
-                {selectedVariant.inventory_quantity === 0
-                  ? "Out of stock for this color and size."
-                  : selectedLowStockMessage ?? "In stock."}
+                {selectionRes.kind === "not_purchasable"
+                  ? "This option can't be purchased right now."
+                  : displayVariant.inventory_quantity === 0
+                    ? "Out of stock for this color and size."
+                    : selectedLowStockMessage ?? "In stock."}
               </p>
             )}
-            {purchasable.length === 0 && (
+            {purchasable.length === 0 && selectionRes.kind !== "purchasable" && (
               <p data-testid="pdp-oos" className="mb-3 text-sm font-bold text-zlx-warning">
                 Unavailable. No purchasable variants.
               </p>
@@ -787,7 +804,9 @@ const ProductDetail: React.FC = () => {
         {!isComingSoon ? (
           <PdpSubscriptionBlock
             plans={row.subscriptionPlans}
-            selectedVariant={selectedVariant}
+            selectedVariant={
+              selectionRes.kind === "purchasable" ? selectionRes.variant : null
+            }
           />
         ) : null}
 

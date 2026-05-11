@@ -17,7 +17,7 @@
         "color": null,
         "price_cents": 1899,
         "currency": "USD",
-        "inventory_quantity": 50,
+        "inventory_quantity": 25,
         "status": "active",
         "image_url": "/assets/img/Listing2.jpeg"
       },
@@ -27,7 +27,7 @@
         "color": null,
         "price_cents": 1899,
         "currency": "USD",
-        "inventory_quantity": 50,
+        "inventory_quantity": 25,
         "status": "active",
         "image_url": "/assets/img/Listing2.jpeg"
       },
@@ -37,8 +37,7 @@
         "color": null,
         "price_cents": 1899,
         "currency": "USD",
-        "inventory_quantity": 3,
-        "low_stock_threshold": 5,
+        "inventory_quantity": 25,
         "status": "active",
         "image_url": "/assets/img/Listing2.jpeg"
       },
@@ -48,7 +47,7 @@
         "color": null,
         "price_cents": 1899,
         "currency": "USD",
-        "inventory_quantity": 50,
+        "inventory_quantity": 25,
         "status": "active",
         "image_url": "/assets/img/Listing2.jpeg"
       }
@@ -72,7 +71,7 @@
         "color": null,
         "price_cents": 1699,
         "currency": "USD",
-        "inventory_quantity": 50,
+        "inventory_quantity": 25,
         "status": "active",
         "image_url": "/assets/img/Listing2.jpeg"
       },
@@ -82,7 +81,7 @@
         "color": null,
         "price_cents": 1699,
         "currency": "USD",
-        "inventory_quantity": 50,
+        "inventory_quantity": 25,
         "status": "active",
         "image_url": "/assets/img/Listing2.jpeg"
       },
@@ -92,7 +91,7 @@
         "color": null,
         "price_cents": 1699,
         "currency": "USD",
-        "inventory_quantity": 50,
+        "inventory_quantity": 25,
         "status": "active",
         "image_url": "/assets/img/Listing2.jpeg"
       },
@@ -102,7 +101,7 @@
         "color": null,
         "price_cents": 1699,
         "currency": "USD",
-        "inventory_quantity": 50,
+        "inventory_quantity": 25,
         "status": "active",
         "image_url": "/assets/img/Listing2.jpeg"
       }
@@ -126,7 +125,7 @@
         "color": null,
         "price_cents": 8900,
         "currency": "USD",
-        "inventory_quantity": 14,
+        "inventory_quantity": 25,
         "status": "active",
         "image_url": "/assets/img/Lifestyle.jpeg"
       },
@@ -136,7 +135,7 @@
         "color": null,
         "price_cents": 8900,
         "currency": "USD",
-        "inventory_quantity": 18,
+        "inventory_quantity": 25,
         "status": "active",
         "image_url": "/assets/img/Lifestyle.jpeg"
       }
@@ -160,7 +159,7 @@
         "color": null,
         "price_cents": 6200,
         "currency": "USD",
-        "inventory_quantity": 20,
+        "inventory_quantity": 25,
         "status": "active",
         "image_url": "/assets/img/Listing.jpeg"
       },
@@ -170,7 +169,7 @@
         "color": null,
         "price_cents": 6200,
         "currency": "USD",
-        "inventory_quantity": 24,
+        "inventory_quantity": 25,
         "status": "active",
         "image_url": "/assets/img/Listing.jpeg"
       }
@@ -194,7 +193,7 @@
         "color": null,
         "price_cents": 2800,
         "currency": "USD",
-        "inventory_quantity": 16,
+        "inventory_quantity": 25,
         "status": "active",
         "image_url": "/assets/img/kids_placeholder.jpeg"
       },
@@ -204,7 +203,7 @@
         "color": null,
         "price_cents": 2800,
         "currency": "USD",
-        "inventory_quantity": 22,
+        "inventory_quantity": 25,
         "status": "active",
         "image_url": "/assets/img/kids_placeholder.jpeg"
       }

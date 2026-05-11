@@ -58,4 +58,29 @@ describe("quoteCartLines", () => {
     expect(q.lines[0]!.quantity).toBe(2);
     expect(q.subtotal_cents).toBe(3798);
   });
+
+  it("rejects quantity above per-order line cap", () => {
+    let err: unknown;
+    try {
+      quoteCartLines([{ sku: "ZLX-2PK-S", quantity: 6 }]);
+    } catch (e) {
+      err = e;
+    }
+    expect(isQuoteError(err)).toBe(true);
+    expect((err as QuoteError).code).toBe("QUANTITY_EXCEEDS_CAP");
+  });
+
+  it("rejects merged quantities above per-order line cap", () => {
+    let err: unknown;
+    try {
+      quoteCartLines([
+        { sku: "ZLX-2PK-S", quantity: 4 },
+        { sku: "ZLX-2PK-S", quantity: 2 },
+      ]);
+    } catch (e) {
+      err = e;
+    }
+    expect(isQuoteError(err)).toBe(true);
+    expect((err as QuoteError).code).toBe("QUANTITY_EXCEEDS_CAP");
+  });
 });

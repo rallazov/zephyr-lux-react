@@ -91,6 +91,7 @@ describe("CartPage mobile layout (responsive markup contract)", () => {
     const mobileLine = await screen.findByTestId(`cart-line-mobile-${row.storefrontProductId}::S1`);
     expect(mobileLine).toHaveClass("zlx-card");
 
+    expect(within(mobileLine).getByRole("status")).toHaveTextContent(/3 in stock/i);
     expect(screen.getByRole("columnheader", { name: /^product$/i })).toBeInTheDocument();
 
     expect(screen.getByRole("note")).toHaveTextContent(/pinned to the bottom on small screens/i);

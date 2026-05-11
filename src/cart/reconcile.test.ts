@@ -66,7 +66,128 @@ describe("validateStorefrontCartLines", () => {
     expect(v).toHaveLength(1);
     expect(v[0].issues).toHaveLength(0);
     expect(v[0].displayUnitPrice).toBe(15);
+    expect(v[0].inventoryQuantity).toBe(3);
+    expect(v[0].maxUnitsPerOrder).toBe(5);
+    expect(v[0].maxLineQuantity).toBe(3);
     expect(isCartOkForCheckout(v)).toBe(true);
+  });
+
+  it("exposes inventory and policy cap separately when inventory exceeds per-order limit", () => {
+    const bigList = parseStaticCatalogData([
+      {
+        id: 901,
+        slug: "bulk-test",
+        title: "Bulk",
+        status: "active",
+        variants: [
+          {
+            sku: "BULK-V",
+            price_cents: 1000,
+            currency: "USD",
+            inventory_quantity: 40,
+            status: "active",
+          },
+        ],
+      },
+    ]).listItems;
+    const lines: StorefrontCartLine[] = [
+      {
+        id: bigList[0].storefrontProductId,
+        name: "B",
+        quantity: 4,
+        price: 10,
+        image: "",
+        sku: "BULK-V",
+        product_slug: "bulk-test",
+      },
+    ];
+    const v = validateStorefrontCartLines(lines, bigList);
+    expect(v[0].inventoryQuantity).toBe(40);
+    expect(v[0].maxUnitsPerOrder).toBe(5);
+    expect(v[0].maxLineQuantity).toBe(5);
+    expect(v[0].issues).toHaveLength(0);
+  });
+
+  it("flags quantity above checkout cap when inventory allows more", () => {
+    const bigList = parseStaticCatalogData([
+      {
+        id: 902,
+        slug: "bulk-test-2",
+        title: "Bulk 2",
+        status: "active",
+        variants: [
+          {
+            sku: "BULK-V2",
+            price_cents: 1000,
+            currency: "USD",
+            inventory_quantity: 40,
+            status: "active",
+          },
+        ],
+      },
+    ]).listItems;
+    const lines: StorefrontCartLine[] = [
+      {
+        id: bigList[0].storefrontProductId,
+        name: "B",
+        quantity: 9,
+        price: 10,
+        image: "",
+        sku: "BULK-V2",
+        product_slug: "bulk-test-2",
+      },
+    ];
+    const v = validateStorefrontCartLines(lines, bigList);
+    expect(v[0].issues.some((i) => i.code === "quantity_exceeds_checkout_cap")).toBe(
+      true,
+    );
+    expect(isCartOkForCheckout(v)).toBe(false);
+  });
+
+  it("flags merged quantities across multiple bag lines above checkout cap", () => {
+    const dupList = parseStaticCatalogData([
+      {
+        id: 904,
+        slug: "bulk-dup-lines",
+        title: "Bulk Dup",
+        status: "active",
+        variants: [
+          {
+            sku: "BULK-DUP",
+            price_cents: 1000,
+            currency: "USD",
+            inventory_quantity: 40,
+            status: "active",
+          },
+        ],
+      },
+    ]).listItems;
+    const rowId = dupList[0].storefrontProductId;
+    const lines: StorefrontCartLine[] = [
+      {
+        id: rowId,
+        name: "B",
+        quantity: 3,
+        price: 10,
+        image: "",
+        sku: "BULK-DUP",
+        product_slug: "bulk-dup-lines",
+      },
+      {
+        id: rowId,
+        name: "B",
+        quantity: 3,
+        price: 10,
+        image: "",
+        sku: "BULK-DUP",
+        product_slug: "bulk-dup-lines",
+      },
+    ];
+    const v = validateStorefrontCartLines(lines, dupList);
+    expect(v.every((row) => row.issues.some((i) => i.code === "quantity_exceeds_checkout_cap"))).toBe(
+      true,
+    );
+    expect(isCartOkForCheckout(v)).toBe(false);
   });
 
   it("flags unknown SKU with plain message", () => {
@@ -278,9 +399,10 @@ describe("syncCartLinesFromCatalog", () => {
         product_slug: "recon-product",
       },
     ];
-    const { lines: next, priceUpdated } = syncCartLinesFromCatalog(lines, list);
+    const { lines: next, priceUpdated, quantityClampNotice } = syncCartLinesFromCatalog(lines, list);
     expect(next).toHaveLength(1);
     expect(priceUpdated).toBe(true);
+    expect(quantityClampNotice).toBe(null);
     expect(next[0].price).toBe(15);
     expect(next[0].variant_id).toBe("550e8400-e29b-41d4-a716-446655440000");
   });
@@ -300,6 +422,40 @@ describe("syncCartLinesFromCatalog", () => {
     ];
     const { lines: next } = syncCartLinesFromCatalog(lines, list);
     expect(next[0].sku).toBe("GOOD");
+  });
+
+  it("clamps quantity to checkout cap during catalog sync", () => {
+    const bigList = parseStaticCatalogData([
+      {
+        id: 903,
+        slug: "bulk-sync",
+        title: "Bulk sync",
+        status: "active",
+        variants: [
+          {
+            sku: "BULK-SYNC",
+            price_cents: 1000,
+            currency: "USD",
+            inventory_quantity: 99,
+            status: "active",
+          },
+        ],
+      },
+    ]).listItems;
+    const lines: StorefrontCartLine[] = [
+      {
+        id: bigList[0].storefrontProductId,
+        name: "B",
+        quantity: 17,
+        price: 10,
+        image: "",
+        sku: "BULK-SYNC",
+        product_slug: "bulk-sync",
+      },
+    ];
+    const { lines: next, quantityClampNotice } = syncCartLinesFromCatalog(lines, bigList);
+    expect(next[0].quantity).toBe(5);
+    expect(quantityClampNotice).toMatch(/per-order/i);
   });
 
   it("keeps unknown SKU line in cart (no removal)", () => {
@@ -325,6 +481,7 @@ describe("reconcileCartLines (sync wrapper)", () => {
     const lines: StorefrontCartLine[] = [];
     const r = reconcileCartLines(lines, list);
     expect(r.removedLineSlots).toBe(0);
+    expect(r.quantityClampNotice).toBe(null);
   });
 });
 

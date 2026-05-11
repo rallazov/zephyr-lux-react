@@ -5,6 +5,7 @@ import {
   getPurchasableVariants,
   lowStockMessage,
   resolveSelection,
+  variantsForPdpLayout,
 } from "./variantSelection";
 
 const baseV = (o: Partial<ProductVariant> & { sku: string }): ProductVariant => ({
@@ -20,6 +21,18 @@ const baseV = (o: Partial<ProductVariant> & { sku: string }): ProductVariant => 
 });
 
 describe("variantSelection", () => {
+  it("variantsForPdpLayout falls back to active SKUs when nothing is purchasable", () => {
+    const all: ProductVariant[] = [
+      baseV({ sku: "ZLX-2PK-S", size: "S", inventory_quantity: 0 }),
+      baseV({ sku: "ZLX-2PK-M", size: "M", inventory_quantity: 0 }),
+    ];
+    expect(getPurchasableVariants(all)).toHaveLength(0);
+    expect(variantsForPdpLayout(all).map((v) => v.sku)).toEqual([
+      "ZLX-2PK-S",
+      "ZLX-2PK-M",
+    ]);
+  });
+
   it("excludes OOS and inactive from purchasable", () => {
     const vs: ProductVariant[] = [
       baseV({ sku: "a", size: "M", color: "black", inventory_quantity: 0 }),

@@ -14,9 +14,9 @@ import { test, expect, type Page } from "@playwright/test";
  * assert the cart-clear contract from the user's perspective.
  */
 
-const PRIMED_CART_PATH = "/product/boxer-briefs";
+const PRIMED_CART_PATH = "/product/merino-everyday-crew";
 
-async function addBoxerBriefsToCart(page: Page): Promise<void> {
+async function addMerinoCrewToCart(page: Page): Promise<void> {
   await page.goto(PRIMED_CART_PATH);
   await page.getByTestId("pdp-variant-selector").waitFor({ state: "visible" });
   await page.getByTestId("pdp-select-size").selectOption("M");
@@ -38,7 +38,7 @@ async function readPersistedCartLength(page: Page): Promise<number> {
 
 test.describe("Stripe return → cart reset", () => {
   test("succeeded redirect empties the cart and the bag page reflects it", async ({ page }) => {
-    await addBoxerBriefsToCart(page);
+    await addMerinoCrewToCart(page);
     expect(await readPersistedCartLength(page)).toBeGreaterThan(0);
 
     // Mimic the URL Stripe redirects to after a successful Payment Element confirmation.
@@ -55,7 +55,7 @@ test.describe("Stripe return → cart reset", () => {
   });
 
   test("processing redirect also clears the cart (intent committed, settlement pending)", async ({ page }) => {
-    await addBoxerBriefsToCart(page);
+    await addMerinoCrewToCart(page);
     expect(await readPersistedCartLength(page)).toBeGreaterThan(0);
 
     await page.goto(
@@ -68,7 +68,7 @@ test.describe("Stripe return → cart reset", () => {
   });
 
   test("failed redirect preserves the cart so the shopper can retry", async ({ page }) => {
-    await addBoxerBriefsToCart(page);
+    await addMerinoCrewToCart(page);
     const beforeLen = await readPersistedCartLength(page);
     expect(beforeLen).toBeGreaterThan(0);
 
@@ -86,7 +86,7 @@ test.describe("Stripe return → cart reset", () => {
   });
 
   test("direct navigation to /order-confirmation without Stripe params does not touch the cart", async ({ page }) => {
-    await addBoxerBriefsToCart(page);
+    await addMerinoCrewToCart(page);
     const beforeLen = await readPersistedCartLength(page);
     expect(beforeLen).toBeGreaterThan(0);
 
@@ -97,7 +97,7 @@ test.describe("Stripe return → cart reset", () => {
   });
 
   test("idempotent: revisiting the same successful confirmation URL does not wipe a freshly-added item", async ({ page }) => {
-    await addBoxerBriefsToCart(page);
+    await addMerinoCrewToCart(page);
 
     await page.goto(
       "/order-confirmation?payment_intent=pi_e2e_idem&redirect_status=succeeded",
@@ -108,7 +108,7 @@ test.describe("Stripe return → cart reset", () => {
 
     // Shopper continues shopping, adds another item, then somehow lands on the
     // same confirmation URL again (browser back / deep link).
-    await addBoxerBriefsToCart(page);
+    await addMerinoCrewToCart(page);
     expect(await readPersistedCartLength(page)).toBeGreaterThan(0);
 
     await page.goto(
