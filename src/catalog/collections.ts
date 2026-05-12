@@ -2,13 +2,12 @@
  * Single source of truth for storefront collection routes, nav labels, and hero copy.
  * URL paths are stable for SEO/metadata follow-ups (story 6-5).
  *
- * Hero art: only the underwear collection uses real boxer photography; other collections
- * use SVG placeholders until category-specific shoots exist.
+ * Hero art: men's + underwear collections share real boxer photography (current assortment).
+ * Women / kids / sale use SVG placeholders until category shoots exist.
  */
 import {
   MENS_BOXER_BRIEFS_PACK_IMAGE,
   PLACEHOLDER_IMAGE_KIDS,
-  PLACEHOLDER_IMAGE_MEN_APPAREL,
   PLACEHOLDER_IMAGE_SALE,
   PLACEHOLDER_IMAGE_WOMEN,
 } from "./pdpImage";
@@ -38,7 +37,7 @@ export const COLLECTION_ROUTES: readonly CollectionRouteDef[] = [
     categoryKey: "men",
     heroTitle: "Refined everyday wear",
     heroDescription: "Quiet luxury for daily routines—tailored fit, premium fabrics, and ease that lasts.",
-    heroImage: PLACEHOLDER_IMAGE_MEN_APPAREL,
+    heroImage: MENS_BOXER_BRIEFS_PACK_IMAGE,
   },
   {
     path: "/underwear",

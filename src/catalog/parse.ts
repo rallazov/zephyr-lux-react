@@ -1,5 +1,9 @@
 import { type Product, productSchema } from "../domain/commerce";
-import { buildDisplayGalleryUrls } from "./pdpImage";
+import {
+  buildDisplayGalleryUrls,
+  MENS_BOXER_BRIEFS_LONG_LEG_PDP_GALLERY_URLS,
+  MENS_BOXER_BRIEFS_PDP_GALLERY_URLS,
+} from "./pdpImage";
 import {
   type CatalogListItem,
   type CatalogProductDetail,
@@ -27,10 +31,14 @@ function seedRowToProduct(row: StaticSeedProductRow): Product {
     id: _storefrontId,
     supabase_product_id,
     variant_template: _vt,
+    collection_keys: _collectionKeys,
+    gallery_image_urls: _galleryUrls,
     ...bodyBase
   } = row;
   void _storefrontId;
   void _vt;
+  void _collectionKeys;
+  void _galleryUrls;
   const body = {
     ...bodyBase,
     ...(supabase_product_id ? { id: supabase_product_id } : {}),
@@ -78,19 +86,30 @@ export const isStorefrontBrowsableProduct = isStorefrontListableProduct;
 /** Shared list-row derivation for static + Supabase catalog adapters. */
 export function catalogListItemFromProduct(
   product: Product,
-  storefrontProductId: number
+  storefrontProductId: number,
+  collectionKeys: string[] = [],
+  listHeroOverride?: string | null,
 ): CatalogListItem {
   const prices = product.variants.map((v) => v.price_cents);
   const min = Math.min(...prices);
   const max = Math.max(...prices);
   const inStock = product.variants.some(isPurchasableVariant);
-  const hero = product.variants[0]?.image_url ?? "";
+  const sortedSku = [...product.variants].sort((a, b) =>
+    a.sku.localeCompare(b.sku),
+  );
+  const overrideHero = listHeroOverride?.trim();
+  const hero = overrideHero
+    ? overrideHero
+    : sortedSku[0]?.image_url?.trim() ||
+      sortedSku.find((v) => v.image_url?.trim())?.image_url?.trim() ||
+      "";
   return {
     product,
     storefrontProductId,
     minPriceCents: min,
     maxPriceCents: max,
     heroImageUrl: hero,
+    collectionKeys,
     inStock,
     purchasableVariantCount: purchasableVariantCount(product),
     subscriptionPlans: [],
@@ -117,8 +136,33 @@ export function parseStaticCatalogData(input: unknown) {
       continue;
     }
     products.push(product);
-    listItems.push(catalogListItemFromProduct(product, raw.id));
-    const galleryImages: string[] = [];
+    const collectionKeys = raw.collection_keys ?? [];
+
+    let galleryImages: string[] =
+      raw.gallery_image_urls && raw.gallery_image_urls.length > 0
+        ? [...raw.gallery_image_urls]
+        : [];
+    if (galleryImages.length === 0 && product.slug === "boxer-briefs") {
+      galleryImages = [...MENS_BOXER_BRIEFS_PDP_GALLERY_URLS];
+    } else if (
+      galleryImages.length === 0 &&
+      product.slug === "boxer-briefs-long-leg"
+    ) {
+      galleryImages = [...MENS_BOXER_BRIEFS_LONG_LEG_PDP_GALLERY_URLS];
+    }
+
+    const variantsSortedForHero = [...product.variants].sort((a, b) =>
+      a.sku.localeCompare(b.sku),
+    );
+    const listHero =
+      galleryImages[0]?.trim() ||
+      variantsSortedForHero[0]?.image_url?.trim() ||
+      "";
+
+    listItems.push(
+      catalogListItemFromProduct(product, raw.id, collectionKeys, listHero),
+    );
+
     const variantPrimaryImageBySku: Partial<Record<string, string>> = {};
     const displayGalleryUrls = buildDisplayGalleryUrls(
       product.variants,
@@ -130,6 +174,7 @@ export function parseStaticCatalogData(input: unknown) {
       storefrontProductId: raw.id,
       galleryImages,
       displayGalleryUrls,
+      collectionKeys,
       variantPrimaryImageBySku,
       subscriptionPlans: [],
       variantTemplate: raw.variant_template

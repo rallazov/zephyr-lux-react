@@ -47,6 +47,12 @@ const PRODUCT_PLANS_EMBED = `
   )
 `;
 
+const PRODUCT_COLLECTIONS_EMBED = `
+  product_collection_assignments (
+    collection_key
+  )
+`;
+
 /** PDP + template axes: embed option values and template graph (Epic 11-3). */
 const PRODUCTS_DETAIL_SELECT = `
   id,
@@ -97,7 +103,8 @@ const PRODUCTS_DETAIL_SELECT = `
     )
   ),
   ${PRODUCT_IMAGES_EMBED},
-  ${PRODUCT_PLANS_EMBED}
+  ${PRODUCT_PLANS_EMBED},
+  ${PRODUCT_COLLECTIONS_EMBED}
 `;
 
 /** PLP list: omit template graph + per-variant option rows. */
@@ -128,7 +135,8 @@ const PRODUCTS_LIST_SELECT = `
     status
   ),
   ${PRODUCT_IMAGES_EMBED},
-  ${PRODUCT_PLANS_EMBED}
+  ${PRODUCT_PLANS_EMBED},
+  ${PRODUCT_COLLECTIONS_EMBED}
 `;
 
 export class StaticCatalogAdapter implements CatalogAdapter {

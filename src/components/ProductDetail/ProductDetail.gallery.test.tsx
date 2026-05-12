@@ -41,6 +41,7 @@ vi.mock("../../catalog/factory", () => ({
       },
       galleryImages: [],
       displayGalleryUrls: ["/legacy-s.jpg", "/legacy-m.jpg", "/primary-s.jpg", "/primary-m.jpg"],
+      collectionKeys: [],
       variantPrimaryImageBySku: {
         "SKU-S": "/primary-s.jpg",
         "SKU-M": "/primary-m.jpg",

@@ -4,6 +4,7 @@ import {
   sanitizeSupabaseProductBundle,
   resolveVariantImageUrl,
   supabaseBundleToCatalogDetail,
+  supabaseBundleToListItem,
   supabaseRowsToProduct,
   type SupabaseProductWithRelations,
 } from "./supabase-map";
@@ -110,7 +111,25 @@ describe("supabase-map", () => {
     expect(detail.variantPrimaryImageBySku["ZLX-2PK-S"]).toBe("/assets/v.jpg");
     expect(detail.displayGalleryUrls).toContain("/assets/p.jpg");
     expect(detail.displayGalleryUrls).toContain("/assets/v.jpg");
+    expect(detail.collectionKeys).toEqual([]);
     expect(detail.subscriptionPlans).toEqual([]);
+  });
+
+  it("list tile hero prefers first product-level gallery image over first variant image", () => {
+    const item = supabaseBundleToListItem(baseProduct);
+    expect(item.heroImageUrl).toBe("/assets/p.jpg");
+  });
+
+  it("maps collection assignment embeds to catalog detail and list rows", () => {
+    const detail = supabaseBundleToCatalogDetail({
+      ...baseProduct,
+      product_collection_assignments: [
+        { collection_key: "underwear" },
+        { collection_key: "men" },
+        { collection_key: "underwear" },
+      ],
+    });
+    expect(detail.collectionKeys).toEqual(["men", "underwear"]);
   });
 
   it("maps active subscription embeds to storefront plan views (Stripe price id withheld)", () => {

@@ -1,11 +1,32 @@
 import type { Product, ProductVariant } from "../domain/commerce";
 
 /**
- * Storefront image policy: only men's boxer brief SKUs use real pack photography
- * (`/assets/img/Listing2.jpeg`). Everything else uses committed SVG placeholders under
- * `/assets/img/placeholder-*.svg` until stock photography exists.
+ * Storefront image policy: men's boxer brief products use committed pack / lifestyle JPEGs
+ * under `/assets/img/`. Categories without photography use SVG placeholders under
+ * `/assets/img/placeholder-*.svg`.
  */
 export const MENS_BOXER_BRIEFS_PACK_IMAGE = "/assets/img/Listing2.jpeg";
+
+/** PDP gallery order for men's boxer briefs (short leg). */
+export const MENS_BOXER_BRIEFS_PDP_GALLERY_URLS: readonly string[] = [
+  "/assets/img/Listing2.jpeg",
+  "/assets/img/Listing.jpeg",
+  "/assets/img/Custom Listing.jpeg",
+  "/assets/img/3 Listing copy.jpeg",
+  "/assets/img/Lifestyle.jpeg",
+  "/assets/img/1 Lifestyle.jpeg",
+  "/assets/img/Infographic.jpeg",
+  "/assets/img/Infographic2.jpeg",
+];
+
+/**
+ * Long-leg PDP: dedicated listing hero, then the same lifestyle/detail shots as short leg
+ * (short-leg pack hero omitted).
+ */
+export const MENS_BOXER_BRIEFS_LONG_LEG_PDP_GALLERY_URLS: readonly string[] = [
+  "/assets/img/long leg.jpg",
+  ...MENS_BOXER_BRIEFS_PDP_GALLERY_URLS.slice(1),
+];
 
 export const PLACEHOLDER_IMAGE_GENERIC = "/assets/img/placeholder-generic.svg";
 export const PLACEHOLDER_IMAGE_WOMEN = "/assets/img/placeholder-women.svg";

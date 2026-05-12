@@ -301,12 +301,63 @@ INSERT INTO public.product_images (
   sort_order,
   is_primary
 )
-VALUES (
+VALUES
+-- boxer-briefs (short leg): matches static `MENS_BOXER_BRIEFS_PDP_GALLERY_URLS`
+(
   'a0000001-0000-4000-8000-000000000001',
   NULL,
   '/assets/img/Listing2.jpeg',
   0,
   true
+),
+(
+  'a0000001-0000-4000-8000-000000000001',
+  NULL,
+  '/assets/img/Listing.jpeg',
+  1,
+  false
+),
+(
+  'a0000001-0000-4000-8000-000000000001',
+  NULL,
+  '/assets/img/Custom Listing.jpeg',
+  2,
+  false
+),
+(
+  'a0000001-0000-4000-8000-000000000001',
+  NULL,
+  '/assets/img/3 Listing copy.jpeg',
+  3,
+  false
+),
+(
+  'a0000001-0000-4000-8000-000000000001',
+  NULL,
+  '/assets/img/Lifestyle.jpeg',
+  4,
+  false
+),
+(
+  'a0000001-0000-4000-8000-000000000001',
+  NULL,
+  '/assets/img/1 Lifestyle.jpeg',
+  5,
+  false
+),
+(
+  'a0000001-0000-4000-8000-000000000001',
+  NULL,
+  '/assets/img/Infographic.jpeg',
+  6,
+  false
+),
+(
+  'a0000001-0000-4000-8000-000000000001',
+  NULL,
+  '/assets/img/Infographic2.jpeg',
+  7,
+  false
 ),
 (
   'a0000002-0000-4000-8000-000000000002',
@@ -336,10 +387,60 @@ VALUES (
   0,
   true
 ),
+-- long-leg: primary listing + same lifestyle/detail URLs as short leg (minus short pack hero)
 (
   'a0000006-0000-4000-8000-000000000006',
   NULL,
-  '/assets/img/Listing2.jpeg',
+  '/assets/img/long leg.jpg',
   0,
   true
+),
+(
+  'a0000006-0000-4000-8000-000000000006',
+  NULL,
+  '/assets/img/Listing.jpeg',
+  1,
+  false
+),
+(
+  'a0000006-0000-4000-8000-000000000006',
+  NULL,
+  '/assets/img/Custom Listing.jpeg',
+  2,
+  false
+),
+(
+  'a0000006-0000-4000-8000-000000000006',
+  NULL,
+  '/assets/img/3 Listing copy.jpeg',
+  3,
+  false
+),
+(
+  'a0000006-0000-4000-8000-000000000006',
+  NULL,
+  '/assets/img/Lifestyle.jpeg',
+  4,
+  false
+),
+(
+  'a0000006-0000-4000-8000-000000000006',
+  NULL,
+  '/assets/img/1 Lifestyle.jpeg',
+  5,
+  false
+),
+(
+  'a0000006-0000-4000-8000-000000000006',
+  NULL,
+  '/assets/img/Infographic.jpeg',
+  6,
+  false
+),
+(
+  'a0000006-0000-4000-8000-000000000006',
+  NULL,
+  '/assets/img/Infographic2.jpeg',
+  7,
+  false
 );

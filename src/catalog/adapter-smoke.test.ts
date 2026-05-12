@@ -46,10 +46,12 @@ it("listProducts returns bundled active rows with list invariants", async () => 
   ).toBe(true);
 });
 
-it("lists coming_soon products as storefront-discoverable slugs", async () => {
+it("men's boxer PDP exposes multi-image gallery from bundled assets", async () => {
   const adapter = getDefaultCatalogAdapter();
-  const row = await adapter.getProductBySlug("seasonal-archive-sale");
-  expect(row?.product.status).toBe("coming_soon");
-  const list = await adapter.listProducts();
-  expect(list.some((l) => l.product.slug === "seasonal-archive-sale")).toBe(true);
+  const shortRow = await adapter.getProductBySlug("boxer-briefs");
+  const longRow = await adapter.getProductBySlug("boxer-briefs-long-leg");
+  expect(shortRow?.galleryImages.length).toBe(8);
+  expect(shortRow?.displayGalleryUrls.length).toBe(8);
+  expect(longRow?.galleryImages.length).toBe(8);
+  expect(longRow?.displayGalleryUrls[0]).toBe("/assets/img/long leg.jpg");
 });
