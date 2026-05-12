@@ -55,11 +55,24 @@ export const staticSeedProductRowSchema = z
     origin: z.string().optional(),
     status: productStatusSchema,
     variants: z.array(productVariantSchema),
+    /** Optional static mirror of `product_collection_assignments.collection_key`. */
+    collection_keys: z.array(z.string().min(1)).optional(),
+    /** Static PDP gallery (product-level). When omitted, boxer brief slugs use defaults from `pdpImage.ts`. */
+    gallery_image_urls: z.array(z.string().min(1)).optional(),
   })
   .superRefine((row, ctx) => {
-    const { id: _unused, supabase_product_id, variant_template: _tpl, ...rest } = row;
+    const {
+      id: _unused,
+      supabase_product_id,
+      variant_template: _tpl,
+      collection_keys: _collections,
+      gallery_image_urls: _gal,
+      ...rest
+    } = row;
     void _unused;
     void _tpl;
+    void _collections;
+    void _gal;
     const body = {
       ...rest,
       ...(supabase_product_id ? { id: supabase_product_id } : {}),

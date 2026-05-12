@@ -1,9 +1,14 @@
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import type { z } from "zod";
 import { useAuth } from "../auth/AuthContext";
+import { COLLECTION_ROUTES } from "../catalog/collections";
+import { PDP_IMAGE_PLACEHOLDER } from "../catalog/pdpImage";
+import { resolveProductImageUrl } from "../catalog/productImageUrl";
 import type { ProductStatus, ProductVariantStatus } from "../domain/commerce/enums";
+import { PRODUCT_IMAGE_MAX_BYTES, isDeletableProductImageStoragePath } from "../domain/commerce/productImage";
 import type { VariantTemplate } from "../domain/commerce/variantTemplate";
+import { apiUrl } from "../lib/apiBase";
 import {
   parseVariantTemplateJoinRow,
   variantsSatisfyTemplate,
@@ -128,7 +133,20 @@ export default function AdminProductForm() {
   const [templatesLoadErr, setTemplatesLoadErr] = useState<string | null>(null);
   const [variants, setVariants] = useState<VRow[]>(() => [newVariantRow()]);
   const [images, setImages] = useState<IRow[]>([]);
+  const [selectedCollections, setSelectedCollections] = useState<string[]>([]);
   const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlanAdminRow[]>(() => []);
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const [uploadErr, setUploadErr] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const heroPreview = useMemo(() => {
+    const sorted = [...images]
+      .filter((im) => im.storage_path.trim() && im.variant_id == null)
+      .sort((a, b) => {
+        if ((a.is_primary ?? false) !== (b.is_primary ?? false)) return a.is_primary ? -1 : 1;
+        return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+      });
+    return resolveProductImageUrl(sorted[0]?.storage_path) || PDP_IMAGE_PLACEHOLDER;
+  }, [images]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -169,7 +187,7 @@ export default function AdminProductForm() {
       const { data, error } = await supabase
         .from("products")
         .select(
-          "*, product_variants(*, product_variant_option_values(axis_id, option_id)), product_images(*), product_subscription_plans(*)",
+          "*, product_variants(*, product_variant_option_values(axis_id, option_id)), product_images(*), product_subscription_plans(*), product_collection_assignments(collection_key)",
         )
         .eq("id", productId)
         .single();
@@ -238,6 +256,12 @@ export default function AdminProductForm() {
           variant_id: (r.variant_id as string | null) ?? null,
         })) as IRow[];
       setImages(iRows);
+      setSelectedCollections(
+        ((data as { product_collection_assignments?: Record<string, unknown>[] })
+          .product_collection_assignments ?? [])
+          .map((r) => String(r.collection_key ?? "").trim())
+          .filter(Boolean),
+      );
 
       const planRows = (data as { product_subscription_plans?: Record<string, unknown>[] })
         .product_subscription_plans;
@@ -268,6 +292,114 @@ export default function AdminProductForm() {
       setLoading(false);
     })();
   }, [isNew, productId, supabase]);
+
+  const toggleCollection = useCallback((key: string) => {
+    setSelectedCollections((current) =>
+      current.includes(key)
+        ? current.filter((k) => k !== key)
+        : [...current, key].sort((a, b) => a.localeCompare(b)),
+    );
+  }, []);
+
+  const uploadFiles = useCallback(
+    async (files: FileList | File[]) => {
+      const list = Array.from(files);
+      if (list.length === 0) return;
+      setUploadErr(null);
+      if (!session?.access_token) {
+        setUploadErr("Sign in again before uploading images.");
+        return;
+      }
+      for (const file of list) {
+        if (!file.type.startsWith("image/")) {
+          setUploadErr("Only image files are accepted.");
+          return;
+        }
+        if (file.size > PRODUCT_IMAGE_MAX_BYTES) {
+          setUploadErr("Image is too large for product media upload.");
+          return;
+        }
+      }
+
+      setUploadBusy(true);
+      try {
+        const uploaded: Array<Omit<IRow, "sort_order" | "is_primary">> = [];
+        for (const file of list) {
+          const fd = new FormData();
+          if (productId) fd.set("product_id", productId);
+          fd.set("file", file);
+          const res = await fetch(apiUrl("/api/admin-product-image"), {
+            method: "POST",
+            headers: { Authorization: `Bearer ${session.access_token}` },
+            body: fd,
+          });
+          const body = (await res.json().catch(() => ({}))) as {
+            object_path?: string;
+            error?: string;
+          };
+          if (!res.ok || typeof body.object_path !== "string") {
+            throw new Error(
+              typeof body.error === "string" ? body.error : `Upload failed (${res.status}).`,
+            );
+          }
+          uploaded.push({
+            id: crypto.randomUUID(),
+            storage_path: body.object_path,
+            alt_text: title.trim() || file.name,
+            variant_id: null,
+          });
+        }
+        setImages((prev) => [
+          ...prev,
+          ...uploaded.map((row, index) => ({
+            ...row,
+            sort_order: prev.length + index,
+            is_primary: prev.length === 0 && index === 0,
+          })),
+        ]);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      } catch (err) {
+        setUploadErr(err instanceof Error ? err.message : String(err));
+      } finally {
+        setUploadBusy(false);
+      }
+    },
+    [productId, session?.access_token, title],
+  );
+
+  const removeImageAtIndex = useCallback(
+    async (index: number) => {
+      const row = images[index];
+      if (!row) return;
+      const path = row.storage_path.trim();
+      if (path && isDeletableProductImageStoragePath(path)) {
+        if (!session?.access_token) {
+          setUploadErr("Sign in again before removing stored images.");
+          return;
+        }
+        try {
+          const q = new URLSearchParams({ object_path: path });
+          const res = await fetch(apiUrl(`/api/admin-product-image?${q.toString()}`), {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
+          const body = (await res.json().catch(() => ({}))) as { error?: string };
+          if (!res.ok) {
+            setUploadErr(
+              typeof body.error === "string" ? body.error : `Remove failed (${res.status}).`,
+            );
+            return;
+          }
+        } catch (err) {
+          setUploadErr(err instanceof Error ? err.message : String(err));
+          return;
+        }
+      }
+      setUploadErr(null);
+      setImages((r) => r.filter((_, j) => j !== index));
+    },
+    [images, session?.access_token],
+  );
 
   const onSave = useCallback(
     async (e: FormEvent) => {
@@ -349,8 +481,11 @@ export default function AdminProductForm() {
       }
       setSaving(true);
       try {
-        const json = bundleToRpcPayload(parse.data) as { [key: string]: unknown };
-        const { data, error } = await supabase.rpc("admin_save_product_bundle", {
+        const json = {
+          ...(bundleToRpcPayload(parse.data) as { [key: string]: unknown }),
+          collection_keys: selectedCollections,
+        };
+        const { data, error } = await supabase.rpc("admin_save_product_catalog_bundle", {
           p_payload: json,
         });
         if (error) {
@@ -396,6 +531,7 @@ export default function AdminProductForm() {
       variants,
       variantTemplates,
       images,
+      selectedCollections,
       subscriptionPlans,
       isNew,
       nav,
@@ -449,6 +585,54 @@ export default function AdminProductForm() {
           {formErr}
         </p>
       ) : null}
+
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="bg-white border border-slate-200 rounded-lg p-4">
+          <div className="grid gap-4 sm:grid-cols-[7rem_1fr] sm:items-center">
+            <img
+              src={heroPreview}
+              alt=""
+              className="aspect-square w-28 rounded border border-slate-200 bg-slate-100 object-cover"
+              onError={(event) => {
+                event.currentTarget.onerror = null;
+                event.currentTarget.src = PDP_IMAGE_PLACEHOLDER;
+              }}
+            />
+            <div className="min-w-0">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                Product-first editor
+              </p>
+              <h2 className="mt-1 text-xl font-semibold text-slate-900 truncate">
+                {title.trim() || "Untitled product"}
+              </h2>
+              <p className="mt-1 font-mono text-xs text-slate-500 truncate">
+                {slug.trim() || "slug-not-set"}
+              </p>
+              <p className="mt-3 text-sm text-slate-600">
+                Manage content, storefront collections, images, variants, price, stock, and publish state from one save.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-lg p-4">
+          <h2 className="font-semibold text-slate-800">Publishing</h2>
+          <p className="mt-2 text-sm text-slate-600">
+            {status === "active"
+              ? "Visible and purchasable when at least one active variant has stock."
+              : status === "coming_soon"
+                ? "Visible on storefront with purchase blocked and waitlist behavior."
+                : status === "archived"
+                  ? "Hidden from storefront browsing and product detail routes."
+                  : "Hidden while you build the listing."}
+          </p>
+          <div className="mt-4 rounded bg-slate-50 p-3 text-xs text-slate-600">
+            {images.filter((im) => im.storage_path.trim()).length} image
+            {images.filter((im) => im.storage_path.trim()).length === 1 ? "" : "s"} · {variants.length} variant
+            {variants.length === 1 ? "" : "s"} · {selectedCollections.length} collection
+            {selectedCollections.length === 1 ? "" : "s"}
+          </div>
+        </div>
+      </section>
 
       <section className="bg-white border border-slate-200 rounded-lg p-4 space-y-3">
         <h2 className="font-semibold text-slate-800">Product</h2>
@@ -544,6 +728,27 @@ export default function AdminProductForm() {
             </select>
           </label>
         </div>
+        <fieldset className="rounded border border-slate-200 p-3">
+          <legend className="px-1 text-sm font-medium text-slate-700">Storefront collections</legend>
+          <p className="mb-3 mt-1 text-xs text-slate-500">
+            Explicit collection placement takes priority over the legacy category fallback.
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" data-testid="admin-product-collections">
+            {COLLECTION_ROUTES.map((c) => (
+              <label
+                key={c.categoryKey}
+                className="flex min-h-11 items-center gap-2 rounded border border-slate-200 px-3 py-2 text-sm"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedCollections.includes(c.categoryKey)}
+                  onChange={() => toggleCollection(c.categoryKey)}
+                />
+                <span>{c.navLabel}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
       </section>
 
       <section
@@ -1103,106 +1308,180 @@ export default function AdminProductForm() {
         ))}
       </section>
 
-      <section className="bg-white border border-slate-200 rounded-lg p-4 space-y-3">
-        <div className="flex justify-between items-center">
-          <h2 className="font-semibold text-slate-800">Images (paths / URLs)</h2>
+      <section className="bg-white border border-slate-200 rounded-lg p-4 space-y-4">
+        <div className="flex flex-wrap justify-between items-center gap-2">
+          <div>
+            <h2 className="font-semibold text-slate-800">Images</h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Upload product photos, keep manual paths for existing assets, and assign images to variants when needed.
+            </p>
+          </div>
           <button
             type="button"
             className="text-sm text-blue-700"
             onClick={() => setImages((im) => [...im, newImageRow()])}
           >
-            + Add image
+            + Add manual path
           </button>
         </div>
-        {images.length === 0 ? (
-          <p className="text-sm text-slate-500">No product images. Optional for MVP (path/URL only).</p>
-        ) : null}
-        {images.map((im, i) => (
-          <div
-            key={im.id}
-            className="border border-slate-100 rounded p-3 grid sm:grid-cols-2 gap-2 text-sm"
+
+        <div
+          className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center"
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            void uploadFiles(e.dataTransfer.files);
+          }}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            className="sr-only"
+            onChange={(e) => {
+              if (e.target.files) void uploadFiles(e.target.files);
+            }}
+          />
+          <p className="text-sm font-medium text-slate-800">Drop product images here</p>
+          <p className="mt-1 text-xs text-slate-500">JPG, PNG, or WebP. Original quality is preserved.</p>
+          <button
+            type="button"
+            className="mt-3 inline-flex min-h-11 items-center rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-800"
+            disabled={uploadBusy}
+            onClick={() => fileInputRef.current?.click()}
           >
-            <label className="sm:col-span-2">
-              Storage path / URL *{" "}
-              <input
-                className="mt-0.5 w-full border border-slate-300 rounded px-1 py-1"
-                value={im.storage_path}
-                onChange={(e) => {
-                  const c = images.slice();
-                  c[i] = { ...c[i]!, storage_path: e.target.value };
-                  setImages(c);
-                }}
-              />
-            </label>
-            <label>
-              Alt
-              <input
-                className="mt-0.5 w-full border border-slate-300 rounded px-1 py-1"
-                value={im.alt_text ?? ""}
-                onChange={(e) => {
-                  const c = images.slice();
-                  c[i] = { ...c[i]!, alt_text: e.target.value };
-                  setImages(c);
-                }}
-              />
-            </label>
-            <label>
-              Sort order
-              <input
-                type="number"
-                className="mt-0.5 w-full border border-slate-300 rounded px-1 py-1"
-                value={im.sort_order ?? 0}
-                onChange={(e) => {
-                  const c = images.slice();
-                  c[i] = { ...c[i]!, sort_order: Number(e.target.value) || 0 };
-                  setImages(c);
-                }}
-              />
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={im.is_primary ?? false}
-                onChange={(e) => {
-                  const c = images.slice();
-                  c[i] = { ...c[i]!, is_primary: e.target.checked };
-                  setImages(c);
-                }}
-              />
-              Primary
-            </label>
-            <label>
-              Optional variant
-              <select
-                className="mt-0.5 w-full border border-slate-300 rounded px-1 py-1"
-                value={im.variant_id ?? ""}
-                onChange={(e) => {
-                  const c = images.slice();
-                  c[i] = {
-                    ...c[i]!,
-                    variant_id: e.target.value ? e.target.value : null,
-                  };
-                  setImages(c);
-                }}
+            {uploadBusy ? "Uploading..." : "Choose images"}
+          </button>
+        </div>
+
+        {uploadErr ? (
+          <p className="rounded bg-red-50 p-3 text-sm text-red-900" role="alert">
+            {uploadErr}
+          </p>
+        ) : null}
+
+        {images.length === 0 ? (
+          <p className="text-sm text-slate-500">No product images yet.</p>
+        ) : null}
+
+        <div className="grid gap-3 md:grid-cols-2">
+          {images.map((im, i) => {
+            const previewUrl = resolveProductImageUrl(im.storage_path) || PDP_IMAGE_PLACEHOLDER;
+            return (
+              <div
+                key={im.id}
+                className="border border-slate-200 rounded-lg p-3 grid gap-3 text-sm"
+                data-testid="admin-product-image-row"
               >
-                <option value="">(none)</option>
-                {variants.map((vr) => (
-                  <option key={vr.id} value={vr.id}>
-                    {vr.sku || vr.id}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="sm:col-span-2 text-xs text-slate-500 font-mono">id: {im.id}</div>
-            <button
-              type="button"
-              className="text-sm text-red-700 sm:col-span-2"
-              onClick={() => setImages((r) => r.filter((_, j) => j !== i))}
-            >
-              Remove image
-            </button>
-          </div>
-        ))}
+                <div className="grid grid-cols-[5rem_1fr] gap-3">
+                  <img
+                    src={previewUrl}
+                    alt=""
+                    className="aspect-square w-20 rounded border border-slate-200 bg-slate-100 object-cover"
+                    onError={(event) => {
+                      event.currentTarget.onerror = null;
+                      event.currentTarget.src = PDP_IMAGE_PLACEHOLDER;
+                    }}
+                  />
+                  <div className="min-w-0 space-y-2">
+                    <label className="block">
+                      Storage path / URL *
+                      <input
+                        className="mt-0.5 w-full border border-slate-300 rounded px-2 py-1 font-mono text-xs"
+                        value={im.storage_path}
+                        onChange={(e) => {
+                          const c = images.slice();
+                          c[i] = { ...c[i]!, storage_path: e.target.value };
+                          setImages(c);
+                        }}
+                      />
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={im.is_primary ?? false}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setImages((rows) =>
+                            rows.map((row, idx) =>
+                              idx === i
+                                ? { ...row, is_primary: checked }
+                                : checked && row.variant_id === im.variant_id
+                                  ? { ...row, is_primary: false }
+                                  : row,
+                            ),
+                          );
+                        }}
+                      />
+                      Primary for this scope
+                    </label>
+                  </div>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <label>
+                    Alt text
+                    <input
+                      className="mt-0.5 w-full border border-slate-300 rounded px-2 py-1"
+                      value={im.alt_text ?? ""}
+                      onChange={(e) => {
+                        const c = images.slice();
+                        c[i] = { ...c[i]!, alt_text: e.target.value };
+                        setImages(c);
+                      }}
+                    />
+                  </label>
+                  <label>
+                    Sort order
+                    <input
+                      type="number"
+                      min={0}
+                      className="mt-0.5 w-full border border-slate-300 rounded px-2 py-1"
+                      value={im.sort_order ?? 0}
+                      onChange={(e) => {
+                        const c = images.slice();
+                        c[i] = { ...c[i]!, sort_order: Number(e.target.value) || 0 };
+                        setImages(c);
+                      }}
+                    />
+                  </label>
+                  <label className="sm:col-span-2">
+                    Optional variant
+                    <select
+                      className="mt-0.5 w-full border border-slate-300 rounded px-2 py-1"
+                      value={im.variant_id ?? ""}
+                      onChange={(e) => {
+                        const c = images.slice();
+                        c[i] = {
+                          ...c[i]!,
+                          variant_id: e.target.value ? e.target.value : null,
+                        };
+                        setImages(c);
+                      }}
+                    >
+                      <option value="">Product-level gallery</option>
+                      {variants.map((vr) => (
+                        <option key={vr.id} value={vr.id}>
+                          {vr.sku || vr.id}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="min-w-0 truncate font-mono text-xs text-slate-500">id: {im.id}</span>
+                  <button
+                    type="button"
+                    className="shrink-0 text-sm text-red-700"
+                    onClick={() => void removeImageAtIndex(i)}
+                  >
+                    Remove image
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </section>
     </form>
   );

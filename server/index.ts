@@ -8,6 +8,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { ENV } from "../handlers/_lib/env";
 import adminOrderFulfillment from "../handlers/admin-order-fulfillment";
 import adminOrderInternalNote from "../handlers/admin-order-internal-note";
+import adminProductImage from "../handlers/admin-product-image";
 import adminPushSubscription from "../handlers/admin-push-subscription";
 import adminShipment from "../handlers/admin-shipment";
 import adminShipmentImage from "../handlers/admin-shipment-image";
@@ -81,6 +82,7 @@ app.get("/health", (_req, res) => {
 // Raw-body / multipart routes — must run before express.json()
 app.all("/api/stripe-webhook", wrap(stripeWebhook));
 app.all("/api/admin-shipment-image", wrap(adminShipmentImage));
+app.all("/api/admin-product-image", wrap(adminProductImage));
 
 app.use(express.json({ limit: "6mb" }));
 

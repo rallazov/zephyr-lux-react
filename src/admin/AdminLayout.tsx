@@ -49,7 +49,7 @@ export default function AdminLayout() {
                     ].join(" ")
                   }
                 >
-                  Products
+                  Catalog
                 </NavLink>
                 <NavLink
                   to="/admin/variant-templates"

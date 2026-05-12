@@ -76,4 +76,27 @@ describe("parseStaticCatalogData list construction", () => {
     expect(listItems[0].purchasableVariantCount).toBe(0);
     expect(listItems[0].inStock).toBe(false);
   });
+
+  it("prefer product-level gallery urls for PLP hero over variant tile images", () => {
+    const { listItems } = parseStaticCatalogData([
+      {
+        id: 1,
+        slug: "hero-plp",
+        title: "H",
+        status: "active",
+        variants: [
+          {
+            sku: "A",
+            price_cents: 100,
+            currency: "USD",
+            inventory_quantity: 1,
+            status: "active",
+            image_url: "/assets/from-variant.jpg",
+          },
+        ],
+        gallery_image_urls: ["/assets/from-gallery.jpg"],
+      },
+    ]);
+    expect(listItems[0]?.heroImageUrl).toBe("/assets/from-gallery.jpg");
+  });
 });

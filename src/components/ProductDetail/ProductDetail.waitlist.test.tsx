@@ -34,6 +34,7 @@ vi.mock("../../catalog/factory", () => ({
       },
       galleryImages: [],
       displayGalleryUrls: ["/assets/img/placeholder-sale.svg"],
+      collectionKeys: [],
       variantPrimaryImageBySku: {},
       subscriptionPlans: [],
     }),

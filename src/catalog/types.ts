@@ -37,6 +37,8 @@ export type CatalogListItem = {
   minPriceCents: number;
   maxPriceCents: number;
   heroImageUrl: string;
+  /** Explicit admin-managed storefront collections; category remains a fallback when empty. */
+  collectionKeys: string[];
   inStock: boolean;
   /** Variants with `active` status and `inventory_quantity > 0` (list ATC rule). */
   purchasableVariantCount: number;
@@ -51,6 +53,8 @@ export type CatalogProductDetail = {
   galleryImages: string[];
   /** Unique image URLs for PDP browsing (product-level first, then variant-specific). */
   displayGalleryUrls: string[];
+  /** Explicit admin-managed storefront collections; category remains a fallback when empty. */
+  collectionKeys: string[];
   /** Primary storage path per SKU from variant-attached `product_images` rows only (Supabase). */
   variantPrimaryImageBySku: Partial<Record<string, string>>;
   /** Supabase Billing plans only (`[]` when static catalog). Stripe ids never appear here — checkout uses opaque `plan_id`. */

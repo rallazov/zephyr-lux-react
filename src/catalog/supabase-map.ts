@@ -5,6 +5,7 @@ import {
 } from "../domain/commerce/subscription";
 import { productSchema, productVariantSchema } from "../domain/commerce";
 import { buildDisplayGalleryUrls } from "./pdpImage";
+import { resolveProductImageUrl } from "./productImageUrl";
 import type { CatalogProductDetail, CatalogVariantTemplateSlice } from "./types";
 import { catalogListItemFromProduct } from "./parse";
 import type { CatalogListItem } from "./types";
@@ -82,6 +83,7 @@ export type SupabaseProductWithRelations = SupabaseProductRow & {
   product_variants?: SupabaseProductVariantRow[] | null;
   product_images?: SupabaseProductImageRow[] | null;
   product_subscription_plans?: SubscriptionPlanEmbedRow[] | null;
+  product_collection_assignments?: Array<{ collection_key: string }> | null;
 };
 
 /**
@@ -211,7 +213,8 @@ function sortImageCandidates(
 
 function pickStoragePath(candidates: SupabaseProductImageRow[]): string | undefined {
   const sorted = sortImageCandidates(candidates);
-  return sorted[0]?.storage_path;
+  const path = sorted[0]?.storage_path;
+  return path ? resolveProductImageUrl(path) : undefined;
 }
 
 function pickVariantOnlyPrimary(
@@ -237,9 +240,10 @@ export function orderedProductLevelGalleryUrls(
   const out: string[] = [];
   for (const r of rows) {
     const p = r.storage_path.trim();
-    if (!p || seen.has(p)) continue;
-    seen.add(p);
-    out.push(p);
+    const url = resolveProductImageUrl(p);
+    if (!url || seen.has(url)) continue;
+    seen.add(url);
+    out.push(url);
   }
   return out;
 }
@@ -355,6 +359,15 @@ function storefrontVariantTemplateFromEmbed(
   };
 }
 
+function collectionKeysFromEmbed(row: SupabaseProductWithRelations): string[] {
+  const keys = new Set<string>();
+  for (const r of row.product_collection_assignments ?? []) {
+    const key = String(r.collection_key ?? "").trim();
+    if (key) keys.add(key);
+  }
+  return [...keys].sort((a, b) => a.localeCompare(b));
+}
+
 export function supabaseBundleToCatalogDetail(
   row: SupabaseProductWithRelations
 ): CatalogProductDetail {
@@ -376,6 +389,7 @@ export function supabaseBundleToCatalogDetail(
     galleryImages,
     variantPrimaryImageBySku
   );
+  const collectionKeys = collectionKeysFromEmbed(sanitized);
   const subscriptionPlans = subscriptionPlansPurchasableFromEmbed(
     sanitized.product_subscription_plans,
   );
@@ -384,6 +398,7 @@ export function supabaseBundleToCatalogDetail(
     storefrontProductId,
     galleryImages,
     displayGalleryUrls,
+    collectionKeys,
     variantPrimaryImageBySku,
     subscriptionPlans,
     variantTemplate: storefrontVariantTemplateFromEmbed(sanitized),
@@ -394,8 +409,16 @@ export function supabaseBundleToListItem(
   row: SupabaseProductWithRelations
 ): CatalogListItem {
   const detail = supabaseBundleToCatalogDetail(row);
+  const base = catalogListItemFromProduct(
+    detail.product,
+    detail.storefrontProductId,
+    detail.collectionKeys,
+  );
+  const primaryProductHero = detail.galleryImages[0]?.trim();
   return {
-    ...catalogListItemFromProduct(detail.product, detail.storefrontProductId),
+    ...base,
+    collectionKeys: detail.collectionKeys,
     subscriptionPlans: detail.subscriptionPlans,
+    heroImageUrl: primaryProductHero || base.heroImageUrl,
   };
 }

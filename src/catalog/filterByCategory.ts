@@ -5,7 +5,10 @@ export function filterListItemsByCategoryKey(
   items: CatalogListItem[],
   canonicalCategoryKey: string
 ): CatalogListItem[] {
-  return items.filter((row) =>
-    productCategoryMatchesCanonical(row.product.category, canonicalCategoryKey)
-  );
+  return items.filter((row) => {
+    if (row.collectionKeys.length > 0) {
+      return row.collectionKeys.includes(canonicalCategoryKey);
+    }
+    return productCategoryMatchesCanonical(row.product.category, canonicalCategoryKey);
+  });
 }

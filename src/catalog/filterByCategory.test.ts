@@ -65,4 +65,15 @@ describe("filterListItemsByCategoryKey", () => {
     const w = filterListItemsByCategoryKey(list, "women");
     expect(w.some((x) => x.product.slug === "c")).toBe(false);
   });
+
+  it("uses explicit collection assignments before category fallback", () => {
+    const assigned = list.map((row) =>
+      row.product.slug === "a"
+        ? { ...row, collectionKeys: ["sale"] }
+        : row,
+    );
+
+    expect(filterListItemsByCategoryKey(assigned, "women").map((x) => x.product.slug)).toEqual([]);
+    expect(filterListItemsByCategoryKey(assigned, "sale").map((x) => x.product.slug)).toEqual(["a"]);
+  });
 });

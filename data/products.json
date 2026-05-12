@@ -73,7 +73,7 @@
         "currency": "USD",
         "inventory_quantity": 25,
         "status": "active",
-        "image_url": "/assets/img/Listing2.jpeg"
+        "image_url": "/assets/img/long leg.jpg"
       },
       {
         "sku": "ZLX-2PK-LONG-M",
@@ -83,7 +83,7 @@
         "currency": "USD",
         "inventory_quantity": 25,
         "status": "active",
-        "image_url": "/assets/img/Listing2.jpeg"
+        "image_url": "/assets/img/long leg.jpg"
       },
       {
         "sku": "ZLX-2PK-LONG-L",
@@ -93,7 +93,7 @@
         "currency": "USD",
         "inventory_quantity": 25,
         "status": "active",
-        "image_url": "/assets/img/Listing2.jpeg"
+        "image_url": "/assets/img/long leg.jpg"
       },
       {
         "sku": "ZLX-2PK-LONG-XL",
@@ -103,7 +103,7 @@
         "currency": "USD",
         "inventory_quantity": 25,
         "status": "active",
-        "image_url": "/assets/img/Listing2.jpeg"
+        "image_url": "/assets/img/long leg.jpg"
       }
     ]
   },
