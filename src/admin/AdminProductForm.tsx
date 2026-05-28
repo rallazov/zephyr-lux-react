@@ -138,6 +138,8 @@ export default function AdminProductForm() {
   const [uploadBusy, setUploadBusy] = useState(false);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  /** Storage paths removed in the form; deleted only after a successful catalog save. */
+  const storagePathsPendingDeleteRef = useRef<Set<string>>(new Set());
   const heroPreview = useMemo(() => {
     const sorted = [...images]
       .filter((im) => im.storage_path.trim() && im.variant_id == null)
@@ -301,6 +303,51 @@ export default function AdminProductForm() {
     );
   }, []);
 
+  const deleteStorageObject = useCallback(
+    async (objectPath: string) => {
+      const path = objectPath.trim();
+      if (!path || !isDeletableProductImageStoragePath(path)) return;
+      if (!session?.access_token) {
+        throw new Error("Sign in again before removing stored images.");
+      }
+      const q = new URLSearchParams({ object_path: path });
+      const res = await fetch(apiUrl(`/api/admin-product-image?${q.toString()}`), {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        throw new Error(
+          typeof body.error === "string" ? body.error : `Remove failed (${res.status}).`,
+        );
+      }
+    },
+    [session?.access_token],
+  );
+
+  const queueStoragePathDeleteAfterSave = useCallback((objectPath: string) => {
+    const path = objectPath.trim();
+    if (path && isDeletableProductImageStoragePath(path)) {
+      storagePathsPendingDeleteRef.current.add(path);
+    }
+  }, []);
+
+  const flushPendingStorageDeletes = useCallback(async () => {
+    const paths = [...storagePathsPendingDeleteRef.current];
+    storagePathsPendingDeleteRef.current.clear();
+    const failures: string[] = [];
+    for (const path of paths) {
+      try {
+        await deleteStorageObject(path);
+      } catch (err) {
+        failures.push(err instanceof Error ? err.message : String(err));
+      }
+    }
+    if (failures.length > 0) {
+      throw new Error(failures.join("; "));
+    }
+  }, [deleteStorageObject]);
+
   const uploadFiles = useCallback(
     async (files: FileList | File[]) => {
       const list = Array.from(files);
@@ -322,8 +369,9 @@ export default function AdminProductForm() {
       }
 
       setUploadBusy(true);
+      const uploadedPaths: string[] = [];
       try {
-        const uploaded: Array<Omit<IRow, "sort_order" | "is_primary">> = [];
+        const uploadedRows: Array<Omit<IRow, "sort_order" | "is_primary">> = [];
         for (const file of list) {
           const fd = new FormData();
           if (productId) fd.set("product_id", productId);
@@ -342,7 +390,8 @@ export default function AdminProductForm() {
               typeof body.error === "string" ? body.error : `Upload failed (${res.status}).`,
             );
           }
-          uploaded.push({
+          uploadedPaths.push(body.object_path);
+          uploadedRows.push({
             id: crypto.randomUUID(),
             storage_path: body.object_path,
             alt_text: title.trim() || file.name,
@@ -351,7 +400,7 @@ export default function AdminProductForm() {
         }
         setImages((prev) => [
           ...prev,
-          ...uploaded.map((row, index) => ({
+          ...uploadedRows.map((row, index) => ({
             ...row,
             sort_order: prev.length + index,
             is_primary: prev.length === 0 && index === 0,
@@ -359,46 +408,30 @@ export default function AdminProductForm() {
         ]);
         if (fileInputRef.current) fileInputRef.current.value = "";
       } catch (err) {
+        for (const path of uploadedPaths) {
+          try {
+            await deleteStorageObject(path);
+          } catch {
+            /* Best-effort rollback; surface the primary upload error below. */
+          }
+        }
         setUploadErr(err instanceof Error ? err.message : String(err));
       } finally {
         setUploadBusy(false);
       }
     },
-    [productId, session?.access_token, title],
+    [deleteStorageObject, productId, session?.access_token, title],
   );
 
   const removeImageAtIndex = useCallback(
-    async (index: number) => {
+    (index: number) => {
       const row = images[index];
       if (!row) return;
-      const path = row.storage_path.trim();
-      if (path && isDeletableProductImageStoragePath(path)) {
-        if (!session?.access_token) {
-          setUploadErr("Sign in again before removing stored images.");
-          return;
-        }
-        try {
-          const q = new URLSearchParams({ object_path: path });
-          const res = await fetch(apiUrl(`/api/admin-product-image?${q.toString()}`), {
-            method: "DELETE",
-            headers: { Authorization: `Bearer ${session.access_token}` },
-          });
-          const body = (await res.json().catch(() => ({}))) as { error?: string };
-          if (!res.ok) {
-            setUploadErr(
-              typeof body.error === "string" ? body.error : `Remove failed (${res.status}).`,
-            );
-            return;
-          }
-        } catch (err) {
-          setUploadErr(err instanceof Error ? err.message : String(err));
-          return;
-        }
-      }
+      queueStoragePathDeleteAfterSave(row.storage_path);
       setUploadErr(null);
       setImages((r) => r.filter((_, j) => j !== index));
     },
-    [images, session?.access_token],
+    [images, queueStoragePathDeleteAfterSave],
   );
 
   const onSave = useCallback(
@@ -501,6 +534,16 @@ export default function AdminProductForm() {
           }
           return;
         }
+        try {
+          await flushPendingStorageDeletes();
+        } catch (deleteErr) {
+          setFormErr(
+            deleteErr instanceof Error
+              ? `Product saved, but some image files could not be removed from storage: ${deleteErr.message}`
+              : "Product saved, but some image files could not be removed from storage.",
+          );
+          return;
+        }
         const newId = data as string;
         if (isNew && newId) {
           nav(`/admin/products/${newId}`, { replace: true });
@@ -535,6 +578,7 @@ export default function AdminProductForm() {
       subscriptionPlans,
       isNew,
       nav,
+      flushPendingStorageDeletes,
     ]
   );
 
@@ -566,7 +610,11 @@ export default function AdminProductForm() {
           <button
             type="button"
             className="px-3 py-2 border border-slate-300 rounded-md text-slate-700"
-            onClick={() => nav("/admin/products")}
+            onClick={() => {
+              void flushPendingStorageDeletes().finally(() => {
+                nav("/admin/products");
+              });
+            }}
           >
             Cancel
           </button>
@@ -1473,7 +1521,7 @@ export default function AdminProductForm() {
                   <button
                     type="button"
                     className="shrink-0 text-sm text-red-700"
-                    onClick={() => void removeImageAtIndex(i)}
+                    onClick={() => removeImageAtIndex(i)}
                   >
                     Remove image
                   </button>
