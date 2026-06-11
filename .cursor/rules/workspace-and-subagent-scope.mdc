@@ -1,0 +1,43 @@
+---
+description: Single-repo scope, subagent approval, and multi-repository search gates
+alwaysApply: true
+---
+
+# Workspace and subagent scope
+
+## Default project boundary
+
+- Work in **this repo** (`zephyr-lux-react`) unless the user explicitly names another project.
+- Do not read, search, or modify `application-tracker-main` or other repositories unless the user approves (see below).
+
+## Subagents (Task tool, review layers, explore agents)
+
+**Ask the user for approval before launching a subagent** when any of these apply:
+
+- The task would search or edit outside this repository.
+- The subagent is not required for the user's request in this repo (e.g. BMAD story work belonging to another project).
+- The subagent would use broad exploration without a narrow path the user confirmed.
+
+If approved, state the **exact repo and file scope** in the subagent prompt.
+
+## Multi-repository search
+
+**Ask the user for permission before** any search or command that targets more than one repository root (e.g. both `zephyr-lux-react` and `application-tracker-main`).
+
+This includes:
+
+- `Grep`, `SemanticSearch`, or `Glob` without a single-repo `target_directory` / path
+- Parallel tool calls that hit different repo roots
+- Shell commands spanning multiple project directories
+
+When scope is unclear in a multi-root workspace, **stop and ask** which repo to use.
+
+## Approval format
+
+When asking, offer a short choice:
+
+- **A)** Current repo only (default)
+- **B)** Named repo/path (user specifies)
+- **C)** Cancel / narrow the task
+
+Do not proceed with cross-repo or out-of-scope subagent work until the user replies.
